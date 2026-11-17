@@ -467,7 +467,7 @@ function niceStep(range,n){const raw=range/n;const m=Math.pow(10,Math.floor(Math
 function tag(x,y,text,bg,fg,align){ctx.font='10px system-ui,sans-serif';const w=ctx.measureText(text).width+8;const X=align==='right'?x-w:align==='center'?x-w/2:x;
  ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect?ctx.roundRect(X,y-8,w,16,4):ctx.rect(X,y-8,w,16);ctx.fill();ctx.fillStyle=fg||'#0d1117';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(text,X+4,y+0.5)}
 function draw(){
- if(!S.bars.length||!W)return;clampEnd();calcScale();
+ if(!S.bars.length||!W)return;if(!isFinite(S.bw)||!isFinite(S.end))resetView();if(!isFinite(S.yShift))S.yShift=0;if(!isFinite(S.yZoom)||S.yZoom<=0)S.yZoom=1;clampEnd();calcScale();if(!isFinite(yMin)||!isFinite(yMax)){S.yShift=0;S.yZoom=1;calcScale()}
  const B=S.bars,hm=heatOn();ctx.clearRect(0,0,W,H);ctx.fillStyle=hm?'#000':'#0d1117';ctx.fillRect(0,0,W,H);
  // grid + price axis
  const step=niceStep(yMax-yMin,Math.max(3,Math.floor(PH/55)));
@@ -607,12 +607,12 @@ cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catc
  else if(ptrs.size===2){const[a,b]=[...ptrs.values()];gest={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,bw0:S.bw,cx:(a.x+b.x)/2,end0:S.end,moved:true}}});
 cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId)||!gest)return;const p=pos(e);ptrs.set(e.pointerId,p);
  if(gest.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);const nb=clamp(gest.bw0*d/gest.d0,.4,50);const ic=gest.end0-(PW-gest.cx)/gest.bw0;S.bw=nb;S.end=ic+(PW-gest.cx)/nb;req()}
- else if(ptrs.size===1&&gest.type!=='pinch'){const dx=p.x-gest.x0,dy=p.y-gest.y0;if(!gest.moved&&Math.hypot(dx,dy)>8)gest.moved=true;if(!gest.moved)return;
+ else if(ptrs.size===1&&(gest.type==='pan'||gest.type==='yaxis')){const dx=p.x-gest.x0,dy=p.y-gest.y0;if(!gest.moved&&Math.hypot(dx,dy)>8)gest.moved=true;if(!gest.moved)return;
   if(gest.type==='yaxis')S.yZoom=clamp(gest.yz0*Math.exp(-dy/160),.05,20);else{S.end=gest.end0-dx/S.bw;S.yShift=gest.ys0+dy*gest.ppp}
   if(S.cross)S.cross=null;req()}});
 function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);
  if(gest&&!gest.moved&&gest.type!=='pinch'&&Date.now()-gest.t0<600&&e.type==='pointerup')onTap(gest.x0,gest.y0);
- if(ptrs.size===0||gest?.type==='pinch')gest=ptrs.size===1?{type:'none',moved:true}:null}
+ if(ptrs.size===0||gest?.type==='pinch'){if(ptrs.size===1){const q=[...ptrs.values()][0];gest={type:'pan',x0:q.x,y0:q.y,end0:S.end,ys0:S.yShift,yz0:S.yZoom,ppp:(yMax-yMin)/PH,t0:0,moved:true}}else gest=null}}
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',e=>{e.preventDefault();const p=pos(e);const ic=iOf(p.x);S.bw=clamp(S.bw*Math.exp(-e.deltaY/400),.4,50);S.end=ic+(PW-p.x)/S.bw;req()},{passive:false});
 
