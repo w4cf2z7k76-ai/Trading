@@ -212,6 +212,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <div class="fld"><label>TP 2</label><input id="tkTP2" inputmode="decimal"><input id="tkTP2p" class="pct" inputmode="numeric" value="30">%<button data-pick="tkTP2">📍</button></div>
   <div class="fld"><label>TP 3</label><input id="tkTP3" inputmode="decimal"><input id="tkTP3p" class="pct" inputmode="numeric" value="20">%<button data-pick="tkTP3">📍</button></div>
   <div class="row" id="rRisk">Risiko <span class="chips" id="tkRisk" style="margin:0"></span></div>
+  <div class="fld" id="fStake"><label>Einsatz $</label><input id="tkStake" inputmode="decimal" placeholder="optional, z. B. 200 (statt Risiko %)"></div>
   <div class="row" id="rAmt">Betrag <span class="chips" id="tkAmt" style="margin:0"></span></div>
   <div class="row" id="rLev">Hebel <span class="chips" id="tkLev" style="margin:0"></span></div>
   <details><summary class="mut" style="font-size:13px;padding:4px 0">⚙️ Smart-Optionen (Trailing, Break-even …)</summary>
@@ -235,6 +236,15 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <h3>🎨 Design wählen</h3>
   <div class="thgrid" id="thGrid"></div>
   <p class="mut" style="font-size:12px;margin-top:10px">Wird sofort übernommen und gespeichert. Die Heatmap bleibt immer dunkel, damit die Farben stimmen.</p>
+  <div class="row"><button data-close class="on">Fertig</button></div>
+</div></div>
+
+<div class="modal" id="mVis"><div class="box">
+  <h3>👁 Was soll im Chart zu sehen sein?</h3>
+  <label class="row"><input type="checkbox" id="vPos"> Meine Positionen & Orders (Einstieg, Stop, Ziele)</label>
+  <label class="row"><input type="checkbox" id="vBots"> Bots (Linien, Zählung und Bot-Positionen)</label>
+  <label class="row"><input type="checkbox" id="vDraw"> Zeichnungen (SK, Fibonacci, Elliott, Linien)</label>
+  <p class="mut" style="font-size:12px">Ausgeblendetes läuft im Hintergrund normal weiter – Stops und Ziele werden trotzdem ausgeführt. Einzelne Bots kannst du im Bots-Tab mit 👁 ein- und ausblenden.</p>
   <div class="row"><button data-close class="on">Fertig</button></div>
 </div></div>
 
@@ -286,6 +296,8 @@ const THEMES={
  light:{name:'Hell',d:'Weiß, klar – gut bei Sonne',bg:'#ffffff',panel:'#f5f6f8',solid:'#ffffff',line:'#e1e4ea',txt:'#131722',mut:'#6a7181',up:'#089981',dn:'#f23645',acc:'#2962ff',blue:'#2962ff',btn:'#ffffff',inp:'#ffffff',card:'#ffffff',onbg:'#e8eeff',tab:'rgba(255,255,255,.9)',tabOn:'rgba(41,98,255,.12)',tabAcc:'#2962ff',upbg:'#e3f6f2',dnbg:'#fde8ea',chart:'#ffffff',grid:'#f0f3fa',grid2:'#f5f7fb',lbl:'rgba(255,255,255,.85)'},
  neon:{name:'Neon',d:'Tiefschwarz mit Pink & Türkis',bg:'#05020c',panel:'#0f0a1f',solid:'#150f2b',line:'#2a1f4a',txt:'#f5f3ff',mut:'#8f86b3',up:'#00f5d4',dn:'#ff2e88',acc:'#ff2e88',blue:'#00bbf9',btn:'#1a1233',inp:'#05020c',card:'#120c25',onbg:'rgba(255,46,136,.16)',tab:'rgba(26,18,51,.9)',tabOn:'rgba(0,245,212,.12)',tabAcc:'#00f5d4',upbg:'rgba(0,245,212,.14)',dnbg:'rgba(255,46,136,.16)',chart:'#05020c',grid:'#120c25',grid2:'#0d0820',lbl:'rgba(5,2,12,.78)'}};
 let TH=THEMES.midnight;
+const VIS=Object.assign({pos:true,bots:true,draw:true},(()=>{try{return JSON.parse(localStorage.getItem('wdesk_vis'))||{}}catch(_){return {}}})());
+const saveVis=()=>{try{localStorage.setItem('wdesk_vis',JSON.stringify(VIS))}catch(_){}};
 function applyTheme(k){const t=THEMES[k]||THEMES.midnight;TH=t;const r=document.documentElement;r.dataset.theme=THEMES[k]?k:'midnight';
  ['bg','panel','line','txt','mut','up','dn','acc','blue','btn','inp','card','onbg','tab','tabOn','tabAcc','solid','upbg','dnbg'].forEach(v=>r.style.setProperty('--'+v,t[v]));r.style.setProperty('--grad',t.grad||t.bg);
  const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t.solid;try{localStorage.setItem('wdesk_theme',k)}catch(_){}if(typeof req==='function')try{req()}catch(_){}}
@@ -532,7 +544,7 @@ function draw(){
  // zigzag
  if(S.zz&&S.showZZ&&!(S.tab==='heat'&&!HM.over)){ctx.strokeStyle='rgba(240,185,11,.55)';ctx.lineWidth=1.2;ctx.setLineDash([]);ctx.beginPath();S.zz.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
  const clean=S.tab==='heat'&&!HM.over;
- if(!clean){S.drawings.forEach(d=>renderDrawing(d,false));if(S.cur)renderDrawing(S.cur,true);
+ if(!clean){if(VIS.draw)S.drawings.forEach(d=>renderDrawing(d,false));if(S.cur)renderDrawing(S.cur,true);
  if(S.btShow)drawTrades(a,b);
  drawPos()}
  // last price
@@ -607,9 +619,10 @@ function renderSheet(){
 function buildTools(){
  const t=$('#tools');let h='';
  Object.entries(TOOLS).forEach(([k,v])=>h+=`<button data-tool="${k}"><b>${v.ic}</b>${v.name}</button>`);
- h+=`<div class="sep"></div><button id="tOrd" class="on"><b>💼</b>Order</button><button id="tAcc"><b>📒</b>Konto</button><div class="sep"></div><button id="tMag"><b>🧲</b>Magnet</button><button id="tUndo"><b>↶</b>Zurück</button><button id="tClr"><b>🗑</b>Alle</button><button id="tSheet"><b>📋</b>Analyse</button>`;
+ h+=`<div class="sep"></div><button id="tOrd" class="on"><b>💼</b>Order</button><button id="tAcc"><b>📒</b>Konto</button><button id="tVis"><b>👁</b>Ansicht</button><div class="sep"></div><button id="tMag"><b>🧲</b>Magnet</button><button id="tUndo"><b>↶</b>Zurück</button><button id="tClr"><b>🗑</b>Alle</button><button id="tSheet"><b>📋</b>Analyse</button>`;
  t.innerHTML=h;
  t.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+ $('#tVis').onclick=visOpen;
  $('#tMag').onclick=()=>{S.magnet=!S.magnet;syncTools();toast('Magnet '+(S.magnet?'an':'aus'))};
  $('#tUndo').onclick=undo;$('#tOrd').onclick=()=>tkOpen(false);$('#tAcc').onclick=acOpen;
  let clrArm=0;$('#tClr').onclick=()=>{if(Date.now()-clrArm<2500){S.drawings=[];S.zz=null;S.cur=null;save();renderSheet();updHint();req();toast('Alle Zeichnungen gelöscht')}else{clrArm=Date.now();toast('Nochmal tippen zum Löschen aller Zeichnungen')}};
@@ -801,7 +814,8 @@ const avail=()=>AC.bal-used();
 const liqPrice=(dir,entry,lev)=>entry*(1-dir*(1/lev-.005));
 function sizeOf(o,price){
  if(o.mode==='spot'){const notional=Math.max(0,Math.min(AC.bal*o.amtPct/100,avail()));const qty=notional/price;return{qty,margin:notional,notional,risk$:fin(o.sl)?qty*Math.abs(price-o.sl):notional}}
- const dist=Math.abs(price-o.sl),qty=AC.bal*o.riskPct/100/dist,notional=qty*price;return{qty,margin:notional/o.lev,notional,risk$:qty*dist}}
+ const dist=Math.abs(price-o.sl);if(fin(o.stake)&&o.stake>0){const notional=o.stake*o.lev,qty=notional/price;return{qty,margin:o.stake,notional,risk$:qty*dist}}
+ const qty=AC.bal*o.riskPct/100/dist,notional=qty*price;return{qty,margin:notional/o.lev,notional,risk$:qty*dist}}
 function openPos(o,price){
  if(o.mode!=='spot'&&!fin(o.sl))return null;
  if(fin(o.sl)&&o.dir*(price-o.sl)<=0)return null;
@@ -901,12 +915,12 @@ function renderBots(){$('#bAmt').innerHTML=[10,25,50,100].map(v=>`<button data-a
    <span class="mut">Wellen ${w} · ${({both:'Long+Short',long:'nur Long',short:'nur Short'})[bt.dir]} · Größe ${bt.dev?ff(bt.dev*100)+' %':'auto'} · Risiko ${ff(bt.risk)} %${bt.htf?' · Trend-Filter':''}</span><br>
    ${bt.tfs.map(tf=>`<span style="font-size:12px"><b>${tfName(tf)}</b>: ${(bt.st[tf]&&bt.st[tf].last)?bt.st[tf].last.replace(tfName(tf)+': ',''):(m&&!tfAvail(tf)?'<span class="warn">keine Daten in dieser Ansicht</span>':'wartet auf Wellenpunkt')}</span>`).join('<br>')}<br>
    Ergebnis: <b class="${pn>=0?'ok':'bad'}">${money(pn)}</b> · ${bt.trades} Trades${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
-   ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen</button></div>`:'<div class="mut" style="font-size:11px">Läuft, wenn '+bt.label+' im Chart geöffnet ist</div>'):''}</div>`;return}
+   ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">Läuft, wenn '+bt.label+' im Chart geöffnet ist</div>'):''}</div>`;return}
   h+=`<div class="pos"><b>${bt.type==='channel'?'Channel':'Grid'}-Bot</b> ${bt.label}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span><br>
   <span class="mut">${fmt(bt.low)} – ${fmt(bt.high)}${bt.stop?' · Stop '+fmt(bt.stop):''}${bt.type==='grid'?` · ${bt.slots.length} Stufen · ${bt.slots.filter(s=>s.held).length} gekauft`:''} · ${money(bt.inv)}</span><br>
   Gewinn: <b class="${bt.pnl>=0?'ok':'bad'}">${money(bt.pnl)}</b> · ${bt.cyc} ${bt.type==='channel'?'Zyklen':'Verkäufe'}${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
-  ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen & verkaufen</button></div>`:'<div class="mut" style="font-size:11px">Zum Verwalten zu diesem Symbol wechseln</div>'):''}</div>`});
- h+='</div>';$('#bList').innerHTML=h;$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(bt)botStop(bt)})}
+  ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen & verkaufen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">Zum Verwalten zu diesem Symbol wechseln</div>'):''}</div>`});
+ h+='</div>';$('#bList').innerHTML=h;$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(bt)botStop(bt)})}
 
 /* ---------- Elliott-Bot (mehrere Zeiteinheiten) ---------- */
 const curTf=()=>S.custom?'csv':S.tf;
@@ -1012,7 +1026,8 @@ function eForm(){const chip=(id,vals,cur,lab,set)=>{$(id).innerHTML=vals.map(v=>
 /* chart overlay for positions, orders, bots */
 function drawPos(){
  const hl=(p,col,dash,label,bg)=>{if(!fin(p))return;const y=Math.round(yOf(p))+.5;if(y<-10||y>PH+10)return;ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(PW,y);ctx.stroke();ctx.setLineDash([]);tag(4,clamp(y,9,PH-9),label+'  '+fmt(p),bg||col,'#0d1117')};
- AC.bots.filter(b=>mine(b)&&b.state!=='stopped'&&b.state!=='done').forEach(bt=>{
+ const botVis=id=>{const b=AC.bots.find(x=>x.id===id);return VIS.bots&&(!b||b.vis!==false)};
+ AC.bots.filter(b=>VIS.bots&&b.vis!==false&&mine(b)&&b.state!=='stopped'&&b.state!=='done').forEach(bt=>{
   if(bt.type==='elliott'){eMig(bt);const B=S.bars,ix=t=>{let lo=0,hi=B.length-1;if(t<B[0].t)return -1;while(lo<hi){const md=(lo+hi+1)>>1;if(B[md].t<=t)lo=md;else hi=md-1}return lo};
    bt.tfs.forEach(tf=>{const M=bt.st[tf]&&bt.st[tf].match;if(!M)return;const pts=M.pts.map(q=>({i:ix(q.t),p:q.p}));if(pts.some(q=>q.i<0))return;const own=tf===curTf(),cl=own?'#ffd166':'#7dd3fc',col=M.side>0?'#26a69a':'#ef5350';
     ctx.strokeStyle=cl;ctx.lineWidth=own?1.5:1.2;ctx.setLineDash([4,3]);ctx.beginPath();pts.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.setLineDash([]);
@@ -1020,9 +1035,9 @@ function drawPos(){
     const q=pts[pts.length-1];tag(Math.min(PW-130,xOf(q.i)+12),clamp(yOf(q.p),10,PH-10),'🤖 '+tfName(tf)+' '+WNAME[M.wave]+' '+(M.side>0?'Long':'Short'),col,'#fff')});return}
   if(bt.type==='grid'){ctx.strokeStyle='rgba(210,168,255,.35)';ctx.lineWidth=1;bt.levels.forEach(L=>{const y=Math.round(yOf(L))+.5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(PW,y);ctx.stroke()})}
   hl(bt.low,'#d2a8ff',[6,4],'🤖 Kauf');hl(bt.high,'#d2a8ff',[6,4],'🤖 Verkauf');if(bt.stop)hl(bt.stop,'#ef5350',[2,4],'🤖 Stop')});
- AC.ord.filter(mine).forEach(o=>{if(fin(o.price))hl(o.price,'#58a6ff',[6,4],`⏳ ${TYPN[o.type]} ${o.mode==='spot'?'Spot':o.dir>0?'Long':'Short'}`);if(o.type==='trail'&&o.act)hl(o.ext*(1+o.dir*o.tpct/100),'#58a6ff',[2,3],'⏳ Auslöser');
+ AC.ord.filter(o=>VIS.pos&&mine(o)).forEach(o=>{if(fin(o.price))hl(o.price,'#58a6ff',[6,4],`⏳ ${TYPN[o.type]} ${o.mode==='spot'?'Spot':o.dir>0?'Long':'Short'}`);if(o.type==='trail'&&o.act)hl(o.ext*(1+o.dir*o.tpct/100),'#58a6ff',[2,3],'⏳ Auslöser');
   if(fin(o.sl))hl(o.sl,'#ef5350',[2,4],'SL');o.tps.forEach((t,k)=>hl(t.p,'#26a69a',[2,4],'TP'+(k+1)))});
- AC.pos.filter(mine).forEach(p=>{const u=upnl(p);hl(p.entry,'#58a6ff',[],`${pmode(p)==='spot'?'Spot':(p.dir>0?'Long':'Short')+' '+(p.lev||1)+'×'} ${money(u)}`,u>=0?'#26a69a':'#ef5350');
+ AC.pos.filter(p=>mine(p)&&(p.bot?botVis(p.bot):VIS.pos)).forEach(p=>{const u=upnl(p);hl(p.entry,'#58a6ff',[],`${pmode(p)==='spot'?'Spot':(p.dir>0?'Long':'Short')+' '+(p.lev||1)+'×'} ${money(u)}`,u>=0?'#26a69a':'#ef5350');
   if(p.sl!=null)hl(p.sl,'#ef5350',[],p.sl===p.sl0?'SL':'SL ✓');if(p.liq!=null)hl(p.liq,'#ffa657',[1,3],'Liquidation');
   p.tps.forEach((t,k)=>{if(!t.hit)hl(t.p,'#26a69a',[4,3],`TP${k+1} ${t.pct}%`)});if(p.ttOn)hl(p.ttExt*(1-p.dir*p.ttp/100),'#26a69a',[2,2],'Trailing-TP')})}
 
@@ -1036,10 +1051,10 @@ function tkOpen(keep){const inP=tkPlace();
  if(!$('#tkPrice').value&&TK.type!=='trail')$('#tkPrice').value=nstr(lastP());if(TK.mode==='spot')TK.dir=1;
  $('#tkSym').textContent=(S.custom||S.sym)+(isRp()?' · Replay':S.src==='binance'?' · Live':' · Demo');
  $('#tkTitle').firstChild.textContent=inP?(TK.mode==='spot'?'🪙 Spot ':'📈 Futures '):'💼 Neue Order ';
- chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>ff(v)+' %',v=>TK.risk=v);chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>v+' %',v=>TK.amt=v);chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);
+ chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>v+' %',v=>TK.amt=v);chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);
  segSet('#tkMode',TK.mode);segSet('#tkDir',TK.dir);segSet('#tkType',TK.type);tkUpd();if(!inP)$('#mTrade').classList.add('open')}
 function tkRead(){const tps=[1,2,3].map(k=>({p:num($('#tkTP'+k).value),pct:num($('#tkTP'+k+'p').value)||0})).filter(t=>fin(t.p));
- return{mode:TK.mode,dir:TK.mode==='spot'?1:TK.dir,type:TK.type,price:TK.type==='market'?lastP():num($('#tkPrice').value),sl:num($('#tkSL').value),tps,be:$('#tkBE').checked,trail:+$('#tkTrail').value,ttp:+$('#tkTTP').value,csl:$('#tkCSL').checked,tpct:num($('#tkTpct').value),riskPct:TK.risk,lev:TK.lev,amtPct:TK.amt}}
+ return{mode:TK.mode,dir:TK.mode==='spot'?1:TK.dir,type:TK.type,price:TK.type==='market'?lastP():num($('#tkPrice').value),sl:num($('#tkSL').value),tps,be:$('#tkBE').checked,trail:+$('#tkTrail').value,ttp:+$('#tkTTP').value,csl:$('#tkCSL').checked,tpct:num($('#tkTpct').value),stake:num($('#tkStake').value),riskPct:TK.risk,lev:TK.lev,amtPct:TK.amt}}
 function tkRef(o){return o.type==='market'?lastP():o.type==='trail'?(fin(o.price)?o.price:lastP()):o.price}
 function tkCheck(o){const L=o.dir>0;
  if((o.type==='limit'||o.type==='stop')&&!fin(o.price))return'Preis fehlt';if(o.type==='trail'&&!(o.tpct>0))return'Rücklauf in % eintragen';
@@ -1052,7 +1067,7 @@ function tkCheck(o){const L=o.dir>0;
  if(o.mode==='fut'){const lq=liqPrice(o.dir,ref,o.lev);if(o.dir*(o.sl-lq)<=0)return`Stop liegt hinter dem Liquidationspreis (${fmt(lq)}) – Hebel senken`}
  const z=sizeOf(o,ref);if(!(z.qty>0))return'Kein freies Guthaben';if(z.margin>avail()+1e-6)return o.mode==='spot'?'Nicht genug Guthaben':'Nicht genug Margin – Hebel erhöhen oder Risiko senken';return''}
 function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode==='spot';
- $('#tkMode').style.display=inP?'none':'flex';$('#tkDir').style.display=sp?'none':'flex';$('#rRisk').style.display=sp?'none':'flex';$('#rAmt').style.display=sp?'flex':'none';$('#rLev').style.display=sp?'none':'flex';
+ $('#tkMode').style.display=inP?'none':'flex';$('#tkDir').style.display=sp?'none':'flex';$('#rRisk').style.display=sp?'none':'flex';$('#rAmt').style.display=sp?'flex':'none';$('#rLev').style.display=sp?'none':'flex';$('#fStake').style.display=sp?'none':'flex';$('#tkRisk').style.opacity=(!sp&&fin(o.stake)&&o.stake>0)?.4:1;
  $('#fLimit').style.display=o.type==='market'?'none':'flex';$('#lLimit').textContent={limit:'Limit-Preis',stop:'Auslöser',trail:'Aktivierung'}[o.type]||'';$('#tkPrice').placeholder=o.type==='trail'?'leer = sofort':'';
  $('#fTpct').style.display=o.type==='trail'?'flex':'none';$('#lSL').textContent=sp?'Stop (opt.)':'Stop-Loss';
  $('#tkSend').textContent=sp?(o.type==='market'?'Jetzt kaufen':'Kauf-Order setzen'):(o.dir>0?'Long ':'Short ')+(o.type==='market'?'eröffnen':'Order setzen');
@@ -1060,7 +1075,7 @@ function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode===
  const ref=tkRef(o),z=sizeOf(o,ref),dist=fin(o.sl)?Math.abs(ref-o.sl):null,sum=o.tps.reduce((s,t)=>s+t.pct,0);
  const rr=dist?o.tps.map((t,k)=>`TP${k+1} ${ff((Math.abs(t.p-ref)/dist).toFixed(2))} R`).join(' · '):'';
  el.innerHTML=`<table><tr><td>Einstieg</td><td>${fmt(ref)}${o.type==='market'?' (Market)':o.type==='trail'?' (ca., nach Rücklauf)':''}</td></tr><tr><td>Menge</td><td>${Number(z.qty.toPrecision(4)).toLocaleString('de-DE')}</td></tr>
- <tr><td>Positionswert</td><td>${money(z.notional)}</td></tr>${sp?'':`<tr><td>Margin</td><td>${money(z.margin)} <span class="mut">(${o.lev}×)</span></td></tr><tr><td>Liquidation</td><td style="color:#ffa657">${fmt(liqPrice(o.dir,ref,o.lev))}</td></tr>`}
+ ${sp?'':`<tr><td><b>Einsatz (Margin)</b></td><td><b>${money(z.margin)}</b> <span class="mut">· ${pct(z.margin/AC.bal)} vom Konto</span></td></tr>`}<tr><td>Positionswert</td><td>${money(z.notional)}${sp?'':` <span class="mut">(${o.lev}×)</span>`}</td></tr>${sp?'':`<tr><td>Liquidation</td><td style="color:#ffa657">${fmt(liqPrice(o.dir,ref,o.lev))}</td></tr>`}
  <tr><td>Risiko bis Stop</td><td class="bad">${dist?money(z.risk$):'ganzer Betrag (kein Stop)'}</td></tr>${rr?`<tr><td>CRV</td><td>${rr}</td></tr>`:''}<tr><td>Verfügbar</td><td>${money(avail())}</td></tr></table>
  ${o.tps.length&&sum!==100?`<div class="mut" style="font-size:11px;margin-top:4px">TP-Anteile ergeben ${sum} % – die letzte TP schließt den Rest${o.ttp?' (bzw. startet den Trailing-TP)':''}.</div>`:''}`}
 function tkFromSK(){const d=[...S.drawings].reverse().find(x=>x.type==='sk'&&x.pts.length>=2);if(!d){toast('Erst ein SK-Setup einzeichnen (Werkzeug SK)');return}
@@ -1083,9 +1098,9 @@ function bindPos(el){
  el.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{AC.ord=AC.ord.filter(o=>o.id!=b.dataset.cx);after()})}
 function renderPanel(){
  if(S.tab==='spot'||S.tab==='fut'){const m=S.tab,ps=AC.pos.filter(p=>pmode(p)===m),os=AC.ord.filter(o=>(o.mode||'fut')===m);
-  let h=`<div class="card"><h4><span>${m==='spot'?'Spot-Bestand':'Futures-Positionen'} (${ps.length})</span><button id="pnPanic" class="danger">🚨 Alle schließen</button></h4><div class="mut" style="font-size:12px">Konto ${money(AC.bal)} · frei ${money(avail())}</div>`;
+  let h=`<div class="card"><h4><span>${m==='spot'?'Spot-Bestand':'Futures-Positionen'} (${ps.length})</span><button id="pnVis">👁</button><button id="pnPanic" class="danger">🚨 Alle schließen</button></h4><div class="mut" style="font-size:12px">Konto ${money(AC.bal)} · frei ${money(avail())}</div>`;
   if(!ps.length&&!os.length)h+='<div class="mut" style="font-size:13px;margin-top:6px">Nichts offen</div>';ps.forEach(p=>h+=posHTML(p));os.forEach(o=>h+=ordHTML(o));h+='</div>';
-  $('#pnList').innerHTML=h;bindPos($('#pnList'));$('#pnPanic').onclick=()=>panic(m)}
+  $('#pnList').innerHTML=h;bindPos($('#pnList'));$('#pnVis').onclick=visOpen;$('#pnPanic').onclick=()=>panic(m)}
  else if(S.tab==='bots')renderBots()}
 
 /* account modal */
@@ -1269,6 +1284,10 @@ function fixAppH(){const sa=window.navigator.standalone===true||(window.matchMed
  document.documentElement.classList.toggle('pwa-short',short);document.documentElement.style.setProperty('--apph',window.innerHeight+'px');applySplit()}
 window.addEventListener('resize',()=>setTimeout(fixAppH,50));window.addEventListener('orientationchange',()=>setTimeout(fixAppH,300));fixAppH();
 
+function visOpen(){$('#vPos').checked=VIS.pos;$('#vBots').checked=VIS.bots;$('#vDraw').checked=VIS.draw;$('#mVis').classList.add('open')}
+['vPos','vBots','vDraw'].forEach(id=>{const k={vPos:'pos',vBots:'bots',vDraw:'draw'}[id];$('#'+id).onchange=e=>{VIS[k]=e.target.checked;saveVis();req();syncVis()}});
+function syncVis(){const b=$('#tVis');if(b)b.classList.toggle('on',!(VIS.pos&&VIS.bots&&VIS.draw))}
+setTimeout(syncVis,0);
 /* ---------- tabs ---------- */
 function setTab(t){S.tab=t;document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
  $('#tools').style.display=t==='chart'?'flex':'none';$('#panel').style.display=t==='chart'?'none':'block';$('#split').style.display=t==='chart'?'none':'flex';applySplit();
