@@ -547,7 +547,7 @@ function draw(){
   const xc=Math.round(x)+.5;ctx.beginPath();ctx.moveTo(xc,yOf(k.h));ctx.lineTo(xc,yOf(k.l));ctx.stroke();
   const y1=yOf(Math.max(k.o,k.c)),y2=yOf(Math.min(k.o,k.c));ctx.fillRect(Math.round(x-body/2),y1,body,Math.max(1,y2-y1))}
  // zigzag
- if(VIS.liq!==false&&S.src==='binance'&&!S.full)drawLiqs(a,b);
+ 
  if(S.zz&&S.showZZ&&!(S.tab==='heat'&&!HM.over)){ctx.strokeStyle='rgba(240,185,11,.55)';ctx.lineWidth=1.2;ctx.setLineDash([]);ctx.beginPath();S.zz.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
  const clean=S.tab==='heat'&&!HM.over;
  if(!clean){if(VIS.draw)S.drawings.forEach(d=>renderDrawing(d,false));if(S.cur)renderDrawing(S.cur,true);
