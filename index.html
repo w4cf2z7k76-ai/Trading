@@ -146,13 +146,17 @@ button.danger{border-color:var(--dn);color:var(--dn)}
     <div id="pHeat" class="psec">
       <h3>🔥 Liquidations-Heatmap <small class="mut">(Schätzung)</small></h3>
       <div class="hmleg"><span>Relative Intensität</span><span>wenig</span><div class="grad"></div><span>viel</span></div>
+      <div class="row">Börse <span class="chips" id="hEx" style="margin:0"></span></div>
       <div class="row">Zeitraum <span class="chips" id="hRange" style="margin:0"></span></div>
+      <div class="card" id="hSrc" style="font-size:12px;padding:8px"></div>
+      <div class="card" id="hLiq" style="padding:8px"></div>
       <div class="row">Hebel <span class="chips" id="hLev" style="margin:0"></span></div>
       <div class="row">Kontrast <span class="chips" id="hGain" style="margin:0"></span></div>
+      <label class="row"><input type="checkbox" id="hLiqOn"> Echte Liquidationen als Punkte zeigen</label>
       <label class="row"><input type="checkbox" id="hOver"> Positionen & Zeichnungen einblenden</label>
       <label class="row"><input type="checkbox" id="hCan"> Kerzen statt Kurslinie</label>
       <label class="row"><input type="checkbox" id="hPin"> Auch im Chart-Tab anzeigen</label>
-      <p class="mut" style="font-size:12px;line-height:1.45">Helle Zonen = dort liegen vermutlich viele Liquidationen. Die App nimmt an, dass bei jeder Kerze Trader mit den gewählten Hebeln einsteigen (gewichtet nach Volumen), und berechnet deren Liquidationspreise. Läuft der Kurs durch eine Zone, wird sie gelöscht. Rechts: Profil der aktuell offenen Cluster mit Summenlinie – oben Short-Liquidationen, unten Long-Liquidationen. Große Cluster wirken oft wie Magneten. Das ist ein Modell, keine echten Börsendaten. Die Originalkarte mit echten Daten: <a href="https://bitcoincounterflow.com/liquidation-heatmap" style="color:var(--blue)">bitcoincounterflow.com</a></p>
+      <p class="mut" style="font-size:12px;line-height:1.45">Helle Zonen = dort liegen vermutlich viele Liquidationen. Die App nimmt an, dass bei jeder Kerze Trader mit den gewählten Hebeln einsteigen (gewichtet nach Volumen), und berechnet deren Liquidationspreise. Läuft der Kurs durch eine Zone, wird sie gelöscht. Rechts: Profil der aktuell offenen Cluster mit Summenlinie – oben Short-Liquidationen, unten Long-Liquidationen. Große Cluster wirken oft wie Magneten. Mit Live-Kursen rechnet die App mit echtem Binance Open Interest (neu eröffnete Positionen) und dem Long/Short-Verhältnis, sonst mit einem Volumen-Modell. Zum Vergleich: <a href="https://bitcoincounterflow.com/liquidation-heatmap" style="color:var(--blue)">bitcoincounterflow.com</a></p>
     </div>
   </div>
   <div id="tools"></div>
@@ -244,6 +248,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <label class="row"><input type="checkbox" id="vPos"> Meine Positionen & Orders (Einstieg, Stop, Ziele)</label>
   <label class="row"><input type="checkbox" id="vBots"> Bots (Linien, Zählung und Bot-Positionen)</label>
   <label class="row"><input type="checkbox" id="vDraw"> Zeichnungen (SK, Fibonacci, Elliott, Linien)</label>
+  <label class="row"><input type="checkbox" id="vLiq"> Echte Liquidationen (Punkte, nur Live)</label>
   <p class="mut" style="font-size:12px">Ausgeblendetes läuft im Hintergrund normal weiter – Stops und Ziele werden trotzdem ausgeführt. Einzelne Bots kannst du im Bots-Tab mit 👁 ein- und ausblenden.</p>
   <div class="row"><button data-close class="on">Fertig</button></div>
 </div></div>
@@ -296,7 +301,7 @@ const THEMES={
  light:{name:'Hell',d:'Weiß, klar – gut bei Sonne',bg:'#ffffff',panel:'#f5f6f8',solid:'#ffffff',line:'#e1e4ea',txt:'#131722',mut:'#6a7181',up:'#089981',dn:'#f23645',acc:'#2962ff',blue:'#2962ff',btn:'#ffffff',inp:'#ffffff',card:'#ffffff',onbg:'#e8eeff',tab:'rgba(255,255,255,.9)',tabOn:'rgba(41,98,255,.12)',tabAcc:'#2962ff',upbg:'#e3f6f2',dnbg:'#fde8ea',chart:'#ffffff',grid:'#f0f3fa',grid2:'#f5f7fb',lbl:'rgba(255,255,255,.85)'},
  neon:{name:'Neon',d:'Tiefschwarz mit Pink & Türkis',bg:'#05020c',panel:'#0f0a1f',solid:'#150f2b',line:'#2a1f4a',txt:'#f5f3ff',mut:'#8f86b3',up:'#00f5d4',dn:'#ff2e88',acc:'#ff2e88',blue:'#00bbf9',btn:'#1a1233',inp:'#05020c',card:'#120c25',onbg:'rgba(255,46,136,.16)',tab:'rgba(26,18,51,.9)',tabOn:'rgba(0,245,212,.12)',tabAcc:'#00f5d4',upbg:'rgba(0,245,212,.14)',dnbg:'rgba(255,46,136,.16)',chart:'#05020c',grid:'#120c25',grid2:'#0d0820',lbl:'rgba(5,2,12,.78)'}};
 let TH=THEMES.midnight;
-const VIS=Object.assign({pos:true,bots:true,draw:true},(()=>{try{return JSON.parse(localStorage.getItem('wdesk_vis'))||{}}catch(_){return {}}})());
+const VIS=Object.assign({pos:true,bots:true,draw:true,liq:true},(()=>{try{return JSON.parse(localStorage.getItem('wdesk_vis'))||{}}catch(_){return {}}})());
 const saveVis=()=>{try{localStorage.setItem('wdesk_vis',JSON.stringify(VIS))}catch(_){}};
 function applyTheme(k){const t=THEMES[k]||THEMES.midnight;TH=t;const r=document.documentElement;r.dataset.theme=THEMES[k]?k:'midnight';
  ['bg','panel','line','txt','mut','up','dn','acc','blue','btn','inp','card','onbg','tab','tabOn','tabAcc','solid','upbg','dnbg'].forEach(v=>r.style.setProperty('--'+v,t[v]));r.style.setProperty('--grad',t.grad||t.bg);
@@ -542,6 +547,7 @@ function draw(){
   const xc=Math.round(x)+.5;ctx.beginPath();ctx.moveTo(xc,yOf(k.h));ctx.lineTo(xc,yOf(k.l));ctx.stroke();
   const y1=yOf(Math.max(k.o,k.c)),y2=yOf(Math.min(k.o,k.c));ctx.fillRect(Math.round(x-body/2),y1,body,Math.max(1,y2-y1))}
  // zigzag
+ if(VIS.liq!==false&&S.src==='binance'&&!S.full)drawLiqs(a,b);
  if(S.zz&&S.showZZ&&!(S.tab==='heat'&&!HM.over)){ctx.strokeStyle='rgba(240,185,11,.55)';ctx.lineWidth=1.2;ctx.setLineDash([]);ctx.beginPath();S.zz.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
  const clean=S.tab==='heat'&&!HM.over;
  if(!clean){if(VIS.draw)S.drawings.forEach(d=>renderDrawing(d,false));if(S.cur)renderDrawing(S.cur,true);
@@ -682,7 +688,7 @@ async function loadData(){
   S.tfms=TFMS[S.tf]}
  else{S.src='csv';const ds=[];for(let i=1;i<Math.min(S.bars.length,50);i++)ds.push(S.bars[i].t-S.bars[i-1].t);ds.sort((a,b)=>a-b);S.tfms=ds[ds.length>>1]||864e5}
  S.drawings=store(key())||[];S.zz=null;S.btShow=null;$('#btOut')&&($('#btOut').innerHTML='');S.cur=null;S.cross=null;S.dev=nearestDev(defaultDev());
- S.heatC=null;S.tfData={};resetView();updQuote();renderSheet();updHint();setTool('cursor');renderAcct();renderPanel();req();startWS();
+ S.heatC=null;S.tfData={};S.oi=null;resetView();updQuote();renderSheet();updHint();setTool('cursor');renderAcct();renderPanel();req();startWS();startLiqWS();loadOI();
 }
 function updQuote(){const B=S.bars,l=B[B.length-1];const n=Math.max(1,Math.round(864e5/S.tfms));const ref=B[Math.max(0,B.length-1-n)].c;const ch=(l.c-ref)/ref;
  $('#qP').textContent=fmt(l.c);const q=$('#qC');q.textContent=(ch>=0?'+':'')+pct(ch)+' 24h';q.className=ch>=0?'ok':'bad'}
@@ -1134,16 +1140,76 @@ function renderAcct(){if(!$('#mAcct').classList.contains('open'))return;const el
 /* ---------- liquidation heatmap (model) ---------- */
 const HM=Object.assign({levs:[10,25,50,100],gain:.6,pin:false,candles:false,range:30},store('wdesk_hm')||{});
 const heatOn=()=>S.tab==='heat'||HM.pin;
-function heatData(){const B=S.bars;if(B.length<5)return null;const k=B.length+'|'+B[0].t+'|'+B[B.length-1].t+'|'+HM.levs.join(',');if(S.heatC&&S.heatC.k===k)return S.heatC;
+function heatData(){const B=S.bars;if(B.length<5)return null;const O=S.oi&&S.oi.key===oiKey()&&!S.full?S.oi:null;
+ const k=B.length+'|'+B[0].t+'|'+B[B.length-1].t+'|'+HM.levs.join(',')+'|'+(O?O.ts:0);if(S.heatC&&S.heatC.k===k)return S.heatC;
  let lo=Infinity,hi=-Infinity;B.forEach(b=>{lo=Math.min(lo,b.l);hi=Math.max(hi,b.h)});const mn=Math.min(...HM.levs);lo*=1-1.1/mn;hi*=1+1.1/mn;
  const R=320,step=(hi-lo)/R,act=new Float32Array(R),snaps=new Array(B.length),row=p=>Math.floor((p-lo)/step);
  const vs=B.map(b=>b.v||0).filter(v=>v>0).sort((a,b)=>a-b),med=vs.length?vs[vs.length>>1]:0;
- const LW={5:.6,10:1,20:1,25:1,50:.8,100:.6};
+ const LW={5:.6,10:1,20:1,25:1,50:.8,100:.6},sw=HM.levs.reduce((s,L)=>s+(LW[L]||1),0),N=B.length;
+ // je Börse: Open Interest ($) und Long-Anteil den Kerzen zuordnen
+ const near=(arr,t)=>{if(!arr.length)return null;let a=0,b=arr.length-1;while(a<b){const m=(a+b)>>1;if(arr[m].t<t)a=m+1;else b=m}let j=a;if(j>0&&Math.abs(arr[j-1].t-t)<Math.abs(arr[j].t-t))j--;return Math.abs(arr[j].t-t)<=S.tfms?arr[j]:null};
+ const EX=(O?O.ex:[]).map(e=>{const oiv=new Float64Array(N).fill(NaN),lr=new Float64Array(N).fill(.5);for(let i=0;i<N;i++){const t=B[i].t+S.tfms,o=near(e.oi,t);if(o)oiv[i]=e.coin?o.v*B[i].c:o.v;const l=near(e.ls,t);if(l)lr[i]=l.l}return{oiv,lr}});
+ let medD=0,nOI=0;{const ds=[];for(let i=1;i<N;i++){let d=0,any=false;EX.forEach(e=>{if(isFinite(e.oiv[i])&&isFinite(e.oiv[i-1])){any=true;d+=e.oiv[i]-e.oiv[i-1]}});if(any){nOI++;if(d>0)ds.push(d)}}ds.sort((a,b)=>a-b);medD=ds.length?ds[ds.length>>1]:0}
  B.forEach((b,i)=>{const r0=Math.max(0,row(b.l)),r1=Math.min(R-1,row(b.h));for(let r=r0;r<=r1;r++)act[r]=0;
-  const typ=(b.h+b.l+b.c)/3,w=med?Math.min(6,(b.v||med)/med):Math.min(6,(b.h-b.l)/b.c*50);
-  HM.levs.forEach(L=>{const lw=w*(LW[L]||1);[typ*(1-1/L),typ*(1+1/L)].forEach(p=>{const r=row(p);if(r>=0&&r<R)act[r]+=lw})});
-  for(let r=0;r<R;r++)act[r]*=.994;snaps[i]=act.slice()});
- return S.heatC={k,lo,hi,R,step,snaps}}
+  const typ=(b.h+b.l+b.c)/3;let wl=0,ws=0,any=false,prev=0,neg=0;
+  if(i>0)EX.forEach(e=>{if(isFinite(e.oiv[i])&&isFinite(e.oiv[i-1])){any=true;const d=e.oiv[i]-e.oiv[i-1];prev+=e.oiv[i-1];if(d>0){wl+=d*e.lr[i];ws+=d*(1-e.lr[i])}else neg+=d}});
+  if(any){if(neg<0&&prev>0){const f=Math.max(0,(prev+neg)/prev);for(let r=0;r<R;r++)act[r]*=f}}
+  else{const w=med?Math.min(6,(b.v||med)/med):Math.min(6,(b.h-b.l)/b.c*50);wl=ws=w*(medD||1)*.5;for(let r=0;r<R;r++)act[r]*=.994}
+  HM.levs.forEach(L=>{const f=(LW[L]||1)/sw,rl=row(typ*(1-1/L)),rs=row(typ*(1+1/L));if(rl>=0&&rl<R)act[rl]+=wl*f;if(rs>=0&&rs<R)act[rs]+=ws*f});
+  snaps[i]=act.slice()});
+ return S.heatC={k,lo,hi,R,step,snaps,oi:nOI>0,nOI,names:O?O.ex.map(e=>e.name):[]}}
+/* echte Open-Interest- und Long/Short-Daten: Binance, Bybit, OKX */
+const EXN={binance:'Binance',bybit:'Bybit',okx:'OKX'};
+const exSel=()=>HM.ex==='all'?['binance','bybit','okx']:[HM.ex||'binance'];
+const oiKey=()=>pkey()+'|'+curTf()+'|'+(HM.ex||'binance');
+const COIN=()=>BIN[S.sym].replace('USDT','');
+const CTVAL={BTC:.01,ETH:.1,SOL:1,XRP:100,BNB:.01,DOGE:1000};
+async function getJ(u){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),10000);try{const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(to)}}
+const OIF={
+ binance:async(sym,tf)=>{const per={'15m':'15m','1h':'1h','4h':'4h','1D':'1d'}[tf];const [oi,ls]=await Promise.all([getJ(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${sym}&period=${per}&limit=500`),getJ(`https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${sym}&period=${per}&limit=500`).catch(()=>[])]);
+  if(!Array.isArray(oi)||!oi.length)throw new Error('keine Daten');return{oi:oi.map(x=>({t:+x.timestamp,v:+x.sumOpenInterestValue})),ls:(Array.isArray(ls)?ls:[]).map(x=>({t:+x.timestamp,l:+x.longAccount}))}},
+ bybit:async(sym,tf)=>{const per={'15m':'15min','1h':'1h','4h':'4h','1D':'1d'}[tf];let list=[],cur='';
+  for(let p=0;p<3;p++){const j=await getJ(`https://api.bybit.com/v5/market/open-interest?category=linear&symbol=${sym}&intervalTime=${per}&limit=200${cur?'&cursor='+encodeURIComponent(cur):''}`);if(!j||j.retCode!==0)throw new Error(j&&j.retMsg||'Fehler');list=list.concat(j.result.list||[]);cur=j.result.nextPageCursor;if(!cur)break}
+  const lj=await getJ(`https://api.bybit.com/v5/market/account-ratio?category=linear&symbol=${sym}&period=${per}&limit=500`).catch(()=>null);
+  if(!list.length)throw new Error('keine Daten');return{coin:true,oi:list.map(x=>({t:+x.timestamp,v:+x.openInterest})),ls:(lj&&lj.result&&lj.result.list||[]).map(x=>({t:+x.timestamp,l:+x.buyRatio}))}},
+ okx:async(sym,tf)=>{const per={'15m':'15m','1h':'1H','4h':'4H','1D':'1D'}[tf],inst=COIN()+'-USDT-SWAP';
+  const [oj,lj]=await Promise.all([getJ(`https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history?instId=${inst}&period=${per}&limit=500`),getJ(`https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio-contract?instId=${inst}&period=${per}&limit=500`).catch(()=>null)]);
+  const d=oj&&oj.data;if(!Array.isArray(d)||!d.length)throw new Error(oj&&oj.msg||'keine Daten');
+  return{oi:d.map(x=>({t:+x[0],v:+x[3]})),ls:(lj&&Array.isArray(lj.data)?lj.data:[]).map(x=>{const r=+x[1];return{t:+x[0],l:r/(1+r)}})}}};
+async function loadOI(){if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom)return;const key=oiKey(),sym=BIN[S.sym],tf=S.tf,sel=exSel();
+ const res=await Promise.all(sel.map(e=>OIF[e](sym,tf).then(r=>({name:EXN[e],...r,oi:r.oi.sort((a,b)=>a.t-b.t),ls:r.ls.sort((a,b)=>a.t-b.t)})).catch(err=>({name:EXN[e],err:String(err&&err.message||err)}))));
+ if(key!==oiKey())return;const ok=res.filter(r=>!r.err);S.oiFail=res.filter(r=>r.err).map(r=>r.name+': '+r.err);
+ if(ok.length){S.oi={key,ex:ok,ts:Date.now()};S.oiErr=null}else{S.oi=null;S.oiErr=S.oiFail.join(' · ')}
+ S.heatC=null;if(S.tab==='heat')renderHeat();req()}
+setInterval(()=>{if(S.src==='binance'&&!S.full&&!document.hidden)loadOI()},5*60000);
+setInterval(()=>{if(S.tab==='heat')renderLiqStats()},15000);
+/* echte Liquidationen live: Binance, Bybit, OKX */
+let LWS={};S.liqs=[];
+function stopLiqWS(){Object.values(LWS).forEach(o=>{try{clearInterval(o.ping);o.ws.onclose=null;o.ws.close()}catch(_){}});LWS={}}
+let liqT=0;function liqSave(){if(Date.now()-liqT>10000){liqT=Date.now();store('wdesk_liq_'+S.sym,S.liqs.slice(-400))}}
+function addLiq(x,sy){if(S.sym!==sy||!(x.p>0&&x.v>0))return;S.liqs.push(x);if(S.liqs.length>800)S.liqs=S.liqs.slice(-800);liqSave();
+ if(x.v>=250000)toast(`💥 ${x.ex}: ${x.s<0?'Long':'Short'}-Liquidation ${usd(x.v)} @ ${fmt(x.p)}`);if(S.tab==='heat')renderLiqStats();req()}
+function liqConn(name,url,onopen,onmsg,ping){const sy=S.sym;let ws;try{ws=new WebSocket(url)}catch(e){return}const o={ws,ping:null};LWS[name]=o;
+ ws.onopen=()=>{onopen&&onopen(ws);if(ping)o.ping=setInterval(()=>{try{ws.send(ping)}catch(_){}},20000);if(S.tab==='heat')renderLiqStats()};
+ ws.onmessage=ev=>{if(ev.data==='pong')return;let m;try{m=JSON.parse(ev.data)}catch(_){return}onmsg(m,sy)};
+ ws.onclose=()=>{clearInterval(o.ping);if(LWS[name]===o)delete LWS[name];if(S.tab==='heat')renderLiqStats();setTimeout(()=>{if(S.src==='binance'&&S.sym===sy&&!S.full&&!LWS[name])startLiqWS(name)},5000)}}
+function startLiqWS(only){if(!only)stopLiqWS();if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom)return;const sym=BIN[S.sym],coin=COIN();
+ if(!only)S.liqs=(store('wdesk_liq_'+S.sym)||[]).filter(x=>Date.now()-x.t<7*864e5);
+ if(!only||only==='Binance')liqConn('Binance',`wss://fstream.binance.com/ws/${sym.toLowerCase()}@forceOrder`,null,(m,sy)=>{const o=m.o;if(!o)return;const p=+(o.ap||o.p),q=+(o.z||o.q);addLiq({ex:'Binance',t:+o.T||Date.now(),p,v:p*q,s:o.S==='SELL'?-1:1},sy)});
+ if(!only||only==='Bybit')liqConn('Bybit','wss://stream.bybit.com/v5/public/linear',ws=>ws.send(JSON.stringify({op:'subscribe',args:['allLiquidation.'+sym]})),(m,sy)=>{(Array.isArray(m.data)?m.data:[]).forEach(d=>{const p=+d.p,q=+d.v;addLiq({ex:'Bybit',t:+d.T||Date.now(),p,v:p*q,s:d.S==='Buy'?-1:1},sy)})},JSON.stringify({op:'ping'}));
+ if(!only||only==='OKX')liqConn('OKX','wss://ws.okx.com:8443/ws/v5/public',ws=>ws.send(JSON.stringify({op:'subscribe',args:[{channel:'liquidation-orders',instType:'SWAP'}]})),(m,sy)=>{(Array.isArray(m.data)?m.data:[]).forEach(d=>{if(d.instId!==coin+'-USDT-SWAP')return;(d.details||[]).forEach(x=>{const p=+x.bkPx,q=+x.sz*(CTVAL[coin]||1);const lng=x.posSide==='long'||(x.posSide!=='short'&&x.side==='sell');addLiq({ex:'OKX',t:+x.ts||Date.now(),p,v:p*q,s:lng?-1:1},sy)})})},'ping')}
+function drawLiqs(a,b){const B=S.bars;if(!S.liqs||!S.liqs.length||!B.length)return;const t0=B[Math.max(0,a)].t,sel=HM.ex==='all'?null:EXN[HM.ex||'binance'];
+ S.liqs.forEach(x=>{if(x.t<t0||(sel&&S.tab==='heat'&&(x.ex||'Binance')!==sel))return;let lo=0,hi=B.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(B[m].t<=x.t)lo=m;else hi=m-1}if(lo>b+1)return;
+  const xx=xOf(lo)+((x.t-B[lo].t)/S.tfms-.5)*S.bw,y=yOf(x.p),r=Math.min(16,2.5+Math.sqrt(x.v)/45);
+  ctx.fillStyle=x.s<0?'rgba(255,70,90,.5)':'rgba(40,220,140,.5)';ctx.strokeStyle=x.s<0?'#ff4d6a':'#2ee59d';ctx.lineWidth=1;ctx.beginPath();ctx.arc(xx,y,r,0,7);ctx.fill();ctx.stroke()})}
+function renderLiqStats(){const el=$('#hLiq');if(!el)return;if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom){el.innerHTML='<span class="mut">Echte Liquidationen gibt es nur mit Live-Kursen (installierte App, Krypto-Symbole).</span>';return}
+ const now=Date.now(),exs=['Binance','Bybit','OKX'],sum=(ms,s,ex)=>S.liqs.filter(x=>now-x.t<ms&&x.s===s&&(!ex||(x.ex||'Binance')===ex)).reduce((a,x)=>a+x.v,0);
+ const st=exs.map(e=>{const o=LWS[e];return `<span class="${o&&o.ws.readyState===1?'ok':'warn'}">${o&&o.ws.readyState===1?'●':'○'} ${e}</span>`}).join(' ');
+ el.innerHTML=`<div style="font-size:12px">${st} · <span style="color:#ff4d6a">rot = Longs liquidiert</span>, <span style="color:#2ee59d">grün = Shorts</span></div>
+ <table style="margin-top:4px"><tr><td class="mut">24 Std.</td><td style="color:#ff4d6a">Longs</td><td style="color:#2ee59d">Shorts</td></tr>
+ ${exs.map(e=>`<tr><td>${e}</td><td>${usd(sum(864e5,-1,e))}</td><td>${usd(sum(864e5,1,e))}</td></tr>`).join('')}
+ <tr><td><b>Gesamt</b> <span class="mut">(1 Std.)</span></td><td><b>${usd(sum(864e5,-1))}</b> <span class="mut">(${usd(sum(36e5,-1))})</span></td><td><b>${usd(sum(864e5,1))}</b> <span class="mut">(${usd(sum(36e5,1))})</span></td></tr></table>
+ <div class="mut" style="font-size:11px">Zählt nur, solange die App offen ist (gespeichert: letzte 7 Tage auf diesem Gerät).</div>`}
 const JET=[[0,0,70],[0,30,190],[0,120,255],[0,210,255],[0,235,190],[90,240,90],[255,235,0],[255,150,0],[255,30,30]];
 function heatCol(t){const x=t*(JET.length-1),i=Math.min(JET.length-2,Math.floor(x)),f=x-i,a=JET[i],b=JET[i+1];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]}
 const rgb=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
@@ -1166,17 +1232,25 @@ function drawHeat(a,b){const H=heatData();if(!H||b<a)return;const last=S.bars.le
  const pr=clamp(Math.floor((px-H.lo)/st),0,H.R-1);let up=0,dn=0;for(let r=pr+1;r<H.R;r++)up+=s[r];for(let r=pr;r>=0;r--)dn+=s[r];const tot=Math.max(up,dn)||1;
  ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(PW-2,yOf(px));let cu=0;for(let r=pr+1;r<=r1;r++){cu+=s[r];ctx.lineTo(PW-2-cu/tot*(pf-10),yOf(H.lo+(r+.5)*st))}ctx.stroke();
  ctx.beginPath();ctx.moveTo(PW-2,yOf(px));cu=0;for(let r=pr;r>=r0;r--){cu+=s[r];ctx.lineTo(PW-2-cu/tot*(pf-10),yOf(H.lo+(r+.5)*st))}ctx.stroke();
- const sh=up/((up+dn)||1);ctx.font='bold 11px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle='#4ade80';ctx.fillText('Shorts ↑ '+Math.round(sh*100)+' %',x0+4,28);
- ctx.textBaseline='bottom';ctx.fillStyle='#f87171';ctx.fillText('Longs ↓ '+Math.round((1-sh)*100)+' %',x0+4,PH-4);
- ctx.font='9px system-ui,sans-serif';ctx.fillStyle='#8b949e';ctx.textBaseline='top';ctx.fillText('offene Liq.-Cluster',x0+4,42)}
+ const sh=up/((up+dn)||1);ctx.font='bold 11px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle='#4ade80';ctx.fillText('Shorts ↑ '+Math.round(sh*100)+' %',x0+4,28);if(H.oi)ctx.fillText('≈ '+usd(up),x0+4,42);
+ ctx.textBaseline='bottom';ctx.fillStyle='#f87171';ctx.fillText('Longs ↓ '+Math.round((1-sh)*100)+' %',x0+4,PH-4);if(H.oi)ctx.fillText('≈ '+usd(dn),x0+4,PH-18);
+ ctx.font='9px system-ui,sans-serif';ctx.fillStyle='#8b949e';ctx.textBaseline='top';ctx.fillText('offene Liq.-Cluster',x0+4,H.oi?58:42)}
 function heatRange(days){HM.range=days;store('wdesk_hm',HM);const last=S.bars.length-1;const n=days?Math.min(last,Math.round(days*864e5/S.tfms)):last;const pfPx=Math.min(92,PW*.24);
  S.bw=Math.max(.4,(PW-pfPx-8)/(n+1));S.end=last+(pfPx+8)/S.bw;S.yShift=0;S.yZoom=1;if(S.tab==='heat')renderHeat();req()}
 function renderHeat(){$('#hLev').innerHTML=[5,10,25,50,100].map(v=>`<button data-l="${v}" class="${HM.levs.includes(v)?'on':''}">${v}×</button>`).join('');
  $('#hLev').querySelectorAll('button').forEach(b=>b.onclick=()=>{const v=+b.dataset.l;HM.levs=HM.levs.includes(v)?HM.levs.filter(x=>x!==v):[...HM.levs,v].sort((a,b)=>a-b);if(!HM.levs.length)HM.levs=[v];store('wdesk_hm',HM);renderHeat();req()});
  $('#hGain').innerHTML=[[1,'Niedrig'],[.6,'Mittel'],[.3,'Hoch']].map(([v,l])=>`<button data-g="${v}" class="${v===HM.gain?'on':''}">${l}</button>`).join('');
- $('#hGain').querySelectorAll('button').forEach(b=>b.onclick=()=>{HM.gain=+b.dataset.g;store('wdesk_hm',HM);renderHeat();req()});$('#hPin').checked=HM.pin;$('#hCan').checked=!!HM.candles;$('#hOver').checked=!!HM.over;
+ $('#hGain').querySelectorAll('button').forEach(b=>b.onclick=()=>{HM.gain=+b.dataset.g;store('wdesk_hm',HM);renderHeat();req()});$('#hPin').checked=HM.pin;$('#hCan').checked=!!HM.candles;$('#hOver').checked=!!HM.over;$('#hLiqOn').checked=VIS.liq!==false;
+ {const H=heatData(),live=S.src==='binance'&&!S.full&&BIN[S.sym]&&!S.custom;
+  $('#hSrc').innerHTML=(H&&H.oi?`<b class="ok">● Echte Daten:</b> Open Interest + Long/Short-Verhältnis von <b>${H.names.join(' + ')}</b> für ${H.nOI} von ${S.bars.length} Kerzen – ältere Kerzen: Volumen-Modell. Rechts: ≈ Positionswert in $, der dort liquidiert würde.${S.oiFail&&S.oiFail.length?`<br><span class="warn">Nicht erreichbar: ${S.oiFail.join(' · ')}</span>`:''}`
+   :live?(S.oiErr?`<b class="warn">○ Open Interest nicht abrufbar</b> (${S.oiErr}) – Volumen-Modell. <button id="hRetry" style="padding:3px 8px;font-size:12px">Nochmal</button>`:'<span class="warn">○ Lade Open Interest …</span>')
+   :'<b class="warn">○ Modell</b> (aus Volumen). Echte Open-Interest-Daten gibt es nur mit Live-Kursen in der installierten App.')+'<div class="mut" style="font-size:11px;margin-top:4px">Bitget und Hyperliquid bieten keinen öffentlichen Open-Interest-Verlauf an.</div>';
+  if($('#hRetry'))$('#hRetry').onclick=()=>{S.oiErr=null;renderHeat();loadOI()}}
+ renderLiqStats();
  $('#hRange').innerHTML=[[7,'1W'],[14,'2W'],[30,'1M'],[90,'3M'],[0,'Alles']].map(([v,l])=>`<button data-d="${v}" class="${v===HM.range?'on':''}">${l}</button>`).join('');
- $('#hRange').querySelectorAll('button').forEach(b=>b.onclick=()=>heatRange(+b.dataset.d))}
+ $('#hRange').querySelectorAll('button').forEach(b=>b.onclick=()=>heatRange(+b.dataset.d));
+ $('#hEx').innerHTML=[['binance','Binance'],['bybit','Bybit'],['okx','OKX'],['all','Alle']].map(([k,l])=>`<button data-x="${k}" class="${k===(HM.ex||'binance')?'on':''}">${l}</button>`).join('');
+ $('#hEx').querySelectorAll('button').forEach(b=>b.onclick=()=>{HM.ex=b.dataset.x;store('wdesk_hm',HM);S.oi=null;S.oiErr=null;S.oiFail=null;S.heatC=null;renderHeat();loadOI();req()})}
 
 /* ---------- Smart Money (Hyperliquid) ---------- */
 const HL='https://api.hyperliquid.xyz/info',HLLB='https://stats-data.hyperliquid.xyz/Mainnet/leaderboard';
@@ -1187,7 +1261,7 @@ const smSave=()=>{try{store('wdesk_sm',SM)}catch(_){}};
 async function hl(body){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);
  try{const r=await fetch(HL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(to)}}
 const shortA=a=>a?a.slice(0,6)+'…'+a.slice(-4):'';
-const usd=v=>{const a=Math.abs(v);return (v<0?'-':'')+'$'+(a>=1e6?ff((a/1e6).toFixed(2))+' Mio':a>=1e3?ff((a/1e3).toFixed(1))+'k':a.toFixed(0))};
+const usd=v=>{const a=Math.abs(v);return (v<0?'-':'')+'$'+(a>=1e9?ff((a/1e9).toFixed(2))+' Mrd':a>=1e6?ff((a/1e6).toFixed(a>=1e8?0:1))+' Mio':a>=1e3?ff((a/1e3).toFixed(1))+'k':a.toFixed(0))};
 const netErr=e=>'Keine Verbindung zu Hyperliquid'+(location.hostname.includes('claude')||location.protocol==='file:'?' – in der Claude-Vorschau sind Abrufe aus dem Internet gesperrt. In der installierten App funktioniert es.':' ('+(e&&e.message||e)+').');
 function smName(a){const w=SM.watch.find(x=>x.a===a),t=SM.top.find(x=>x.a===a);return (w&&w.n)||(t&&t.n)||shortA(a)}
 async function smLoadTop(){if(SMV.busy)return;SMV.busy=true;SMV.stat='Lade Rangliste von Hyperliquid … (große Datei, ca. 40 MB – WLAN empfohlen)';renderSmart();
@@ -1284,8 +1358,8 @@ function fixAppH(){const sa=window.navigator.standalone===true||(window.matchMed
  document.documentElement.classList.toggle('pwa-short',short);document.documentElement.style.setProperty('--apph',window.innerHeight+'px');applySplit()}
 window.addEventListener('resize',()=>setTimeout(fixAppH,50));window.addEventListener('orientationchange',()=>setTimeout(fixAppH,300));fixAppH();
 
-function visOpen(){$('#vPos').checked=VIS.pos;$('#vBots').checked=VIS.bots;$('#vDraw').checked=VIS.draw;$('#mVis').classList.add('open')}
-['vPos','vBots','vDraw'].forEach(id=>{const k={vPos:'pos',vBots:'bots',vDraw:'draw'}[id];$('#'+id).onchange=e=>{VIS[k]=e.target.checked;saveVis();req();syncVis()}});
+function visOpen(){$('#vPos').checked=VIS.pos;$('#vBots').checked=VIS.bots;$('#vDraw').checked=VIS.draw;$('#vLiq').checked=VIS.liq!==false;$('#mVis').classList.add('open')}
+['vPos','vBots','vDraw','vLiq'].forEach(id=>{const k={vPos:'pos',vBots:'bots',vDraw:'draw',vLiq:'liq'}[id];$('#'+id).onchange=e=>{VIS[k]=e.target.checked;saveVis();req();syncVis()}});
 function syncVis(){const b=$('#tVis');if(b)b.classList.toggle('on',!(VIS.pos&&VIS.bots&&VIS.draw))}
 setTimeout(syncVis,0);
 /* ---------- tabs ---------- */
@@ -1302,7 +1376,7 @@ function setTab(t){S.tab=t;document.querySelectorAll('#tabbar button').forEach(b
 /* ---------- replay ---------- */
 const SPEEDS=[[1,800],[3,280],[10,80]];
 function rpPick(){if(S.full){rpExit();return}if(S.live)toggleLive();S.pick={field:'replay'};updHint();toast('Tippe im Chart auf die Kerze, ab der du üben willst')}
-function rpStart(i){const B=S.bars;i=clamp(i,30,B.length-2);stopWS();S.full=B;S.bars=B.slice(0,i+1);S.rp={i,timer:null,sp:0};S.end=S.bars.length-1+10;S.yShift=0;S.yZoom=1;
+function rpStart(i){const B=S.bars;i=clamp(i,30,B.length-2);stopWS();stopLiqWS();S.full=B;S.bars=B.slice(0,i+1);S.rp={i,timer:null,sp:0};S.end=S.bars.length-1+10;S.yShift=0;S.yZoom=1;
  $('#rbar').style.display='flex';$('#bRP').classList.add('on');rpUI();updQuote();renderAcct();renderPanel();req();toast('Replay läuft – die Zukunft ist ausgeblendet')}
 function rpStep(){const F=S.full;if(!F)return;if(S.rp.i>=F.length-1){rpPause();toast('Ende der Daten erreicht');return}
  const b=F[++S.rp.i];S.bars.push(b);if(S.end>=S.bars.length-4)S.end+=1;onPrice(b.h,b.l,b.c,true);updQuote();rpUI();req()}
@@ -1311,7 +1385,7 @@ function rpPlay(){if(!S.rp)return;if(S.rp.timer){rpPause();return}if(S.rp.i>=S.f
 function rpUI(){if(!S.rp)return;$('#rpP').textContent=S.rp.timer?'⏸':'▶';$('#rpV').textContent=SPEEDS[S.rp.sp][0]+'×';const d=new Date(S.bars[S.bars.length-1].t);
  $('#rpT').textContent=`${d.getDate()}.${d.getMonth()+1}.${String(d.getFullYear()).slice(2)} · ${S.full.length-1-S.rp.i} übrig`}
 function rpExit(quiet){if(!S.full)return;rpPause();const ps=AC.pos.filter(mine);ps.forEach(p=>closePart(p,lastP(),p.qty,'Replay-Ende'));AC.bots.filter(bt=>mine(bt)&&bt.state!=='stopped'&&bt.state!=='done').forEach(botStop);AC.ord=AC.ord.filter(o=>!mine(o));saveAcct();
- S.bars=S.full;S.full=null;S.rp=null;$('#rbar').style.display='none';$('#bRP').classList.remove('on');resetView();updQuote();renderAcct();renderPanel();req();startWS();
+ S.bars=S.full;S.full=null;S.rp=null;$('#rbar').style.display='none';$('#bRP').classList.remove('on');resetView();updQuote();renderAcct();renderPanel();req();startWS();startLiqWS();
  if(!quiet)toast(ps.length?`Replay beendet – ${ps.length} Position(en) geschlossen`:'Replay beendet')}
 
 /* ---------- wiring ---------- */
@@ -1326,7 +1400,7 @@ $('#tkSK').onclick=tkFromSK;
 $('#tkSend').onclick=()=>{const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}$('#mTrade').classList.remove('open');placeOrder(o)};
 $('#bType').onclick=e=>{const b=e.target.closest('button');if(!b)return;BT.type=b.dataset.v;renderBots()};
 $('#pBots').addEventListener('input',e=>{if(BT.type!=='elliott')botUpd()});$('#eTestB').onclick=()=>{$('#eRes').innerHTML='<div class="mut">Rechne …</div>';setTimeout(()=>eTest(),30)};$('#eTP').onchange=e=>{EB.tp=e.target.checked};$('#eHTF').onchange=e=>{EB.htf=e.target.checked};$('#bStart').onclick=botStart;$('#bSug').onclick=botSuggest;
-$('#hPin').onchange=e=>{HM.pin=e.target.checked;store('wdesk_hm',HM);req()};$('#hCan').onchange=e=>{HM.candles=e.target.checked;store('wdesk_hm',HM);req()};$('#hOver').onchange=e=>{HM.over=e.target.checked;store('wdesk_hm',HM);req()};
+$('#hPin').onchange=e=>{HM.pin=e.target.checked;store('wdesk_hm',HM);req()};$('#hCan').onchange=e=>{HM.candles=e.target.checked;store('wdesk_hm',HM);req()};$('#hOver').onchange=e=>{HM.over=e.target.checked;store('wdesk_hm',HM);req()};$('#hLiqOn').onchange=e=>{VIS.liq=e.target.checked;saveVis();req()};
 $('#tabbar').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab)};
 setInterval(()=>{if($('#mAcct').classList.contains('open')&&AC.pos.some(mine))renderAcct();if((S.tab==='spot'||S.tab==='fut'||S.tab==='bots')&&(AC.pos.some(mine)||AC.bots.some(mine)))renderPanel()},2000);
 try{if('serviceWorker' in navigator&&location.protocol==='https:'&&!/claude|anthropic/.test(location.hostname))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(_){}
