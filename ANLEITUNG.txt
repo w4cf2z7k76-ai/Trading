@@ -1,0 +1,34 @@
+WELLEN-DESK – App auf dem Handy installieren
+============================================
+
+Die App ist eine "Web-App" (PWA): Sie wird einmal ins Internet gestellt
+und dann auf dem Handy wie eine normale App installiert – mit eigenem
+Symbol, Vollbild, ohne Browser-Leiste. Live-Kurse kommen von Binance.
+
+SCHRITT 1 – Online stellen (einmalig, ca. 5 Minuten, kostenlos)
+  Variante A: Netlify (am einfachsten)
+   1. Am Computer diese ZIP-Datei entpacken (Ordner "wellen-desk").
+   2. https://app.netlify.com/drop öffnen, kostenloses Konto anlegen.
+   3. Den entpackten Ordner auf die Seite ziehen.
+   4. Du bekommst eine Adresse wie https://xyz-123.netlify.app
+      (unter "Site settings" kannst du den Namen ändern).
+
+  Variante B: GitHub Pages
+   1. Neues Repository anlegen, alle Dateien aus dem Ordner hochladen.
+   2. Settings -> Pages -> Branch "main" auswählen -> Save.
+   3. Adresse: https://DEINNAME.github.io/REPONAME/
+
+SCHRITT 2 – Auf dem Handy installieren
+  iPhone:  Adresse in SAFARI öffnen -> Teilen-Symbol -> "Zum Home-Bildschirm".
+  Android: Adresse in CHROME öffnen -> Menü (⋮) -> "App installieren".
+
+HINWEISE
+  - Zeichnungen, Konto und Journal werden auf dem Handy gespeichert
+    (nicht in der Cloud). Beim Löschen der App gehen sie verloren.
+  - Live-Kurse: BTC, ETH, SOL, XRP, BNB, DOGE von Binance.
+    DAX, Gold, EUR/USD, NASDAQ sind Demo-Kurse (Binance hat sie nicht).
+  - Ist Binance nicht erreichbar, zeigt die App automatisch Demo-Kurse
+    (Anzeige "Demo" statt "● LIVE" oben links im Chart).
+  - Updates: neue Dateien einfach wieder hochladen (Netlify: "Deploys"
+    -> Ordner erneut hineinziehen).
+  - Training mit Spielgeld. Keine Anlageberatung.
