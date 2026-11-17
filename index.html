@@ -54,6 +54,8 @@ td:last-child{text-align:right}
 .row{display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px}
 #toast{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);background:#2d333b;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;z-index:6;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
 #file{display:none}
+html.pwa-short #tabbar{margin-bottom:4px}
+html.pwa-short #app{padding-top:max(env(safe-area-inset-top),0px)}
 #split{display:none;flex:none;height:22px;align-items:center;justify-content:center;background:var(--panel);border-top:1px solid var(--line);touch-action:none;cursor:row-resize}
 #split span{width:44px;height:5px;border-radius:3px;background:#57606a}
 #split.drag span{background:var(--acc)}
@@ -1225,10 +1227,12 @@ function applySplit(){const pnl=$('#panel');if(pnl.style.display==='none')return
   const avail=appH()-$('header').offsetHeight-$('#tabbar').offsetHeight-22;SPL=clamp((drag.h-dy)/avail,.12,.85);applySplit()});
  const end=()=>{if(!drag)return;if(!drag.moved&&Date.now()-drag.t<400){SPL=SPL>.5?.3:.62;applySplit()}store('wdesk_split',SPL);drag=null;h.classList.remove('drag')};
  h.addEventListener('pointerup',end);h.addEventListener('pointercancel',end)})();
-// iOS-Web-App: Höhe = ganzer Bildschirm (sonst bleibt unten ein Streifen frei)
+// iOS-Web-App: Unter dem Home-Balken kann die App nicht zeichnen (iOS 26). Wenn der sichtbare Bereich dort schon endet,
+// keinen zusätzlichen Sicherheitsabstand mehr einrechnen (sonst sitzt die Leiste zu hoch).
 function fixAppH(){const sa=window.navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
- let h=window.innerHeight;if(sa&&/iPhone|iPad|iPod/.test(navigator.userAgent)){const land=matchMedia('(orientation: landscape)').matches;h=Math.max(h,land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height))}
- document.documentElement.style.setProperty('--apph',h+'px');applySplit()}
+ const land=matchMedia('(orientation: landscape)').matches,sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
+ const short=sa&&/iPhone|iPad|iPod/.test(navigator.userAgent)&&sh-window.innerHeight>40;
+ document.documentElement.classList.toggle('pwa-short',short);document.documentElement.style.setProperty('--apph',window.innerHeight+'px');applySplit()}
 window.addEventListener('resize',()=>setTimeout(fixAppH,50));window.addEventListener('orientationchange',()=>setTimeout(fixAppH,300));fixAppH();
 
 /* ---------- tabs ---------- */
