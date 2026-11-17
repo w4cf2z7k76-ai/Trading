@@ -1182,21 +1182,22 @@ async function loadOI(){if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom)retu
  if(ok.length){S.oi={key,ex:ok,ts:Date.now()};S.oiErr=null}else{S.oi=null;S.oiErr=S.oiFail.join(' · ')}
  S.heatC=null;if(S.tab==='heat')renderHeat();req()}
 setInterval(()=>{if(S.src==='binance'&&!S.full&&!document.hidden)loadOI()},5*60000);
-setInterval(()=>{if(S.tab==='heat')renderLiqStats()},15000);
+setInterval(()=>{if(S.tab==='heat')renderLiqStats()},5000);
 /* echte Liquidationen live: Binance, Bybit, OKX */
-let LWS={};S.liqs=[];
+let LWS={};S.liqs=[];const LIQC={};
 function stopLiqWS(){Object.values(LWS).forEach(o=>{try{clearInterval(o.ping);o.ws.onclose=null;o.ws.close()}catch(_){}});LWS={}}
 let liqT=0;function liqSave(){if(Date.now()-liqT>10000){liqT=Date.now();store('wdesk_liq_'+S.sym,S.liqs.slice(-400))}}
-function addLiq(x,sy){if(S.sym!==sy||!(x.p>0&&x.v>0))return;S.liqs.push(x);if(S.liqs.length>800)S.liqs=S.liqs.slice(-800);liqSave();
+function addLiq(x,sy){if(S.sym!==sy||!(x.p>0&&x.v>0))return;const kk=x.ex+'|'+x.t+'|'+x.p+'|'+Math.round(x.v);if(S.liqs.some(y=>y.ex+'|'+y.t+'|'+y.p+'|'+Math.round(y.v)===kk))return;LIQC[x.ex]=(LIQC[x.ex]||0)+1;S.liqs.push(x);S.liqs.sort((a,b)=>a.t-b.t);if(S.liqs.length>800)S.liqs=S.liqs.slice(-800);liqSave();
  if(x.v>=250000)toast(`💥 ${x.ex}: ${x.s<0?'Long':'Short'}-Liquidation ${usd(x.v)} @ ${fmt(x.p)}`);if(S.tab==='heat')renderLiqStats();req()}
-function liqConn(name,url,onopen,onmsg,ping){const sy=S.sym;let ws;try{ws=new WebSocket(url)}catch(e){return}const o={ws,ping:null};LWS[name]=o;
+function liqConn(name,url,onopen,onmsg,ping){const sy=S.sym;let ws;try{ws=new WebSocket(url)}catch(e){return}const o={ws,ping:null,since:Date.now(),msgs:0};LWS[name]=o;
  ws.onopen=()=>{onopen&&onopen(ws);if(ping)o.ping=setInterval(()=>{try{ws.send(ping)}catch(_){}},20000);if(S.tab==='heat')renderLiqStats()};
- ws.onmessage=ev=>{if(ev.data==='pong')return;let m;try{m=JSON.parse(ev.data)}catch(_){return}onmsg(m,sy)};
+ ws.onmessage=ev=>{o.msgs++;if(ev.data==='pong')return;let m;try{m=JSON.parse(ev.data)}catch(_){return}onmsg(m,sy)};
  ws.onclose=()=>{clearInterval(o.ping);if(LWS[name]===o)delete LWS[name];if(S.tab==='heat')renderLiqStats();setTimeout(()=>{if(S.src==='binance'&&S.sym===sy&&!S.full&&!LWS[name])startLiqWS(name)},5000)}}
 function startLiqWS(only){if(!only)stopLiqWS();if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom)return;const sym=BIN[S.sym],coin=COIN();
  if(!only)S.liqs=(store('wdesk_liq_'+S.sym)||[]).filter(x=>Date.now()-x.t<7*864e5);
  if(!only||only==='Binance')liqConn('Binance',`wss://fstream.binance.com/ws/${sym.toLowerCase()}@forceOrder`,null,(m,sy)=>{const o=m.o;if(!o)return;const p=+(o.ap||o.p),q=+(o.z||o.q);addLiq({ex:'Binance',t:+o.T||Date.now(),p,v:p*q,s:o.S==='SELL'?-1:1},sy)});
  if(!only||only==='Bybit')liqConn('Bybit','wss://stream.bybit.com/v5/public/linear',ws=>ws.send(JSON.stringify({op:'subscribe',args:['allLiquidation.'+sym]})),(m,sy)=>{(Array.isArray(m.data)?m.data:[]).forEach(d=>{const p=+d.p,q=+d.v;addLiq({ex:'Bybit',t:+d.T||Date.now(),p,v:p*q,s:d.S==='Buy'?-1:1},sy)})},JSON.stringify({op:'ping'}));
+ if(!only||only==='OKX')getJ(`https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instFamily=${coin}-USDT&state=filled&limit=100`).then(j=>{const sy=S.sym;(j&&Array.isArray(j.data)?j.data:[]).forEach(d=>(d.details||[]).forEach(x=>{const p=+x.bkPx,q=+x.sz*(CTVAL[coin]||1);const lng=x.posSide==='long'||(x.posSide!=='short'&&x.side==='sell');if(Date.now()-(+x.ts)<864e5)addLiq({ex:'OKX',t:+x.ts,p,v:p*q,s:lng?-1:1},sy)}))}).catch(()=>{});
  if(!only||only==='OKX')liqConn('OKX','wss://ws.okx.com:8443/ws/v5/public',ws=>ws.send(JSON.stringify({op:'subscribe',args:[{channel:'liquidation-orders',instType:'SWAP'}]})),(m,sy)=>{(Array.isArray(m.data)?m.data:[]).forEach(d=>{if(d.instId!==coin+'-USDT-SWAP')return;(d.details||[]).forEach(x=>{const p=+x.bkPx,q=+x.sz*(CTVAL[coin]||1);const lng=x.posSide==='long'||(x.posSide!=='short'&&x.side==='sell');addLiq({ex:'OKX',t:+x.ts||Date.now(),p,v:p*q,s:lng?-1:1},sy)})})},'ping')}
 function drawLiqs(a,b){const B=S.bars;if(!S.liqs||!S.liqs.length||!B.length)return;const t0=B[Math.max(0,a)].t,sel=HM.ex==='all'?null:EXN[HM.ex||'binance'];
  S.liqs.forEach(x=>{if(x.t<t0||(sel&&S.tab==='heat'&&(x.ex||'Binance')!==sel))return;let lo=0,hi=B.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(B[m].t<=x.t)lo=m;else hi=m-1}if(lo>b+1)return;
@@ -1204,12 +1205,15 @@ function drawLiqs(a,b){const B=S.bars;if(!S.liqs||!S.liqs.length||!B.length)retu
   ctx.fillStyle=x.s<0?'rgba(255,70,90,.5)':'rgba(40,220,140,.5)';ctx.strokeStyle=x.s<0?'#ff4d6a':'#2ee59d';ctx.lineWidth=1;ctx.beginPath();ctx.arc(xx,y,r,0,7);ctx.fill();ctx.stroke()})}
 function renderLiqStats(){const el=$('#hLiq');if(!el)return;if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom){el.innerHTML='<span class="mut">Echte Liquidationen gibt es nur mit Live-Kursen (installierte App, Krypto-Symbole).</span>';return}
  const now=Date.now(),exs=['Binance','Bybit','OKX'],sum=(ms,s,ex)=>S.liqs.filter(x=>now-x.t<ms&&x.s===s&&(!ex||(x.ex||'Binance')===ex)).reduce((a,x)=>a+x.v,0);
- const st=exs.map(e=>{const o=LWS[e];return `<span class="${o&&o.ws.readyState===1?'ok':'warn'}">${o&&o.ws.readyState===1?'●':'○'} ${e}</span>`}).join(' ');
- el.innerHTML=`<div style="font-size:12px">${st} · <span style="color:#ff4d6a">rot = Longs liquidiert</span>, <span style="color:#2ee59d">grün = Shorts</span></div>
- <table style="margin-top:4px"><tr><td class="mut">24 Std.</td><td style="color:#ff4d6a">Longs</td><td style="color:#2ee59d">Shorts</td></tr>
- ${exs.map(e=>`<tr><td>${e}</td><td>${usd(sum(864e5,-1,e))}</td><td>${usd(sum(864e5,1,e))}</td></tr>`).join('')}
- <tr><td><b>Gesamt</b> <span class="mut">(1 Std.)</span></td><td><b>${usd(sum(864e5,-1))}</b> <span class="mut">(${usd(sum(36e5,-1))})</span></td><td><b>${usd(sum(864e5,1))}</b> <span class="mut">(${usd(sum(36e5,1))})</span></td></tr></table>
- <div class="mut" style="font-size:11px">Zählt nur, solange die App offen ist (gespeichert: letzte 7 Tage auf diesem Gerät).</div>`}
+ const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+ const stat=e=>{const o=LWS[e],on=o&&o.ws.readyState===1;return `<span class="${on?'ok':'warn'}">${on?'●':'○'}</span> ${e}<br><span class="mut" style="font-size:10px">${on?'seit '+hm(o.since)+' · '+o.msgs+' Nachr.':'getrennt'}</span>`};
+ const recent=S.liqs.slice(-6).reverse();
+ el.innerHTML=`<div style="font-size:12px"><span style="color:#ff4d6a">rot = Longs liquidiert</span>, <span style="color:#2ee59d">grün = Shorts liquidiert</span> · gezählt seit App-Start (max. 24 Std.)</div>
+ <table style="margin-top:4px"><tr><td class="mut">Börse</td><td style="color:#ff4d6a">Longs</td><td style="color:#2ee59d">Shorts</td></tr>
+ ${exs.map(e=>`<tr><td>${stat(e)}</td><td>${usd(sum(864e5,-1,e))}</td><td>${usd(sum(864e5,1,e))}</td></tr>`).join('')}
+ <tr><td><b>Gesamt</b> <span class="mut">(letzte Std.)</span></td><td><b>${usd(sum(864e5,-1))}</b> <span class="mut">(${usd(sum(36e5,-1))})</span></td><td><b>${usd(sum(864e5,1))}</b> <span class="mut">(${usd(sum(36e5,1))})</span></td></tr></table>
+ <div style="font-size:12px;margin-top:6px"><b>Letzte Liquidationen</b></div>${recent.length?'<table>'+recent.map(x=>`<tr><td>${hm(x.t)} ${x.ex||'Binance'}</td><td style="color:${x.s<0?'#ff4d6a':'#2ee59d'}">${x.s<0?'Long':'Short'} ${usd(x.v)}</td><td>@ ${fmt(x.p)}</td></tr>`).join('')+'</table>':'<div class="mut" style="font-size:12px">Noch keine seit dem Öffnen – bei ruhigem Markt kann das einige Minuten dauern. Steigen die „Nachr.“-Zahlen, kommt die Verbindung an.</div>'}
+ <div class="mut" style="font-size:11px;margin-top:4px">Die Börsen senden Liquidationen nur live – die App zählt, solange sie offen ist, und speichert die letzten 7 Tage auf diesem Gerät.</div>`}
 const JET=[[0,0,70],[0,30,190],[0,120,255],[0,210,255],[0,235,190],[90,240,90],[255,235,0],[255,150,0],[255,30,30]];
 function heatCol(t){const x=t*(JET.length-1),i=Math.min(JET.length-2,Math.floor(x)),f=x-i,a=JET[i],b=JET[i+1];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]}
 const rgb=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
