@@ -178,6 +178,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
         <div class="row">Handeln <span class="chips" id="eWaves" style="margin:0"></span></div>
         <div class="row">Richtung <span class="chips" id="eDir" style="margin:0"></span></div>
         <div class="row">Risiko <span class="chips" id="eRisk" style="margin:0"></span></div>
+        <div class="fld"><label>Risiko $</label><input id="eRiskUsd" inputmode="decimal" placeholder="optional, z. B. 150 (statt %)"></div>
         <div class="row">Max. Hebel <span class="chips" id="eLev" style="margin:0"></span></div>
         <label class="row"><input type="checkbox" id="eTP"> 50 % am Fibonacci-Ziel verkaufen, Rest läuft mit Nachzieh-Stop</label>
         <label class="row"><input type="checkbox" id="eHTF"> Nur mit dem Trend der höheren Zeiteinheit (4× größer)</label>
@@ -1189,7 +1190,7 @@ function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,2
   const st={wait:'wartet auf Kauf',hold:'hält Position',run:'läuft',stopped:'beendet',done:'fertig'}[bt.state];
   if(bt.type==='elliott'){eMig(bt);const pn=eBotPnl(bt),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(',');
    h+=`<div class="pos"><b>🌊 Elliott-Bot</b> ${bt.label} · ${bt.tfs.map(tfName).join(' + ')}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
-   <span class="mut">Wellen ${w} · ${({both:'Long+Short',long:'nur Long',short:'nur Short'})[bt.dir]} · Größe ${bt.dev?ff(bt.dev*100)+' %':'auto'} · Risiko ${ff(bt.risk)} %${bt.htf?' · Trend-Filter':''}</span><br>
+   <span class="mut">Wellen ${w} · ${({both:'Long+Short',long:'nur Long',short:'nur Short'})[bt.dir]} · Größe ${bt.dev?ff(bt.dev*100)+' %':'auto'} · Risiko ${bt.riskUsd>0?money(bt.riskUsd):ff(bt.risk)+' %'}${bt.htf?' · Trend-Filter':''}</span><br>
    ${bt.tfs.map(tf=>`<span style="font-size:12px"><b>${tfName(tf)}</b>: ${(bt.st[tf]&&bt.st[tf].last)?bt.st[tf].last.replace(tfName(tf)+': ',''):(mine(bt)&&!tfAvail(tf)?'<span class="warn">keine Daten in dieser Ansicht</span>':'wartet auf Wellenpunkt')}</span>`).join('<br>')}<br>
    Ergebnis: <b class="${pn>=0?'ok':'bad'}">${money(pn)}</b> · ${bt.trades} Trades${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
    ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">'+(bt.replay?'Läuft nur im Replay':'Startet im Hintergrund … (braucht Live-Kurse)')+'</div>'):''}</div>`;return}
@@ -1204,7 +1205,7 @@ const curTf=()=>S.custom?'csv':S.tf;
 const TFL=['15m','1h','4h','1D'];
 const tfMs=tf=>tf==='csv'?S.tfms:TFMS[tf];
 const tfName=tf=>tf==='csv'?'CSV':tf;
-const EB={dev:0,tfs:null,waves:{'1':true,'3':true,'5':true,A:true,C:true},dir:'both',risk:1,lev:10,tp:true,htf:false};
+const EB={dev:0,tfs:null,waves:{'1':true,'3':true,'5':true,A:true,C:true},dir:'both',risk:1,riskUsd:0,lev:10,tp:true,htf:false};
 const WNAME={'1':'Welle 1','3':'Welle 3','5':'Welle 5',A:'Welle A',C:'Welle C'};
 S.tfData={};
 function impOK(q){const w1=q[1]-q[0],w3=q[3]-q[2],w5=q[5]-q[4];return q[1]>q[0]&&q[2]<q[1]&&q[2]>q[0]&&q[3]>q[1]&&q[4]<q[3]&&q[4]>q[1]&&q[5]>q[4]&&q[5]>q[3]&&!(w3<w1&&w3<w5)}
@@ -1245,7 +1246,7 @@ function eBotTick(onClose){let ch=false;
    const px=lastP(),sl=m.stop*(1-m.side*.0015);if(m.side*(px-sl)<=0){st.last=tg+' – verworfen (Kurs schon hinter Stop)';return}
    const dist=Math.abs(px-sl)/px,lev=Math.max(1,Math.min(bt.lev,Math.floor(.9/(dist+.006))));
    const tps=bt.tp&&m.side*(m.tp-px)>0?[{p:m.tp,pct:50},{p:px+m.side*Math.abs(m.tp-px)*6,pct:50}]:[];
-   const p=openPos({key:pkey(),label:(S.custom||S.sym)+' 🤖'+tfName(tf),mode:'fut',dir:m.side,sl,tps,be:true,trail:dev*100,ttp:0,csl:false,riskPct:bt.risk,lev,replay:isRp()},px);
+   const p=openPos({key:pkey(),label:(S.custom||S.sym)+' 🤖'+tfName(tf),mode:'fut',dir:m.side,sl,tps,be:true,trail:dev*100,ttp:0,csl:false,riskPct:bt.riskUsd>0&&AC.bal>0?bt.riskUsd/AC.bal*100:bt.risk,lev,replay:isRp()},px);
    if(p){p.bot=bt.id;p.btf=tf;p.wave=m.wave;bt.trades++;st.last=`${tg} eröffnet @ ${fmt(px)}`;toast('🤖 '+st.last);notify('bot','🤖 '+(S.custom||S.sym)+' Elliott-Bot',st.last)}else st.last=tg+' – abgelehnt (Margin)'})});
  return ch}
 async function refreshTfData(force){if(S.src!=='binance'||S.full)return;const need=new Set(force||[]);
@@ -1804,7 +1805,7 @@ function statHTML(){const m={};AC.hist.forEach(t=>{const k=statKey(t,SG);(m[k]||
   rows.map(r=>`<tr><td><b>${r.k}</b></td><td style="text-align:right">${r.n}</td><td style="text-align:right">${pct(r.wr)}</td><td style="text-align:right" class="${r.aR>=0?'ok':'bad'}">${fR(r.aR)}</td><td style="text-align:right" class="${r.sP>=0?'ok':'bad'}">${fR(r.sR)}<br><small>${money(r.sP)}</small></td></tr>`).join('')+'</table>';
  const best=rows.filter(r=>r.n>=5)[0];h+=`<div class="mut" style="font-size:11px;margin-top:4px">${best?`Am besten bisher: <b>${best.k}</b> (${best.n} Trades, ${fR(best.aR)} je Trade).`:'Ab 5 Trades pro Gruppe wird es aussagekräftig.'} Manuelle Trades bekommen ihre Strategie im Order-Fenster oder im Tagebuch (Trade antippen).</div></div>`;return h}
 const eDev=()=>EB.dev||nearestDev(defaultDev());
-function eCfg(){return{dev:EB.dev,tfs:(EB.tfs||[curTf()]).filter(tfAvail),waves:{...EB.waves},dir:EB.dir,risk:EB.risk,lev:EB.lev,tp:EB.tp,htf:EB.htf}}
+function eCfg(){return{dev:EB.dev,tfs:(EB.tfs||[curTf()]).filter(tfAvail),waves:{...EB.waves},dir:EB.dir,risk:EB.risk,riskUsd:EB.riskUsd||0,lev:EB.lev,tp:EB.tp,htf:EB.htf}}
 function eStart(){const c=eCfg();if(!c.tfs.length){toast('Mindestens eine verfügbare Zeiteinheit wählen');return}if(!Object.values(c.waves).some(Boolean)){toast('Mindestens eine Welle auswählen');return}
  const bt={id:++uid,type:'elliott',key:pkey(),label:S.custom||S.sym,replay:isRp(),...c,st:{},skipFirst:true,state:'run',trades:0,pnl:0,inv:0,cyc:0,t0:nowT()};
  AC.bots.push(bt);refreshTfData().then(()=>{eBotTick(true);after()});after();setTimeout(bgSync,500);
@@ -1842,7 +1843,7 @@ function eForm(){const chip=(id,vals,cur,lab,set)=>{$(id).innerHTML=vals.map(v=>
  chip('#eDev',[0,.01,.02,.03,.05,.08],EB.dev,v=>+v?ff(v*100)+' %':'Auto (je Zeiteinheit)',v=>EB.dev=+v);
  $('#eWaves').innerHTML=Object.keys(WNAME).map(k=>`<button data-w="${k}" class="${EB.waves[k]?'on':''}">${k}</button>`).join('');$('#eWaves').querySelectorAll('button').forEach(b=>b.onclick=()=>{EB.waves[b.dataset.w]=!EB.waves[b.dataset.w];eForm()});
  chip('#eDir',['both','long','short'],EB.dir,v=>({both:'Beide',long:'Nur Long',short:'Nur Short'})[v],v=>EB.dir=v);
- chip('#eRisk',[.5,1,2],EB.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>EB.risk=+v);chip('#eLev',[3,5,10,20],EB.lev,v=>v+'×',v=>EB.lev=+v);
+ chip('#eRisk',[.5,1,2],EB.riskUsd>0?null:EB.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{EB.risk=+v;EB.riskUsd=0;$('#eRiskUsd').value=''});{const ri=$('#eRiskUsd');if(document.activeElement!==ri)ri.value=EB.riskUsd>0?ff(String(EB.riskUsd)):'';$('#eRisk').style.opacity=EB.riskUsd>0?.4:1;ri.oninput=()=>{const u=num(ri.value);EB.riskUsd=u>0?u:0;$('#eRisk').style.opacity=EB.riskUsd>0?.4:1;$('#eRisk').querySelectorAll('button').forEach(b=>b.classList.toggle('on',!(EB.riskUsd>0)&&+b.dataset.c===EB.risk))}}chip('#eLev',[3,5,10,20],EB.lev,v=>v+'×',v=>EB.lev=+v);
  $('#eTP').checked=EB.tp;$('#eHTF').checked=EB.htf;
  const z=zigzag(S.bars,eDev()).filter(p=>!p.prov),m=eMatch(z,{waves:{'1':1,'3':1,'5':1,A:1,C:1},dir:'both'});
  $('#ePrev').innerHTML=`<div class="mut" style="font-size:12px;line-height:1.5">Aufwärts: <b class="ok">Long</b> in Welle 1, 3, 5 · <b class="bad">Short</b> in A und C. Abwärts genau umgekehrt. Jede Zeiteinheit zählt und handelt für sich (eigene Position, eigener Stop).<br>
