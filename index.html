@@ -1178,14 +1178,25 @@ const CCF={USD:'🇺🇸',EUR:'🇪🇺',GBP:'🇬🇧',JPY:'🇯🇵',CNY:'🇨
 const calStar=i=>i==='High'?3:i==='Medium'?2:i==='Low'?1:0;
 const calName=t=>{const d=CALDE[t]||(t.startsWith('Fed Chair')?'Rede Fed-Chef':t.startsWith('FOMC Member')?'Rede Fed-Mitglied':t.startsWith('ECB President')?'Rede EZB-Chefin':null);return d};
 const CALSRC=[['direkt',u=>u],['allorigins',u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)],['corsproxy',u=>'https://corsproxy.io/?url='+encodeURIComponent(u)],['codetabs',u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)]];
-async function calFetch(){const U='https://nfs.faireconomy.media/ff_calendar_thisweek.json',pref=store('wdesk_calsrc');const order=CALSRC.slice().sort((a,b)=>(b[0]===pref)-(a[0]===pref));CAL.log=[];
- for(const [n,f] of order){try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),9000);const r=await fetch(f(U)+(n==='direkt'?'':''),{cache:'no-store',signal:ctl.signal});clearTimeout(to);
-  if(!r.ok){CAL.log.push(n+': HTTP '+r.status);continue}const txt=await r.text();let j;try{j=JSON.parse(txt)}catch(_){CAL.log.push(n+': keine Daten');continue}
-  if(!Array.isArray(j)||!j.length){CAL.log.push(n+': leer');continue}store('wdesk_calsrc',n);CAL.src=n;return j}catch(e){CAL.log.push(n+': '+(e&&e.name==='AbortError'?'Zeitüberschreitung':'blockiert'))}}
+async function calTry(U,n,f){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),9000);try{const r=await fetch(f(U),{cache:'no-store',signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);let t=await r.text();let j=JSON.parse(t);if(n==='allorigins2'&&j&&typeof j.contents==='string')j=JSON.parse(j.contents);return j}finally{clearTimeout(to)}}
+const CALSRC2=[['allorigins2',u=>'https://api.allorigins.win/get?url='+encodeURIComponent(u)]];
+async function calFetch(){const FF='https://nfs.faireconomy.media/ff_calendar_thisweek.json';CAL.log=[];
+ const d0=new Date();d0.setHours(0,0,0,0);const from=new Date(d0.getTime()-2*864e5).toISOString(),to=new Date(d0.getTime()+8*864e5).toISOString();
+ const TV=`https://economic-calendar.tradingview.com/events?from=${from}&to=${to}&countries=US,EU,GB,JP,CN,DE`;
+ const ISO={US:'USD',EU:'EUR',DE:'EUR',GB:'GBP',JP:'JPY',CN:'CNY',CA:'CAD',AU:'AUD',CH:'CHF'};
+ const srcs=[];[...CALSRC,...CALSRC2].forEach(([n,f])=>{srcs.push(['FF·'+n,FF,n,f]);srcs.push(['TV·'+n,TV,n,f])});
+ const pref=store('wdesk_calsrc');srcs.sort((a,b)=>(b[0]===pref)-(a[0]===pref));
+ const one=async([name,U,n,f])=>{try{let j=await calTry(U,n,f);
+   if(name.startsWith('TV')){const R=j&&j.result;if(!Array.isArray(R)||!R.length)throw new Error('leer');
+    j=R.map(e=>({title:e.title||e.indicator||'',country:e.currency||ISO[e.country]||e.country||'',date:e.date,impact:e.importance>=1?'High':e.importance===0?'Medium':'Low',forecast:e.forecast!=null?String(e.forecast)+(e.unit||''):'',previous:e.previous!=null?String(e.previous)+(e.unit||''):'',actual:e.actual!=null?String(e.actual)+(e.unit||''):''}))}
+   if(!Array.isArray(j)||!j.length)throw new Error('leer');return [name,j]}
+  catch(e){CAL.log.push(name+': '+(e&&e.name==='AbortError'?'Zeitüberschreitung':e&&e.message&&e.message!=='Failed to fetch'&&e.message!=='Load failed'?e.message.slice(0,30):'blockiert'));throw e}};
+ if(pref){const p=srcs.find(x=>x[0]===pref);if(p){try{const [nm,j]=await one(p);CAL.src=nm;return j}catch(_){}}}
+ try{const [nm,j]=await Promise.any(srcs.filter(x=>x[0]!==pref).map(one));store('wdesk_calsrc',nm);CAL.src=nm;return j}catch(_){}
  throw new Error('alle Quellen fehlgeschlagen')}
 async function calLoad(force){const c=store('wdesk_cal');if(!force&&c&&Date.now()-c.ts<36e5){CAL.ev=c.ev;CAL.ts=c.ts;return}
  if(CAL.busy)return;if(!force&&CAL.errT&&Date.now()-CAL.errT<5*6e4)return;CAL.busy=true;try{const j=await calFetch();
-  CAL.ev=j.map(e=>({t:Date.parse(e.date),title:e.title||'',cc:e.country||'',s:calStar(e.impact),hol:e.impact==='Holiday',fc:e.forecast||'',pv:e.previous||''})).filter(e=>isFinite(e.t)).sort((a,b)=>a.t-b.t);
+  CAL.ev=j.map(e=>({t:Date.parse(e.date),title:e.title||'',cc:e.country||'',s:calStar(e.impact),hol:e.impact==='Holiday',fc:e.forecast||'',pv:e.previous||'',ac:e.actual||''})).filter(e=>isFinite(e.t)).sort((a,b)=>a.t-b.t);
   CAL.ts=Date.now();CAL.err=false;try{store('wdesk_cal',{ev:CAL.ev,ts:CAL.ts})}catch(_){}}
  catch(e){CAL.err=true;CAL.errT=Date.now();if(c){CAL.ev=c.ev;CAL.ts=c.ts}}finally{CAL.busy=false}}
 const calIn=ms=>{const m=Math.round(ms/6e4);return m<60?m+' Min.':m<1440?Math.floor(m/60)+' Std. '+(m%60?m%60+' Min.':''):Math.round(m/1440)+' Tg.'};
@@ -1202,7 +1213,7 @@ function renderCal(){if(!$('#mCal').classList.contains('open'))return;
  $('#calF').querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{const c=b.dataset.cc;if(c==='All')CAL.cc=[];else CAL.cc=CAL.cc.includes(c)?CAL.cc.filter(x=>x!==c):[...CAL.cc,c];sv()});
  $('#calF').querySelectorAll('[data-rg]').forEach(b=>b.onclick=()=>{CAL.range=b.dataset.rg;sv()});
  const el=$('#calOut');
- if(!CAL.ev){el.innerHTML=`<div class="mut" style="padding:10px 0">${CAL.err?'<span class="warn">Kalender gerade nicht erreichbar.</span><br><small>'+(CAL.log||[]).join(' · ')+'</small><br><a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">ForexFactory öffnen</a>':'Lade Termine … (kann bis 30 Sek. dauern)'}</div>`;return}
+ if(!CAL.ev){el.innerHTML=`<div class="mut" style="padding:10px 0">${CAL.err?'<span class="warn">Kalender gerade nicht erreichbar.</span><br><small>'+(CAL.log||[]).join(' · ')+'</small><br><a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">ForexFactory öffnen</a>':'Lade Termine … (kann bis 1 Min. dauern)'}</div>`;return}
  const now=Date.now(),d0=new Date();d0.setHours(0,0,0,0);const t0=d0.getTime(),t1=t0+864e5;
  let L=CAL.ev.filter(e=>(e.hol||CAL.stars.includes(e.s))&&(!CAL.cc.length||CAL.cc.includes(e.cc)));
  if(CAL.range==='today')L=L.filter(e=>e.t>=t0&&e.t<t1);else if(CAL.range==='next')L=L.filter(e=>e.t>now-30*6e4);
@@ -1215,10 +1226,10 @@ function renderCal(){if(!$('#mCal').classList.contains('open'))return;
   h+=`<div style="display:flex;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line);opacity:${past?.5:1};${isN?'background:rgba(255,122,60,.12);border-radius:12px;':''}">
    <div style="width:44px;flex:none;font-weight:600">${e.hol?'—':dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}<br><span style="color:${col};font-size:12px;letter-spacing:-1px">${e.hol?'':'★'.repeat(e.s)}</span></div>
    <div style="flex:1;min-width:0"><div style="font-weight:600">${CCF[e.cc]||''} ${e.cc} · ${de||e.title}${e.hol?' (Feiertag)':''}</div>${de?`<div class="mut" style="font-size:11px">${e.title}</div>`:''}
-   ${e.fc||e.pv?`<div class="mut" style="font-size:12px">Prognose <b style="color:var(--txt)">${e.fc||'–'}</b> · Vorher ${e.pv||'–'}</div>`:''}
+   ${e.fc||e.pv||e.ac?`<div class="mut" style="font-size:12px">${e.ac?`Ist <b style="color:var(--acc)">${e.ac}</b> · `:''}Prognose <b style="color:var(--txt)">${e.fc||'–'}</b> · Vorher ${e.pv||'–'}</div>`:''}
    ${isN?`<div style="font-size:12px;color:#ffb37a">⏱ in ${calIn(e.t-now)}</div>`:''}</div></div>`});
  const ag=Math.round((now-CAL.ts)/6e4);
- el.innerHTML=h+`<div class="mut" style="font-size:11px;margin-top:8px">Zeiten in deiner Zeitzone · ★★★ bewegt Bitcoin oft stark (Fed, CPI, NFP) · Quelle ForexFactory${CAL.src&&CAL.src!=='direkt'?' über '+CAL.src:''}, Stand vor ${ag<1?'weniger als 1':ag} Min.${CAL.err?' (offline – gespeicherte Daten)':''} · nur aktuelle Woche verfügbar</div>`}
+ el.innerHTML=h+`<div class="mut" style="font-size:11px;margin-top:8px">Zeiten in deiner Zeitzone · ★★★ bewegt Bitcoin oft stark (Fed, CPI, NFP) · Quelle ${CAL.src?(CAL.src.startsWith('TV')?'TradingView':'ForexFactory')+(CAL.src.endsWith('direkt')?'':' über '+CAL.src.split('·')[1]):'ForexFactory'}, Stand vor ${ag<1?'weniger als 1':ag} Min.${CAL.err?' (offline – gespeicherte Daten)':''} · ca. 1 Woche</div>`}
 const CALN=new Set(store('wdesk_caln')||[]);
 function calWarn(){const b=$('#calWarn');if(!b)return;if(!CAL.ev){b.style.display='none';return}const now=Date.now();
  const e=CAL.ev.find(x=>x.s===3&&!x.hol&&(!CAL.cc.length||CAL.cc.includes(x.cc))&&x.t>now-15*6e4&&x.t<now+60*6e4);
