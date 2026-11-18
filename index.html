@@ -1897,15 +1897,22 @@ function tkFromSK(){const d=[...S.drawings].reverse().find(x=>x.type==='sk'&&x.p
  $('#tkTP1p').value=50;$('#tkTP2p').value=30;$('#tkTP3p').value=20;tkOpen(true);toast(TK.type==='limit'?'SK-Setup übernommen: Limit an GKL 0,618':'Kurs ist schon in der Zone – Market-Einstieg vorgeschlagen')}
 
 /* position list html */
-function posHTML(p){const m=mine(p),u=m?upnl(p):0,fut=pmode(p)==='fut';
- return `<div class="pos"><b class="${p.dir>0?'ok':'bad'}">${fut?(p.dir>0?'Long':'Short'):'Spot'}</b> ${p.label} <span class="mut">${fut?(p.lev||1)+'×':''}${p.replay?' · Replay':''}</span> @ ${fmt(p.entry)}${m?` · <b class="${u>=0?'ok':'bad'}">${money(u)}</b>`:''}
+function posHTML(p){const own=mine(p),bc=!own&&bgOf(p),m=own||!!bc,u=own?upnl(p):bc?inCtx(bc,()=>upnl(p)):0,fut=pmode(p)==='fut',cp=bc?bc.px:null;
+ return `<div class="pos" data-pid="${p.id}" style="cursor:pointer"><b class="${p.dir>0?'ok':'bad'}">${fut?(p.dir>0?'Long':'Short'):'Spot'}</b> ${p.label} <span class="mut">${fut?(p.lev||1)+'×':''}${p.replay?' · Replay':''}</span> @ ${fmt(p.entry)}${m?` · <b class="${u>=0?'ok':'bad'}">${u>=0?'+':''}${money(u)}</b>`:''}${bc&&cp?` <span class="mut" style="font-size:12px">· Kurs ${fmt(cp)}</span>`:''}
  <br><span class="mut">SL ${p.sl!=null?fmt(p.sl):'–'}${p.liq!=null?` · Liq ${fmt(p.liq)}`:''} · ${p.tps.map((t,k)=>`TP${k+1} ${fmt(t.p)}${t.hit?' ✓':''}`).join(' · ')||'kein TP'} · Rest ${Math.round(p.qty/p.qty0*100)} %${p.trail?` · Trail ${ff(p.trail)} %`:''}${p.ttOn?' · Trailing-TP aktiv':p.ttp?` · Trail-TP ${ff(p.ttp)} %`:''}${p.csl?' · SL bei Kerzenschluss':''}</span>
- ${m?`<div class="row" style="flex-wrap:wrap"><button data-be="${p.id}">SL → Einstand</button>${fut?`<button data-fl="${p.id}">⇅ Flip</button>`:''}<button data-cl="${p.id}" class="danger">${fut?'Schließen':'Verkaufen'}</button></div>`:'<div class="mut" style="font-size:11px">Zum Verwalten zu diesem Symbol'+(p.replay?' / Replay':'')+' wechseln</div>'}</div>`}
+ ${m?`<div class="row" style="flex-wrap:wrap"><button data-be="${p.id}">SL → Einstand</button>${fut?`<button data-fl="${p.id}">⇅ Flip</button>`:''}<button data-cl="${p.id}" class="danger">${fut?'Schließen':'Verkaufen'}</button></div>${bc?'<div class="mut" style="font-size:11px">Doppelt tippen → Chart von '+p.label+'</div>':''}`:'<div class="mut" style="font-size:11px">'+(p.replay?'Läuft im Replay':'Kurs wird geladen … · doppelt tippen → Chart öffnen')+'</div>'}</div>`}
 function ordHTML(o){return `<div class="pos">⏳ ${TYPN[o.type]||'Limit'} <b class="${o.dir>0?'ok':'bad'}">${o.mode==='spot'?'Spot':o.dir>0?'Long':'Short'}</b> ${o.label}${o.replay?' (Replay)':''} ${fin(o.price)?'@ '+fmt(o.price):''}${o.type==='trail'?` · ${ff(o.tpct)} % Rücklauf${o.act?' · aktiv':''}`:''} <span class="mut">SL ${fin(o.sl)?fmt(o.sl):'–'}</span> <button data-cx="${o.id}">Stornieren</button></div>`}
+function posRun(p,fn){const bc=!mine(p)&&bgOf(p);if(bc){inCtx(bc,fn);after()}else fn()}
+let posTap={id:null,t:0};
+function posOpenChart(p){if(!p||p.replay)return;if(mine(p)){toast(p.label+' ist schon im Chart');return}
+ if(p.key.startsWith('binance:')){const y=p.key.slice(8);if(S.full)rpExit(true);S.custom=null;S.sym=y;$('#sym').value=y;loadData();toast('Chart: '+y)}
+ else if(p.key.startsWith('csv:')){const s2=$('#sym');buildSym();s2.value='__csv';s2.onchange({target:s2})}
+ else{const y=p.key.split(':')[1];if(SYMS[y]){S.custom=null;S.sym=y;$('#sym').value=y;loadData()}}}
 function bindPos(el){
- el.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.cl);if(p)closeNow(p,'Manuell')});
- el.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.fl);if(p)flip(p)});
- el.querySelectorAll('[data-be]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.be);if(!p)return;if(p.dir*(lastP()-p.entry)<=0){toast('Kurs ist nicht im Gewinn – Einstand-Stop wäre sofort ausgelöst');return}p.sl=p.entry;after();toast('Stop auf Einstand gesetzt')});
+ el.querySelectorAll('.pos[data-pid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id=d.dataset.pid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.pos.find(x=>String(x.id)===id))}else posTap={id,t:now}}));
+ el.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.cl);if(p)posRun(p,()=>closeNow(p,'Manuell'))});
+ el.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.fl);if(p)posRun(p,()=>flip(p))});
+ el.querySelectorAll('[data-be]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.be);if(!p)return;posRun(p,()=>{if(p.dir*(lastP()-p.entry)<=0){toast('Kurs ist nicht im Gewinn – Einstand-Stop wäre sofort ausgelöst');return}p.sl=p.entry;after();toast('Stop auf Einstand gesetzt')})});
  el.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{AC.ord=AC.ord.filter(o=>o.id!=b.dataset.cx);after()})}
 const LV={spot:'open',fut:'open',bots:'open'};
 function renderPanel(){if(S.bg)return;
