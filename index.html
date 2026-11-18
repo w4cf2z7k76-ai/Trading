@@ -168,6 +168,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
       <div class="fld" id="fGrid"><label>Stufen</label><input id="bN" inputmode="numeric" value="10"></div>
       <div class="fld"><label>Stop (opt.)</label><input id="bStop" inputmode="decimal"><button data-pick="bStop">📍</button></div>
       <div class="row">Kapital <span class="chips" id="bAmt" style="margin:0"></span></div>
+      <div class="fld"><label>Kapital $</label><input id="bUsd" inputmode="decimal" placeholder="optional, z. B. 500 (statt %)"></div>
       <label class="row" id="fAuto"><input type="checkbox" id="bAutoR" checked> Auto-Restart (immer wieder handeln)</label>
       </div>
       <div id="eForm" style="display:none">
@@ -1086,7 +1087,7 @@ function used(){let u=0;AC.pos.forEach(p=>{u+=pmode(p)==='spot'?p.entry*p.qty:p.
 const avail=()=>AC.bal-used();
 const liqPrice=(dir,entry,lev)=>entry*(1-dir*(1/lev-.005));
 function sizeOf(o,price){
- if(o.mode==='spot'){const notional=Math.max(0,Math.min(AC.bal*o.amtPct/100,avail()));const qty=notional/price;return{qty,margin:notional,notional,risk$:fin(o.sl)?qty*Math.abs(price-o.sl):notional}}
+ if(o.mode==='spot'){const notional=Math.max(0,Math.min(fin(o.stake)&&o.stake>0?o.stake:AC.bal*o.amtPct/100,avail()));const qty=notional/price;return{qty,margin:notional,notional,risk$:fin(o.sl)?qty*Math.abs(price-o.sl):notional}}
  const dist=Math.abs(price-o.sl);if(fin(o.stake)&&o.stake>0){const notional=o.stake*o.lev,qty=notional/price;return{qty,margin:o.stake,notional,risk$:qty*dist}}
  const qty=AC.bal*o.riskPct/100/dist,notional=qty*price;return{qty,margin:notional/o.lev,notional,risk$:qty*dist}}
 function openPos(o,price){
@@ -1160,7 +1161,7 @@ function botUnreal(bt){const px=lastP();if(bt.type==='elliott')return AC.pos.fil
 function botStop(bt){const px=lastP();if(bt.type==='elliott')AC.pos.filter(p=>p.bot===bt.id).forEach(p=>closePart(p,px,p.qty,'Bot gestoppt'));if(bt.type==='channel'&&bt.state==='hold')botSell(bt,px);
  if(bt.type==='grid')bt.slots.forEach(s=>{if(s.held){const pnl=(px-s.buyP)*s.qty-px*s.qty*AC.fee;AC.bal+=pnl;bt.pnl+=pnl;s.held=false}});bt.state='stopped';after()}
 const BT={type:'channel',amt:25};
-function botRead(){return{type:BT.type,low:num($('#bLow').value),high:num($('#bHigh').value),stop:num($('#bStop').value),n:Math.round(num($('#bN').value)||10),inv:AC.bal*BT.amt/100,auto:$("#bAutoR").checked}}
+function botRead(){return{type:BT.type,low:num($('#bLow').value),high:num($('#bHigh').value),stop:num($('#bStop').value),n:Math.round(num($('#bN').value)||10),inv:(()=>{const u=num($('#bUsd').value);return u>0?u:AC.bal*BT.amt/100})(),auto:$("#bAutoR").checked}}
 function botCheck(o){if(!fin(o.low)||!fin(o.high))return'Unter- und Obergrenze eintragen (📍 oder „Kanal vorschlagen“)';if(o.low>=o.high)return'Untergrenze muss unter der Obergrenze liegen';
  if(fin(o.stop)&&o.stop>=o.low)return'Stop muss unter der Untergrenze liegen';if(o.type==='grid'&&(o.n<2||o.n>50))return'Stufen: 2 bis 50';if(o.inv>avail())return'Nicht genug freies Guthaben';return''}
 function botUpd(){const E=BT.type==='elliott';$('#cgForm').style.display=E?'none':'block';$('#eForm').style.display=E?'block':'none';$('#bSug').style.display=E?'none':'';$('#eTestB').style.display=E?'':'none';$('#bPrev').style.display=E?'none':'';
@@ -1178,8 +1179,8 @@ function botStart(){{const gm=guardMsg();if(gm){toast(gm);return}}if(BT.type==='
  AC.bots.push(bt);after();setTimeout(bgSync,500);toast((o.type==='channel'?'Channel':'Grid')+'-Bot gestartet')}
 function botSuggest(){const B=S.bars,n=Math.min(48,B.length);let lo=Infinity,hi=-Infinity;for(let i=B.length-n;i<B.length;i++){lo=Math.min(lo,B[i].l);hi=Math.max(hi,B[i].h)}const r=hi-lo;
  $('#bLow').value=nstr(lo+r*.15);$('#bHigh').value=nstr(hi-r*.15);$('#bStop').value=nstr(lo-r*.1);botUpd();toast('Kanal aus den letzten '+n+' Kerzen vorgeschlagen')}
-function renderBots(){$('#bAmt').innerHTML=[10,25,50,100].map(v=>`<button data-a="${v}" class="${v===BT.amt?'on':''}">${v} %</button>`).join('');
- $('#bAmt').querySelectorAll('button').forEach(b=>b.onclick=()=>{BT.amt=+b.dataset.a;renderBots()});segSet('#bType',BT.type);botUpd();
+function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,25,50,100].map(v=>`<button data-a="${v}" class="${v===BT.amt&&!(usd>0)?'on':''}">${v} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small></button>`).join('');$('#bAmt').style.opacity=usd>0?.4:1;
+ $('#bAmt').querySelectorAll('button').forEach(b=>b.onclick=()=>{BT.amt=+b.dataset.a;$('#bUsd').value='';renderBots()});$('#bUsd').oninput=()=>{const u=num($('#bUsd').value);$('#bAmt').style.opacity=u>0?.4:1;$('#bAmt').querySelectorAll('button').forEach(b=>b.classList.toggle('on',!(u>0)&&+b.dataset.a===BT.amt));botUpd()};segSet('#bType',BT.type);botUpd();
  const isAct=b=>b.state!=='stopped'&&b.state!=='done',all=AC.bots.slice().reverse(),nA=all.filter(isAct).length,nE=all.length-nA,list=all.filter(b=>LV.bots==='old'?!isAct(b):isAct(b));
  let h=`<div class="card"><h4><span>Meine Bots</span></h4><div class="seg" style="margin:0 0 8px"><button data-lv="open" class="${LV.bots!=='old'?'on':''}">Aktiv (${nA})</button><button data-lv="old" class="${LV.bots==='old'?'on':''}">Beendet (${nE})</button></div>`;
  if(!list.length)h+=`<div class="mut" style="font-size:13px">${LV.bots==='old'?'Keine beendeten Bots':'Kein Bot aktiv'+(nE?' – beendete unter „Beendet“':'')}</div>`;
@@ -1841,7 +1842,7 @@ function eForm(){const chip=(id,vals,cur,lab,set)=>{$(id).innerHTML=vals.map(v=>
  chip('#eDev',[0,.01,.02,.03,.05,.08],EB.dev,v=>+v?ff(v*100)+' %':'Auto (je Zeiteinheit)',v=>EB.dev=+v);
  $('#eWaves').innerHTML=Object.keys(WNAME).map(k=>`<button data-w="${k}" class="${EB.waves[k]?'on':''}">${k}</button>`).join('');$('#eWaves').querySelectorAll('button').forEach(b=>b.onclick=()=>{EB.waves[b.dataset.w]=!EB.waves[b.dataset.w];eForm()});
  chip('#eDir',['both','long','short'],EB.dir,v=>({both:'Beide',long:'Nur Long',short:'Nur Short'})[v],v=>EB.dir=v);
- chip('#eRisk',[.5,1,2],EB.risk,v=>ff(v)+' %',v=>EB.risk=+v);chip('#eLev',[3,5,10,20],EB.lev,v=>v+'×',v=>EB.lev=+v);
+ chip('#eRisk',[.5,1,2],EB.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>EB.risk=+v);chip('#eLev',[3,5,10,20],EB.lev,v=>v+'×',v=>EB.lev=+v);
  $('#eTP').checked=EB.tp;$('#eHTF').checked=EB.htf;
  const z=zigzag(S.bars,eDev()).filter(p=>!p.prov),m=eMatch(z,{waves:{'1':1,'3':1,'5':1,A:1,C:1},dir:'both'});
  $('#ePrev').innerHTML=`<div class="mut" style="font-size:12px;line-height:1.5">Aufwärts: <b class="ok">Long</b> in Welle 1, 3, 5 · <b class="bad">Short</b> in A und C. Abwärts genau umgekehrt. Jede Zeiteinheit zählt und handelt für sich (eigene Position, eigener Stop).<br>
@@ -1876,7 +1877,7 @@ function tkOpen(keep){const inP=tkPlace();
  if(!$('#tkPrice').value&&TK.type!=='trail')$('#tkPrice').value=nstr(lastP());if(TK.mode==='spot')TK.dir=1;
  $('#tkSym').textContent=(S.custom||S.sym)+(isRp()?' · Replay':S.src==='binance'?' · Live':' · Demo');
  $('#tkTitle').firstChild.textContent=inP?(TK.mode==='spot'?'🪙 Spot ':'📈 Futures '):'💼 Neue Order ';
- chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>v+' %',v=>TK.amt=v);chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);chipRow('#tkStrat',['–',...STRATS],TK.strat||'–',v=>v,v=>TK.strat=v==='–'?null:v);
+ chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>`${v} %<br><small>${money(Math.min(AC.bal*v/100,avail())).replace(',00','')}</small>`,v=>{TK.amt=v;$('#tkStake').value=''});chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);chipRow('#tkStrat',['–',...STRATS],TK.strat||'–',v=>v,v=>TK.strat=v==='–'?null:v);
  segSet('#tkMode',TK.mode);segSet('#tkDir',TK.dir);segSet('#tkType',TK.type);tkUpd();if(!inP)$('#mTrade').classList.add('open')}
 function tkRead(){const tps=[1,2,3].map(k=>({p:num($('#tkTP'+k).value),pct:num($('#tkTP'+k+'p').value)||0})).filter(t=>fin(t.p));
  return{mode:TK.mode,dir:TK.mode==='spot'?1:TK.dir,type:TK.type,price:TK.type==='market'?lastP():num($('#tkPrice').value),sl:num($('#tkSL').value),tps,be:$('#tkBE').checked,trail:+$('#tkTrail').value,ttp:+$('#tkTTP').value,csl:$('#tkCSL').checked,tpct:num($('#tkTpct').value),stake:num($('#tkStake').value),riskPct:TK.risk,lev:TK.lev,amtPct:TK.amt,strat:TK.strat||null}}
@@ -1892,7 +1893,7 @@ function tkCheck(o){{const gm=guardMsg();if(gm)return gm}const L=o.dir>0;
  if(o.mode==='fut'){const lq=liqPrice(o.dir,ref,o.lev);if(o.dir*(o.sl-lq)<=0)return`Stop liegt hinter dem Liquidationspreis (${fmt(lq)}) – Hebel senken`}
  const z=sizeOf(o,ref);if(!(z.qty>0))return'Kein freies Guthaben';if(z.margin>avail()+1e-6)return o.mode==='spot'?'Nicht genug Guthaben':'Nicht genug Margin – Hebel erhöhen oder Risiko senken';return''}
 function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode==='spot';
- $('#tkMode').style.display=inP?'none':'flex';$('#tkDir').style.display=sp?'none':'flex';$('#rRisk').style.display=sp?'none':'flex';$('#rAmt').style.display=sp?'flex':'none';$('#rLev').style.display=sp?'none':'flex';$('#fStake').style.display=sp?'none':'flex';$('#tkRisk').style.opacity=(!sp&&fin(o.stake)&&o.stake>0)?.4:1;
+ $('#tkMode').style.display=inP?'none':'flex';$('#tkDir').style.display=sp?'none':'flex';$('#rRisk').style.display=sp?'none':'flex';$('#rAmt').style.display=sp?'flex':'none';$('#rLev').style.display=sp?'none':'flex';$('#fStake').style.display='flex';{const lb=$('#fStake label'),inp=$('#tkStake');if(lb)lb.textContent=sp?'Betrag $':'Einsatz $';inp.placeholder=sp?'optional, z. B. 500 (statt %)':'optional, z. B. 200 (statt Risiko %)'}$('#tkRisk').style.opacity=(!sp&&fin(o.stake)&&o.stake>0)?.4:1;$('#tkAmt').style.opacity=(sp&&fin(o.stake)&&o.stake>0)?.4:1;
  $('#fLimit').style.display=o.type==='market'?'none':'flex';$('#lLimit').textContent={limit:'Limit-Preis',stop:'Auslöser',trail:'Aktivierung'}[o.type]||'';$('#tkPrice').placeholder=o.type==='trail'?'leer = sofort':'';
  $('#fTpct').style.display=o.type==='trail'?'flex':'none';$('#lSL').textContent=sp?'Stop (opt.)':'Stop-Loss';
  $('#tkSend').textContent=sp?(o.type==='market'?'Jetzt kaufen':'Kauf-Order setzen'):(o.dir>0?'Long ':'Short ')+(o.type==='market'?'eröffnen':'Order setzen');
