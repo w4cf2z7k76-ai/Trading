@@ -22,6 +22,7 @@ select,button,.btn{background:var(--btn);color:var(--txt);border:1px solid var(-
 button.on{background:var(--onbg);border-color:var(--acc);color:var(--acc)}
 #quote{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;line-height:1.15;padding-left:6px;white-space:nowrap}
 #quote b{font-size:15px}
+#calWarn{position:absolute;left:50%;top:30px;transform:translateX(-50%);z-index:3;font-size:12px;padding:5px 11px;border-radius:16px;background:rgba(255,122,60,.18);border:1px solid rgba(255,140,80,.6);color:var(--txt);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 #bMenu{position:sticky;right:-8px;margin-right:-8px;font-size:18px;padding:5px 12px;background:var(--panel);border:none;border-left:1px solid var(--line);border-radius:0;align-self:stretch;z-index:2}
 .mrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 10px;margin:0;border-radius:0;border:none;border-bottom:1px solid var(--line);background:none;font-size:15px}
 .mrow:last-child{border-bottom:none}.mrow small{margin-left:auto;color:var(--mut);font-size:12px}
@@ -142,6 +143,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
     <input type="file" id="file" accept=".csv,.txt,text/csv">
   </header>
   <div id="wrap">
+    <button id="calWarn" style="display:none"></button>
     <canvas id="cv"></canvas>
     <div id="hint"><span id="hintT"></span><button id="hUndo">↶</button><button id="hCancel">✕</button></div>
     <div id="sheet"><div class="grip"></div><div id="sheetC"></div></div>
@@ -279,6 +281,12 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <h3>☰ Menü</h3>
   <div id="menuOut"></div>
   <div class="row"><button data-close class="on">Schließen</button></div>
+</div></div>
+<div class="modal" id="mCal"><div class="box" style="width:min(96%,540px)">
+  <h3>📅 Wirtschaftskalender</h3>
+  <div id="calF"></div>
+  <div id="calOut"></div>
+  <div class="row"><button id="calR">↻ Neu laden</button><button data-close class="on">Fertig</button></div>
 </div></div>
 <div class="modal" id="mSym"><div class="box" style="width:min(96%,480px)">
   <h3>🔎 Coin wählen</h3>
@@ -1083,7 +1091,7 @@ async function bgSync(){const need=bgNeeded();
 setInterval(()=>bgSync(),20000);
 
 /* ---------- Benachrichtigungen ---------- */
-const NT=Object.assign({on:false,trade:true,bot:true,setup:false,usdtd:true,stf:'4h'},store('wdesk_notif')||{});
+const NT=Object.assign({on:false,trade:true,bot:true,setup:false,usdtd:true,cal:true,stf:'4h'},store('wdesk_notif')||{});
 const ntHas=()=>'Notification' in window;
 const ntOK=()=>ntHas()&&Notification.permission==='granted';
 function notify(kind,title,body){if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
@@ -1133,7 +1141,7 @@ function renderSet(){const el=$('#setOut'),ok=ntOK(),lb=store('wdesk_lastbk');co
  if(!ntHas())h+='<div class="warn" style="font-size:13px">Geht nur in der installierten App (vom Home-Bildschirm geöffnet, iOS 16.4 oder neuer).</div>';
  else{h+=`<div class="row"><button id="ntOn" class="${NT.on&&ok?'on':''}">${NT.on&&ok?'✅ An':'Einschalten'}</button>${NT.on&&ok?'<button id="ntOff">Aus</button><button id="ntTest">Test senden</button>':''}</div>`;
   if(Notification.permission==='denied')h+='<div class="warn" style="font-size:12px">Vom iPhone blockiert – erlauben unter Einstellungen › Mitteilungen › Wellen-Desk.</div>';
-  if(NT.on&&ok)h+=cb('trade','Trades: Stop, Ziele (SK/TP), Order ausgeführt')+cb('bot','Bots: Einstieg, Ausstieg, Stop')+cb('setup','Neue Elliott-Setups (Watchlist, alle 15 Min.)')+cb('usdtd','USDT.D-Alarm (wenn deine Marke gekreuzt wird)')+
+  if(NT.on&&ok)h+=cb('trade','Trades: Stop, Ziele (SK/TP), Order ausgeführt')+cb('bot','Bots: Einstieg, Ausstieg, Stop')+cb('setup','Neue Elliott-Setups (Watchlist, alle 15 Min.)')+cb('usdtd','USDT.D-Alarm (wenn deine Marke gekreuzt wird)')+cb('cal','Wirtschaftskalender: 15 Min. vor wichtigen Terminen')+
    (NT.setup?`<div class="row" style="font-size:13px">Zeiteinheit <span class="chips" id="ntTf" style="margin:0">${TFL.map(t=>`<button data-t="${t}" class="${t===NT.stf?'on':''}">${t}</button>`).join('')}</span></div>`:'');
   h+='<div class="mut" style="font-size:11px;margin-top:4px">Kommen, solange die App offen ist oder gerade erst in den Hintergrund ging. Bei gesperrtem iPhone pausiert iOS die App.</div>'}
  h+='</div>';
@@ -1162,6 +1170,61 @@ async function bkApply(){if(!bkPend)return;try{await shotClear();for(const [k,v]
  try{localStorage.setItem('wdesk_lastbk',JSON.stringify(bkPend.t))}catch(_){}toast('Wiederhergestellt – App lädt neu');setTimeout(()=>location.reload(),600)}
 $('#bSet').onclick=()=>{renderSet();$('#mSet').classList.add('open')};
 
+
+/* ---------- Wirtschaftskalender (★★★ wichtig · ★★ mittel · ★ gering) ---------- */
+const CAL=Object.assign({stars:[3,2],cc:['USD'],range:'week'},store('wdesk_calf')||{},{ev:null,ts:0,err:false,busy:false});
+const CALDE={'CPI m/m':'Verbraucherpreise (CPI) m/m','CPI y/y':'Verbraucherpreise (CPI) j/j','Core CPI m/m':'Kern-Inflation (Core CPI) m/m','Core CPI y/y':'Kern-Inflation (Core CPI) j/j','Non-Farm Employment Change':'US-Arbeitsmarkt (NFP)','Unemployment Rate':'Arbeitslosenquote','Federal Funds Rate':'Fed-Leitzins','FOMC Statement':'Fed-Zinsentscheid (Erklärung)','FOMC Press Conference':'Fed-Pressekonferenz','FOMC Meeting Minutes':'Fed-Protokoll','Core PCE Price Index m/m':'PCE-Kerninflation m/m','PPI m/m':'Erzeugerpreise (PPI) m/m','Core PPI m/m':'Kern-Erzeugerpreise m/m','Retail Sales m/m':'Einzelhandelsumsatz m/m','Core Retail Sales m/m':'Kern-Einzelhandelsumsatz m/m','Advance GDP q/q':'BIP (erste Schätzung)','Prelim GDP q/q':'BIP (vorläufig)','Final GDP q/q':'BIP (final)','Unemployment Claims':'Erstanträge Arbeitslosenhilfe','ISM Manufacturing PMI':'ISM Industrie','ISM Services PMI':'ISM Dienstleistung','JOLTS Job Openings':'Offene Stellen (JOLTS)','ADP Non-Farm Employment Change':'ADP-Arbeitsmarkt','Average Hourly Earnings m/m':'Stundenlöhne m/m','Main Refinancing Rate':'EZB-Leitzins','ECB Press Conference':'EZB-Pressekonferenz','Prelim UoM Consumer Sentiment':'Verbrauchervertrauen (Uni Michigan)','CB Consumer Confidence':'Verbrauchervertrauen (CB)','Empire State Manufacturing Index':'Empire State Index','Philly Fed Manufacturing Index':'Philly-Fed-Index','Crude Oil Inventories':'Rohöl-Lagerbestände','Fed Chair Powell Speaks':'Rede Fed-Chef','German Prelim CPI m/m':'Deutschland Inflation (vorläufig)','Flash Manufacturing PMI':'Einkaufsmanager Industrie (Flash)','Flash Services PMI':'Einkaufsmanager Dienstl. (Flash)'};
+const CCF={USD:'🇺🇸',EUR:'🇪🇺',GBP:'🇬🇧',JPY:'🇯🇵',CNY:'🇨🇳',CAD:'🇨🇦',AUD:'🇦🇺',NZD:'🇳🇿',CHF:'🇨🇭',All:'🌐'};
+const calStar=i=>i==='High'?3:i==='Medium'?2:i==='Low'?1:0;
+const calName=t=>{const d=CALDE[t]||(t.startsWith('Fed Chair')?'Rede Fed-Chef':t.startsWith('FOMC Member')?'Rede Fed-Mitglied':t.startsWith('ECB President')?'Rede EZB-Chefin':null);return d};
+async function calLoad(force){const c=store('wdesk_cal');if(!force&&c&&Date.now()-c.ts<36e5){CAL.ev=c.ev;CAL.ts=c.ts;return}
+ if(CAL.busy)return;CAL.busy=true;try{const r=await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json',{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();if(!Array.isArray(j))throw 0;
+  CAL.ev=j.map(e=>({t:Date.parse(e.date),title:e.title||'',cc:e.country||'',s:calStar(e.impact),hol:e.impact==='Holiday',fc:e.forecast||'',pv:e.previous||''})).filter(e=>isFinite(e.t)).sort((a,b)=>a.t-b.t);
+  CAL.ts=Date.now();CAL.err=false;try{store('wdesk_cal',{ev:CAL.ev,ts:CAL.ts})}catch(_){}}
+ catch(e){CAL.err=true;if(c){CAL.ev=c.ev;CAL.ts=c.ts}}finally{CAL.busy=false}}
+const calIn=ms=>{const m=Math.round(ms/6e4);return m<60?m+' Min.':m<1440?Math.floor(m/60)+' Std. '+(m%60?m%60+' Min.':''):Math.round(m/1440)+' Tg.'};
+function calNext(){if(!CAL.ev)return '';const n=CAL.ev.find(e=>e.s===3&&e.t>Date.now());return n?'nächster ★★★ in '+calIn(n.t-Date.now()):''}
+function calOpen(){$('#mCal').classList.add('open');renderCal();calLoad().then(renderCal)}
+function renderCal(){if(!$('#mCal').classList.contains('open'))return;
+ const st=v=>`<button data-st="${v}" class="${CAL.stars.includes(v)?'on':''}" style="color:${['','var(--mut)','#ffb347','#ff6b6b'][v]}">${'★'.repeat(v)}</button>`;
+ const ccs=['USD','EUR','GBP','JPY','CNY','All'];
+ $('#calF').innerHTML=`<div class="chips" style="margin:0 0 6px">${st(3)}${st(2)}${st(1)}</div>
+  <div class="chips" style="margin:0 0 6px">${ccs.map(c=>`<button data-cc="${c}" class="${CAL.cc.includes(c)||(c==='All'&&!CAL.cc.length)?'on':''}">${CCF[c]} ${c==='All'?'Alle':c}</button>`).join('')}</div>
+  <div class="seg" style="margin:0 0 8px"><button data-rg="today" class="${CAL.range==='today'?'on':''}">Heute</button><button data-rg="next" class="${CAL.range==='next'?'on':''}">Kommend</button><button data-rg="week" class="${CAL.range==='week'?'on':''}">Ganze Woche</button></div>`;
+ const sv=()=>{store('wdesk_calf',{stars:CAL.stars,cc:CAL.cc,range:CAL.range});renderCal();calWarn()};
+ $('#calF').querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{const v=+b.dataset.st;CAL.stars=CAL.stars.includes(v)?CAL.stars.filter(x=>x!==v):[...CAL.stars,v];if(!CAL.stars.length)CAL.stars=[v];sv()});
+ $('#calF').querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{const c=b.dataset.cc;if(c==='All')CAL.cc=[];else CAL.cc=CAL.cc.includes(c)?CAL.cc.filter(x=>x!==c):[...CAL.cc,c];sv()});
+ $('#calF').querySelectorAll('[data-rg]').forEach(b=>b.onclick=()=>{CAL.range=b.dataset.rg;sv()});
+ const el=$('#calOut');
+ if(!CAL.ev){el.innerHTML=`<div class="mut" style="padding:10px 0">${CAL.err?'<span class="warn">Kalender nicht erreichbar – nur in der installierten App mit Internet.</span> <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">ForexFactory öffnen</a>':'Lade Termine …'}</div>`;return}
+ const now=Date.now(),d0=new Date();d0.setHours(0,0,0,0);const t0=d0.getTime(),t1=t0+864e5;
+ let L=CAL.ev.filter(e=>(e.hol||CAL.stars.includes(e.s))&&(!CAL.cc.length||CAL.cc.includes(e.cc)));
+ if(CAL.range==='today')L=L.filter(e=>e.t>=t0&&e.t<t1);else if(CAL.range==='next')L=L.filter(e=>e.t>now-30*6e4);
+ if(!L.length){el.innerHTML='<div class="mut" style="padding:10px 0">Keine Termine für diese Auswahl.'+(CAL.range!=='week'?' Tipp: „Ganze Woche“.':'')+'</div>';return}
+ const nx=L.find(e=>e.t>now&&!e.hol);let h='',day='';
+ L.forEach(e=>{const dt=new Date(e.t),dk=dt.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'2-digit'});
+  if(dk!==day){day=dk;h+=`<div class="mgt" style="margin-top:10px">${dt.getTime()>=t0&&dt.getTime()<t1?'Heute · ':''}${dk}</div>`}
+  const past=e.t<now-5*6e4,de=calName(e.title),col=['var(--mut)','var(--mut)','#ffb347','#ff6b6b'][e.s];
+  const isN=nx&&e===nx;
+  h+=`<div style="display:flex;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line);opacity:${past?.5:1};${isN?'background:rgba(255,122,60,.12);border-radius:12px;':''}">
+   <div style="width:44px;flex:none;font-weight:600">${e.hol?'—':dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}<br><span style="color:${col};font-size:12px;letter-spacing:-1px">${e.hol?'':'★'.repeat(e.s)}</span></div>
+   <div style="flex:1;min-width:0"><div style="font-weight:600">${CCF[e.cc]||''} ${e.cc} · ${de||e.title}${e.hol?' (Feiertag)':''}</div>${de?`<div class="mut" style="font-size:11px">${e.title}</div>`:''}
+   ${e.fc||e.pv?`<div class="mut" style="font-size:12px">Prognose <b style="color:var(--txt)">${e.fc||'–'}</b> · Vorher ${e.pv||'–'}</div>`:''}
+   ${isN?`<div style="font-size:12px;color:#ffb37a">⏱ in ${calIn(e.t-now)}</div>`:''}</div></div>`});
+ const ag=Math.round((now-CAL.ts)/6e4);
+ el.innerHTML=h+`<div class="mut" style="font-size:11px;margin-top:8px">Zeiten in deiner Zeitzone · ★★★ bewegt Bitcoin oft stark (Fed, CPI, NFP) · Quelle ForexFactory, Stand vor ${ag<1?'weniger als 1':ag} Min.${CAL.err?' (offline – gespeicherte Daten)':''} · nur aktuelle Woche verfügbar</div>`}
+const CALN=new Set(store('wdesk_caln')||[]);
+function calWarn(){const b=$('#calWarn');if(!b)return;if(!CAL.ev){b.style.display='none';return}const now=Date.now();
+ const e=CAL.ev.find(x=>x.s===3&&!x.hol&&(!CAL.cc.length||CAL.cc.includes(x.cc))&&x.t>now-15*6e4&&x.t<now+60*6e4);
+ if(!e){b.style.display='none';return}const m=Math.round((e.t-now)/6e4);
+ b.textContent=(m>0?`⚠️ in ${m} Min.: `:m>-1?'⚠️ JETZT: ':`⚠️ vor ${-m} Min.: `)+`${e.cc} ${calName(e.title)||e.title} ★★★`;b.style.display=S.tab==='heat'?'none':'block'}
+function calTick(){if(!CAL.ev)return;calWarn();if(!NT.on||!NT.cal)return;const now=Date.now();
+ CAL.ev.forEach(e=>{if(e.hol||e.s<3||(CAL.cc.length&&!CAL.cc.includes(e.cc)))return;const dm=e.t-now,k=e.t+'|'+e.title;if(dm>0&&dm<=15*6e4&&!CALN.has(k)){CALN.add(k);
+  notify('cal',`📅 In ${Math.max(1,Math.round(dm/6e4))} Min.: ${e.cc} ${calName(e.title)||e.title} ★★★`,`Prognose ${e.fc||'–'} · Vorher ${e.pv||'–'} · Vorsicht mit offenen Positionen`)}});
+ store('wdesk_caln',[...CALN].slice(-100))}
+$('#calWarn').onclick=calOpen;$('#calR').onclick=()=>{calLoad(true).then(renderCal);renderCal()};
+setTimeout(()=>calLoad().then(()=>{calTick();renderCal()}),3000);setInterval(()=>{calLoad().then(()=>{calTick();renderCal()})},60000);
+
 /* ---------- Menü oben rechts ---------- */
 function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Math.floor((Date.now()-lb)/864e5):null,th=(THEMES[document.documentElement.dataset.theme]||{}).name||'';
  const hid=[!VIS.pos&&'Positionen',!VIS.bots&&'Bots',!VIS.draw&&'Zeichnungen'].filter(Boolean);
@@ -1171,10 +1234,11 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   ${R('stat','📊','Statistik pro Strategie','')}
   ${R('wl','📋','Watchlist & Scanner','')}
   ${R('ud','💵','USDT-Dominanz',UD.last?ff(UD.last.d.toFixed(3))+' %':'')}
+  ${R('cal','📅','Wirtschaftskalender',calNext())}
   ${R('bt','🧪','SK-Backtest','')}</div>
   <div class="mgt">Benachrichtigungen</div><div class="mgrp">
   <button class="mrow" data-m="ntq"><span style="width:24px;text-align:center">🔔</span>Push-Benachrichtigungen<small class="${ok?'ok':''}">${ok?'an':'aus'} ›</small></button>
-  ${ok?['trade','bot','setup','usdtd'].map(k=>`<label class="mrow"><span style="width:24px"></span>${{trade:'Trades (Stop, Ziele, Orders)',bot:'Bots',setup:'Neue Setups (alle 15 Min.)',usdtd:'USDT.D-Alarm'}[k]}<input type="checkbox" data-mn="${k}" ${NT[k]?'checked':''} style="margin-left:auto;transform:scale(1.3)"></label>`).join(''):''}</div>
+  ${ok?['trade','bot','setup','usdtd','cal'].map(k=>`<label class="mrow"><span style="width:24px"></span>${{trade:'Trades (Stop, Ziele, Orders)',bot:'Bots',setup:'Neue Setups (alle 15 Min.)',usdtd:'USDT.D-Alarm',cal:'Wirtschaftskalender (15 Min. vorher)'}[k]}<input type="checkbox" data-mn="${k}" ${NT[k]?'checked':''} style="margin-left:auto;transform:scale(1.3)"></label>`).join(''):''}</div>
   <div class="mgt">Anzeige</div><div class="mgrp">
   ${R('vis','👁','Im Chart anzeigen',hid.length?hid.join(', ')+' aus':'alles an')}
   ${R('design','🎨','Design',th)}
@@ -1190,7 +1254,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   close();
   if(m==='jr')acOpen();
   else if(m==='stat'){acOpen();setTimeout(()=>{const c=$('#sgC');if(c)c.scrollIntoView({block:'start'})},60)}
-  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
+  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
   else if(m==='design')$('#bDesign').click();else if(m==='m2')$('#bM2').click();else if(m==='csv')$('#file').click();
   else if(m==='help')$('#mHelp').classList.add('open');
   else if(m==='reset'){acOpen();setTimeout(()=>{const r=$('#acReset');if(r)r.scrollIntoView({block:'center'})},60)}});
@@ -1736,7 +1800,7 @@ function visOpen(){$('#vPos').checked=VIS.pos;$('#vBots').checked=VIS.bots;$('#v
 function syncVis(){const b=$('#tVis');if(b)b.classList.toggle('on',!(VIS.pos&&VIS.bots&&VIS.draw))}
 setTimeout(syncVis,0);
 /* ---------- tabs ---------- */
-function setTab(t){S.tab=t;document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+function setTab(t){S.tab=t;setTimeout(()=>{try{calWarn()}catch(_){}},0);document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
  $('#tools').style.display=t==='chart'?'flex':'none';$('#panel').style.display=t==='chart'?'none':'block';$('#split').style.display=t==='chart'?'none':'flex';applySplit();
  ['pTrade','pBots','pHeat','pSmart'].forEach(id=>$('#'+id).style.display='none');
  if(t==='spot'||t==='fut'){TK.mode=t;$('#pTrade').style.display='block';$('#mTrade').classList.remove('open');tkOpen(true);renderPanel()}
