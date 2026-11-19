@@ -22,6 +22,8 @@ select,button,.btn{background:var(--btn);color:var(--txt);border:1px solid var(-
 button.on{background:var(--onbg);border-color:var(--acc);color:var(--acc)}
 #quote{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;line-height:1.15;padding-left:6px;white-space:nowrap}
 #quote b{font-size:15px}
+#modeBtn{font-weight:700;font-size:12px;letter-spacing:.04em;white-space:nowrap}#modeBtn.mode-bdemo{color:#ffb347!important;border-color:#ffb347!important}#modeBtn.mode-blive{color:#fff!important;background:#e5354f!important;border-color:#ff5c7a!important}
+html.is-live #wrap{border-color:#ff5c7a!important;box-shadow:0 0 0 1px #ff5c7a inset}html.is-live #tabbar{border-color:#ff5c7a!important}html.is-bdemo #wrap{border-color:#ffb347!important}
 #trBar{position:absolute;left:6px;right:6px;bottom:26px;z-index:4;display:none;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;padding:10px;border-radius:20px;background:rgba(24,27,58,.88);border:1px solid var(--acc);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}#trBar button{min-height:40px;flex:1;min-width:0;padding:6px 4px;font-size:14px}
 #indBtn{position:absolute;left:6px;top:44px;opacity:.9;z-index:3;min-width:40px;height:32px;padding:0 10px;border-radius:16px;font:600 13px system-ui,sans-serif;background:var(--btn);border:1px solid var(--line);color:var(--txt);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}#indBtn.on{color:var(--acc);border-color:var(--acc)}
 #wrap canvas{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
@@ -128,7 +130,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <body>
 <div id="app">
   <header>
-    <select id="sym" style="display:none"></select><button id="symBtn" style="min-width:104px;text-align:left">BTC/USD ▾</button>
+    <button id="modeBtn" class="mode-app" title="Konto-Modus">DEMO</button><select id="sym" style="display:none"></select><button id="symBtn" style="min-width:104px;text-align:left">BTC/USD ▾</button>
     <select id="tf"><option>15m</option><option>1h</option><option selected>4h</option><option>1D</option></select>
     <button id="bWL" title="Watchlist">📋 Liste</button>
     <button id="bM2" title="Zweite Zeiteinheit">⧉ 2. ZE</button>
@@ -311,6 +313,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mGuard"><div class="box" style="width:min(96%,460px)"><h3>🛡️ Schutz-Regeln</h3><div id="gdOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
+<div class="modal" id="mLive"><div class="box" style="width:min(96%,500px)"><h3>🔗 Börse & Live-Konto</h3><div id="lvOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mSym"><div class="box" style="width:min(96%,480px)">
   <h3>🔎 Coin wählen</h3>
   <input id="symQ" class="inp" style="width:100%;margin-bottom:6px" placeholder="Suchen, z. B. SOL" autocomplete="off" autocapitalize="characters">
@@ -1174,7 +1177,7 @@ function botUpd(){const E=BT.type==='elliott';$('#cgForm').style.display=E?'none
  const g=o.type==='channel'?(o.high/o.low-1):((o.high-o.low)/o.n)/((o.high+o.low)/2),net=g-2*AC.fee;
  el.innerHTML=`<table><tr><td>Kapital</td><td>${money(o.inv)}</td></tr><tr><td>Gewinn je ${o.type==='channel'?'Zyklus':'Stufe'}</td><td class="${net>0?'ok':'bad'}">${pct(net)} (nach Gebühren)</td></tr>
  ${fin(o.stop)?`<tr><td>Max. Verlust bei Stop</td><td class="bad">≈ ${pct(o.type==='channel'?(1-o.stop/o.low):(1-o.stop/((o.low+o.high)/2)))}</td></tr>`:'<tr><td>Stop</td><td class="warn">keiner – Kurs kann weiter fallen</td></tr>'}</table>`}
-function botStart(){{const gm=guardMsg();if(gm){toast(gm);return}}if(BT.type==='elliott'){eStart();return}const o=botRead(),err=botCheck(o);if(err){toast(err);return}
+function botStart(){{const gm=guardMsg();if(gm){toast(gm);return}}if(LIVE.mode!=='app'){toast('Bots über Bybit kommen in Schritt 4 – zum Üben oben auf „DEMO“ umschalten.');return}if(BT.type==='elliott'){eStart();return}const o=botRead(),err=botCheck(o);if(err){toast(err);return}
  const bt={id:++uid,key:pkey(),label:S.custom||S.sym,replay:isRp(),type:o.type,low:o.low,high:o.high,stop:fin(o.stop)?o.stop:null,inv:o.inv,auto:o.auto,state:'wait',qty:0,cyc:0,pnl:0,t0:nowT()};
  if(o.type==='grid'){const px=lastP();bt.levels=[...Array(o.n+1)].map((_,i)=>o.low+(o.high-o.low)*i/o.n);bt.slots=[...Array(o.n)].map((_,i)=>({held:false,armed:bt.levels[i]<px,qty:0,buyP:0}));bt.state='run'}
  AC.bots.push(bt);after();setTimeout(bgSync,500);toast((o.type==='channel'?'Channel':'Grid')+'-Bot gestartet')}
@@ -1582,6 +1585,101 @@ const FTXT={alarm:['🔔','Preis-Alarme','Lange auf Linie/Höhe drücken → Ala
 function featOpen(){$('#featOut').innerHTML='<div class="mgrp">'+Object.entries(FTXT).map(([k,[ic,n,d]])=>`<label class="mrow"><span style="width:24px;text-align:center">${ic}</span><span style="flex:1"><b>${n}</b><br><small style="margin:0;color:var(--mut)">${d}</small></span><input type="checkbox" data-ft="${k}" ${FEAT[k]?'checked':''} style="transform:scale(1.3)"></label>`).join('')+'</div>'+
  `<div class="mut" style="font-size:12px;margin-top:8px">Funding-Rate und Open Interest schaltest du bei den Indikatoren (ƒx im Chart) ein.</div>`;
  $('#featOut').querySelectorAll('[data-ft]').forEach(c=>c.onchange=()=>{FEAT[c.dataset.ft]=c.checked;featSave();if(c.dataset.ft==='fng'&&c.checked)fgLoad();if(c.dataset.ft==='alarm')bgSync();req()});$('#mFeat').classList.add('open')}
+/* ===================== Börse & Live-Konto (Bybit über eigenen Server) ===================== */
+const LIVE=Object.assign({url:'',mode:'app',kd:{},pk:null,faceOrder:true},store('wdesk_live')||{});
+const liveSave=()=>store('wdesk_live',{url:LIVE.url,mode:LIVE.mode,kd:LIVE.kd,pk:LIVE.pk,faceOrder:LIVE.faceOrder});
+let LVT=(()=>{const t=store('wdesk_lvtok');return t&&t.exp>Date.now()?t:null})();
+let LVU=false;const LVD={w:null,pos:null,ts:0,err:null,busy:false,env:null};
+const lvEnv=()=>LIVE.mode==='blive'?'live':'demo';
+const lvTokOK=()=>!!(LVT&&LVT.exp>Date.now());
+async function lvApi(path,body){if(!LIVE.url)throw new Error('Keine Server-Adresse eingetragen');const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);let r;
+ try{r=await fetch(LIVE.url.replace(/\/+$/,'')+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(LVT&&path!=='/login'?{Authorization:'Bearer '+LVT.tok}:{})},body:body?JSON.stringify(body):undefined,signal:ctl.signal})}
+ catch(e){throw new Error(e.name==='AbortError'?'Server antwortet nicht (Zeitüberschreitung)':'Server nicht erreichbar – Adresse prüfen')}finally{clearTimeout(to)}
+ const j=await r.json().catch(()=>({error:'http',msg:'HTTP '+r.status}));
+ if(r.status===401&&path!=='/login'){LVT=null;store('wdesk_lvtok',null);LVU=false;updMode()}
+ if(!r.ok){const e=new Error(j.msg||('HTTP '+r.status));e.code=j.error;throw e}return j}
+async function bb(method,path,params,env){const j=await lvApi('/bybit',{env:env||lvEnv(),method,path,params});if(j.retCode!==0){const e=new Error(`Bybit: ${j.retMsg||j.msg||'Fehler'}${j.retCode!=null?' ('+j.retCode+')':''}`);e.code=j.retCode;throw e}return j.result}
+async function lvLogin(pw){const j=await lvApi('/login',{password:pw});LVT={tok:j.token,exp:Date.now()+j.hours*36e5-6e4,demo:!!j.demo,live:!!j.live};store('wdesk_lvtok',LVT);return j}
+// --- Face ID (Passkey) ---
+const b64u=a=>btoa(String.fromCharCode(...new Uint8Array(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const ub64u=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};
+const faceAvail=()=>!!(window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create);
+async function faceSetup(){if(!faceAvail()){toast('Face ID / Passkey wird hier nicht unterstützt');return false}
+ try{const c=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Wellen-Desk'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'wellen-desk',displayName:'Wellen-Desk Live'},
+  pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000}});
+  LIVE.pk=b64u(c.rawId);liveSave();toast('Face ID eingerichtet ✅');return true}catch(e){toast('Face ID nicht eingerichtet: '+(e.name==='NotAllowedError'?'abgebrochen':e.message));return false}}
+async function faceCheck(){if(!LIVE.pk)return false;try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:ub64u(LIVE.pk)}],userVerification:'required',timeout:60000}});return true}catch(e){toast('Face ID abgebrochen');return false}}
+async function lvUnlock(){if(LIVE.mode!=='blive'){LVU=true;return true}if(LVU)return true;if(!lvTokOK()){toast('Bitte zuerst mit Passwort anmelden');lvOpen();return false}
+ if(LIVE.pk){if(!(await faceCheck()))return false}else if(faceAvail()){toast('Bitte zuerst Face ID einrichten');lvOpen();return false}
+ LVU=true;updMode();lvRefresh(true);return true}
+async function setMode(m){if(m===LIVE.mode)return;
+ if(m!=='app'){if(!LIVE.url||!lvTokOK()){toast('Erst Server verbinden und anmelden');lvOpen();return}
+  if(m==='bdemo'&&!LVT.demo){toast('Auf dem Server ist kein Bybit-Demo-Schlüssel eingetragen');return}
+  if(m==='blive'){if(!LVT.live){toast('Auf dem Server ist kein Live-Schlüssel eingetragen');return}
+   if(LIVE.pk){if(!(await faceCheck()))return}else if(faceAvail()){toast('Für Live bitte zuerst Face ID einrichten');return}LVU=true}}
+ LIVE.mode=m;liveSave();LVD.w=null;LVD.pos=null;LVD.err=null;updMode();renderPanel();lvRefresh(true);if($('#mLive').classList.contains('open'))lvOpen();
+ toast(m==='app'?'Demo (App-Übungskonto)':m==='bdemo'?'Bybit-Demo aktiv':'⚠️ BYBIT LIVE – echtes Geld')}
+function updMode(){const b=$('#modeBtn');if(!b)return;const m=LIVE.mode;b.className='mode-'+m;b.textContent=m==='app'?'DEMO':m==='bdemo'?'BYBIT-DEMO':(LVU?'LIVE':'LIVE 🔒');
+ document.documentElement.classList.toggle('is-live',m==='blive');document.documentElement.classList.toggle('is-bdemo',m==='bdemo')}
+// --- Daten von Bybit (Anzeige) ---
+async function lvRefresh(force){if(LIVE.mode==='app'||!lvTokOK()||LVD.busy)return;if(LIVE.mode==='blive'&&!LVU)return;if(!force&&Date.now()-LVD.ts<8000)return;LVD.busy=true;const env=lvEnv();
+ try{const [w,p]=await Promise.all([bb('GET','/v5/account/wallet-balance',{accountType:'UNIFIED'},env),bb('GET','/v5/position/list',{category:'linear',settleCoin:'USDT'},env)]);
+  if(env!==lvEnv())return;LVD.w=w&&w.list&&w.list[0]||null;LVD.pos=(p&&p.list||[]).filter(x=>+x.size>0);LVD.err=null;LVD.ts=Date.now();LVD.env=env}
+ catch(e){LVD.err=e.message}finally{LVD.busy=false}if(S.tab==='spot'||S.tab==='fut')renderPanel()}
+setInterval(()=>{if(S.tab==='spot'||S.tab==='fut')lvRefresh()},10000);
+function lvCard(m){if(LIVE.mode==='app')return '';const live=LIVE.mode==='blive',nm=live?'<b style="color:#ff5c7a">● BYBIT LIVE</b>':'<b style="color:#ffb347">● BYBIT-DEMO</b>';
+ let h=`<div class="card" style="border-color:${live?'#ff5c7a':'#ffb347'}"><h4><span>${nm}</span><button id="lvR" style="font-size:12px">↻</button></h4>`;
+ if(!lvTokOK())return h+'<div class="warn" style="font-size:13px">Nicht angemeldet.</div><button id="lvGo" class="on" style="margin-top:6px">🔗 Anmelden</button></div>';
+ if(live&&!LVU)return h+'<div style="font-size:13px">Live-Konto ist gesperrt.</div><button id="lvUn" class="on" style="margin-top:6px">🔓 Mit Face ID entsperren</button></div>';
+ if(LVD.err)h+=`<div class="bad" style="font-size:13px">${LVD.err}</div>`;
+ if(!LVD.w&&!LVD.err)return h+'<div class="mut" style="font-size:13px">Lade Konto von Bybit …</div></div>';
+ if(LVD.w){const W=LVD.w,u=n=>money(+n||0);h+=`<div style="font-size:13px">Guthaben <b>${u(W.totalEquity)}</b> · frei <b>${u(W.totalAvailableBalance)}</b> · offen <b class="${+W.totalPerpUPL>=0?'ok':'bad'}">${+W.totalPerpUPL>=0?'+':''}${u(W.totalPerpUPL)}</b></div>`;
+  if(m==='spot'){const cs=(W.coin||[]).filter(c=>+c.walletBalance>0);h+=cs.length?'<table style="width:100%;font-size:13px;margin-top:6px">'+cs.map(c=>`<tr><td><b>${c.coin}</b></td><td style="text-align:right">${ff(String(+(+c.walletBalance).toFixed(6)))}</td><td style="text-align:right" class="mut">${u(c.usdValue||c.equity)}</td></tr>`).join('')+'</table>':'<div class="mut" style="font-size:13px">Keine Coins im Konto</div>'}
+  else{const P=LVD.pos||[];h+=P.length?P.map(p=>{const L=p.side==='Buy',pn=+p.unrealisedPnl;return `<div class="pos"><b class="${L?'ok':'bad'}">${L?'Long':'Short'}</b> ${p.symbol} ${p.leverage}× · ${ff(p.size)} @ ${fmt(+p.avgPrice)} · <b class="${pn>=0?'ok':'bad'}">${pn>=0?'+':''}${money(pn)}</b><br><span class="mut" style="font-size:12px">Mark ${fmt(+p.markPrice)}${+p.stopLoss?' · SL '+fmt(+p.stopLoss):' · <span class="warn">kein SL</span>'}${+p.takeProfit?' · TP '+fmt(+p.takeProfit):''}${+p.liqPrice?' · Liq '+fmt(+p.liqPrice):''}</span></div>`}).join(''):'<div class="mut" style="font-size:13px;margin-top:4px">Keine offenen Futures-Positionen bei Bybit</div>'}}
+ return h+`<div class="mut" style="font-size:11px;margin-top:6px">Stand ${LVD.ts?new Date(LVD.ts).toLocaleTimeString('de-DE'):'–'} · Orders aus der App gehen ab Schritt 3 direkt an Bybit – bis dahin nur Anzeige.</div></div>`}
+function lvBind(el){const g=el.querySelector('#lvGo');if(g)g.onclick=lvOpen;const u=el.querySelector('#lvUn');if(u)u.onclick=()=>lvUnlock();const r=el.querySelector('#lvR');if(r)r.onclick=()=>{LVD.ts=0;lvRefresh(true)}}
+// --- 90-Tage-Erinnerung ---
+function lvKeyLeft(e){const t=LIVE.kd[e];return t?90-Math.floor((Date.now()-t)/864e5):null}
+function lvKeyCheck(){['demo','live'].forEach(e=>{const l=lvKeyLeft(e);if(l==null||l>10)return;const k='wdesk_lvrem_'+e,d=new Date().toDateString();if(store(k)===d)return;store(k,d);
+ const nm=e==='live'?'Live':'Demo',msg=l<=0?`Bybit-${nm}-Schlüssel ist abgelaufen – neuen erstellen`:`Bybit-${nm}-Schlüssel läuft in ${l} Tag${l>1?'en':''} ab`;toast('🔑 '+msg);if(l<=5)notify('trade','🔑 '+msg,'☰ › Börse & Live-Konto › Schlüssel erneuern')})}
+setTimeout(lvKeyCheck,6000);setInterval(lvKeyCheck,6*36e5);
+// --- Einstellungs-Fenster ---
+let LVP=null;
+function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
+ const seg=`<div class="seg" style="margin:0 0 8px"><button data-md="app" class="${mode==='app'?'on':''}">Demo (App)</button><button data-md="bdemo" class="${mode==='bdemo'?'on':''}">Bybit-Demo</button><button data-md="blive" class="${mode==='blive'?'on':''}" style="${mode==='blive'?'color:#ff5c7a':''}">Bybit Live</button></div>`;
+ const kd=e=>{const l=lvKeyLeft(e),t=LIVE.kd[e];return `<label class="row" style="font-size:13px">${e==='live'?'Live':'Demo'}-Schlüssel erstellt am <input type="date" data-kd="${e}" class="inp" value="${t?new Date(t).toISOString().slice(0,10):''}" style="flex:none;width:150px;margin-left:auto"></label>${l!=null?`<div class="${l<=10?'warn':'mut'}" style="font-size:12px;margin:-2px 0 4px">${l>0?'noch '+l+' Tage gültig':'abgelaufen – neuen erstellen'}</div>`:''}`};
+ el.innerHTML=`<div class="card"><h4><span>Konto-Modus</span></h4>${seg}
+  <div class="mut" style="font-size:12px">Demo (App) = dein Übungskonto wie bisher · Bybit-Demo = Test mit Bybit ohne echtes Geld · Bybit Live = echtes Geld (rot markiert, nur mit Face ID).</div></div>
+ <div class="card"><h4><span>🔗 Server</span>${ok?'<span class="ok" style="font-size:12px">angemeldet</span>':''}</h4>
+  <div class="fld"><label>Adresse</label><input id="lvUrl" class="inp" placeholder="https://….workers.dev" value="${LIVE.url||''}" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+  ${ok?`<div style="font-size:13px">Schlüssel auf dem Server: Demo ${LVT.demo?'✅':'❌'} · Live ${LVT.live?'✅':'❌'} · gültig bis ${new Date(LVT.exp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</div>
+   <div class="row"><button id="lvTest">Verbindung testen</button><button id="lvOut2">Abmelden</button></div>`:
+   `<div class="fld"><label>Passwort</label><input id="lvPw" type="password" class="inp" placeholder="dein APP_PASSWORD" autocomplete="current-password"></div><div class="row"><button id="lvIn" class="on">Anmelden</button></div>`}
+  <div id="lvMsg" style="font-size:13px;margin-top:4px"></div></div>
+ <div class="card"><h4><span>🔐 Face ID</span>${LIVE.pk?'<span class="ok" style="font-size:12px">eingerichtet</span>':''}</h4>
+  ${faceAvail()?`<div class="row"><button id="lvFace">${LIVE.pk?'Neu einrichten':'Face ID einrichten'}</button>${LIVE.pk?'<button id="lvFaceT">Testen</button>':''}</div>
+  <label class="row" style="font-size:13px"><input type="checkbox" id="lvFO" ${LIVE.faceOrder?'checked':''}> Vor jeder Live-Order Face ID abfragen (ab Schritt 3)</label>`:'<div class="warn" style="font-size:13px">Face ID geht nur in der installierten App auf dem iPhone.</div>'}
+  <div class="mut" style="font-size:11px">Bybit Live lässt sich nur mit Passwort-Anmeldung und Face ID einschalten.</div></div>
+ <div class="card"><h4><span>🔑 Schlüssel-Erinnerung</span></h4>${kd('demo')}${kd('live')}<div class="mut" style="font-size:11px">Bybit-Schlüssel ohne IP-Sperre gelten 90 Tage. Die App erinnert dich ab 10 Tagen vorher.</div></div>
+ <div class="card"><h4><span>🧰 Einrichtungs-Hilfe</span></h4><div class="row"><button id="lvGen">TOKEN_SECRET erzeugen</button></div><div id="lvGenOut" style="font-size:12px;word-break:break-all"></div></div>`;
+ const msg=(t,c)=>{$('#lvMsg').innerHTML=`<span class="${c||''}">${t}</span>`};
+ el.querySelectorAll('[data-md]').forEach(b=>b.onclick=()=>setMode(b.dataset.md));
+ $('#lvUrl').onchange=()=>{let u=$('#lvUrl').value.trim();if(u&&!/^https?:\/\//.test(u))u='https://'+u;LIVE.url=u.replace(/\/+$/,'');liveSave();LVT=null;store('wdesk_lvtok',null);lvOpen()};
+ const li=$('#lvIn');if(li)li.onclick=async()=>{const pw=$('#lvPw').value;if(!LIVE.url){msg('Bitte zuerst die Server-Adresse eintragen','warn');return}if(!pw){msg('Passwort eingeben','warn');return}msg('Melde an …');
+  try{const p=await lvApi('/ping');if(!p||p.app!=='wellen-desk')throw new Error('Das ist nicht dein Wellen-Desk-Server');await lvLogin(pw);toast('Angemeldet ✅');lvOpen()}catch(e){msg(e.message,'bad')}};
+ const lo=$('#lvOut2');if(lo)lo.onclick=()=>{LVT=null;store('wdesk_lvtok',null);LVU=false;if(LIVE.mode!=='app'){LIVE.mode='app';liveSave()}updMode();renderPanel();lvOpen()};
+ const lt=$('#lvTest');if(lt)lt.onclick=async()=>{msg('Teste …');const res=[];
+  try{const s=await lvApi('/ping');res.push(`Server ✅ (Rechenzentrum ${s.colo||'?'}${s.country?', '+s.country:''})`)}catch(e){msg('Server: '+e.message,'bad');return}
+  for(const e of ['demo','live']){if(!LVT[e])continue;try{const w=await bb('GET','/v5/account/wallet-balance',{accountType:'UNIFIED'},e);const W=w.list&&w.list[0];res.push(`Bybit-${e==='live'?'Live':'Demo'} ✅ Guthaben ${money(+(W&&W.totalEquity)||0)}`)}catch(x){res.push(`<span class="bad">Bybit-${e==='live'?'Live':'Demo'} ❌ ${x.message}</span>`)}}
+  msg(res.join('<br>'))};
+ const f=$('#lvFace');if(f)f.onclick=async()=>{if(await faceSetup())lvOpen()};const ft=$('#lvFaceT');if(ft)ft.onclick=async()=>{if(await faceCheck())toast('Face ID ✅')};
+ const fo=$('#lvFO');if(fo)fo.onchange=()=>{LIVE.faceOrder=fo.checked;liveSave()};
+ el.querySelectorAll('[data-kd]').forEach(i=>i.onchange=()=>{const v=i.value?Date.parse(i.value+'T12:00:00'):null;if(v)LIVE.kd[i.dataset.kd]=v;else delete LIVE.kd[i.dataset.kd];liveSave();lvOpen()});
+ $('#lvGen').onclick=()=>{const s=b64u(crypto.getRandomValues(new Uint8Array(32)));$('#lvGenOut').innerHTML=`<code>${s}</code><br><button id="lvCp" style="margin-top:4px">Kopieren</button>`;$('#lvCp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(s).then(()=>toast('Kopiert ✅'),()=>toast('Bitte markieren und kopieren'))}};
+ $('#mLive').classList.add('open')}
+$('#modeBtn').onclick=()=>{if(LIVE.mode==='blive'&&!LVU)lvUnlock();else lvOpen()};
+setTimeout(()=>{updMode();lvRefresh(true)},1500);
+
 /* ---------- Menü oben rechts ---------- */
 function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Math.floor((Date.now()-lb)/864e5):null,th=(THEMES[document.documentElement.dataset.theme]||{}).name||'';
  const hid=[!VIS.pos&&'Positionen',!VIS.bots&&'Bots',!VIS.draw&&'Zeichnungen'].filter(Boolean);
@@ -1597,6 +1695,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   ${FEAT.report?R('rep','📈','Wochen-Bericht',''):''}
   ${FEAT.train?R('train','🎯','Replay-Training',TR.rounds?TR.pts+' Punkte':''):''}
   ${R('bt','🧪','SK-Backtest','')}</div>
+  <div class="mgt">Konto</div><div class="mgrp">${R('live','🔗','Börse & Live-Konto',LIVE.mode==='app'?'Demo (App)':LIVE.mode==='bdemo'?'Bybit-Demo':'BYBIT LIVE')}</div>
   <div class="mgt">Funktionen</div><div class="mgrp">
   ${R('feat','🧩','Funktionen ein/aus',Object.keys(FTXT).filter(k=>FEAT[k]).length+' von '+Object.keys(FTXT).length+' an')}
   ${R('guard','🛡️','Schutz-Regeln',FEAT.guard?(guardMsg()?'gesperrt':'Limit '+ff(String(GD.max))+' %'):'aus')}</div>
@@ -1618,7 +1717,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   close();
   if(m==='jr')acOpen();
   else if(m==='stat'){acOpen();setTimeout(()=>{const c=$('#sgC');if(c)c.scrollIntoView({block:'start'})},60)}
-  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
+  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='live')lvOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
   else if(m==='design')$('#bDesign').click();else if(m==='m2')$('#bM2').click();else if(m==='csv')$('#file').click();
   else if(m==='help')$('#mHelp').classList.add('open');
   else if(m==='reset'){acOpen();setTimeout(()=>{const r=$('#acReset');if(r)r.scrollIntoView({block:'center'})},60)}});
@@ -1933,7 +2032,7 @@ function bindPos(el){
 const LV={spot:'open',fut:'open',bots:'open'};
 function renderPanel(){if(S.bg)return;
  if(S.tab==='spot'||S.tab==='fut'){const m=S.tab,ps=AC.pos.filter(p=>pmode(p)===m),os=AC.ord.filter(o=>(o.mode||'fut')===m);
-  let h=`<div class="card"><h4><span>${m==='spot'?'Spot-Bestand':'Futures-Positionen'} (${ps.length})</span><button id="pnVis">👁</button><button id="pnPanic" class="danger">🚨 Alle schließen</button></h4><div class="mut" style="font-size:12px">Konto ${money(AC.bal)} · frei ${money(avail())}</div>`;
+  let h=lvCard(m)+`<div class="card"><h4><span>${LIVE.mode!=='app'?'App-Übungskonto · ':''}${m==='spot'?'Spot-Bestand':'Futures-Positionen'} (${ps.length})</span><button id="pnVis">👁</button><button id="pnPanic" class="danger">🚨 Alle schließen</button></h4><div class="mut" style="font-size:12px">Konto ${money(AC.bal)} · frei ${money(avail())}</div>`;
   const hs=AC.hist.filter(t=>(t.mode||'fut')===m),v=LV[m]||'open';
   h+=`<div class="seg" style="margin:8px 0"><button data-lv="open" class="${v==='open'?'on':''}">Offen (${ps.length+os.length})</button><button data-lv="old" class="${v==='old'?'on':''}">Verlauf (${hs.length})</button></div>`;
   if(v==='open'){if(!ps.length&&!os.length)h+='<div class="mut" style="font-size:13px;margin-top:6px">Nichts offen</div>';ps.forEach(p=>h+=posHTML(p));os.forEach(o=>h+=ordHTML(o))}
@@ -1942,7 +2041,7 @@ function renderPanel(){if(S.bg)return;
    hs.slice().reverse().slice(0,50).forEach(t=>{if(t.id==null)t.id='h'+AC.hist.indexOf(t)+'_'+t.t1;h+=`<tr data-jr="${t.id}" style="cursor:pointer"><td style="padding:6px 0">${new Date(t.t1).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} <b class="${t.dir>0?'ok':'bad'}">${m==='spot'?'Kauf':t.dir>0?'Long':'Short'}</b> ${t.label}${t.lev>1?' '+t.lev+'×':''}${t.note?' 📝':''}<br><span class="mut" style="font-size:12px">${fmt(t.entry)} → ${fmt(t.exit)} · ${t.why}</span></td><td style="text-align:right" class="${t.pnl>=0?'ok':'bad'}">${money(t.pnl)}<br><small>${fR(t.R)}</small></td></tr>`});
    h+='</table><div class="mut" style="font-size:11px;margin-top:4px">Antippen → Tagebuch mit Bildern und Notiz</div>'}}
   h+='</div>';
-  $('#pnList').innerHTML=h;bindPos($('#pnList'));$('#pnList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV[m]=b.dataset.lv;renderPanel()});$('#pnList').querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});$('#pnVis').onclick=visOpen;$('#pnPanic').onclick=()=>panic(m)}
+  $('#pnList').innerHTML=h;bindPos($('#pnList'));lvBind($('#pnList'));if(LIVE.mode!=='app')lvRefresh();$('#pnList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV[m]=b.dataset.lv;renderPanel()});$('#pnList').querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});$('#pnVis').onclick=visOpen;$('#pnPanic').onclick=()=>panic(m)}
  else if(S.tab==='bots')renderBots()}
 
 /* account modal */
@@ -2238,7 +2337,7 @@ $('#tkMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;TK.mode
 $('#tkBox').addEventListener('input',tkUpd);$('#tkBox').addEventListener('change',tkUpd);
 document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{S.pick={field:b.dataset.pick};$('#mTrade').classList.remove('open');updHint()});
 $('#tkSK').onclick=tkFromSK;
-$('#tkSend').onclick=()=>{const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}const go=()=>{$('#mTrade').classList.remove('open');placeOrder(o)};if(FEAT.check&&!isRp())ckOpen(o,go);else go()};
+$('#tkSend').onclick=()=>{if(LIVE.mode!=='app'){toast('Echte Orders an Bybit kommen in Schritt 3 – jetzt nur Anzeige. Zum Üben oben auf „DEMO“ umschalten.');return}const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}const go=()=>{$('#mTrade').classList.remove('open');placeOrder(o)};if(FEAT.check&&!isRp())ckOpen(o,go);else go()};
 $('#bType').onclick=e=>{const b=e.target.closest('button');if(!b)return;BT.type=b.dataset.v;renderBots()};
 $('#pBots').addEventListener('input',e=>{if(BT.type!=='elliott')botUpd()});$('#eTestB').onclick=()=>{$('#eRes').innerHTML='<div class="mut">Rechne …</div>';setTimeout(()=>eTest(),30)};$('#eTP').onchange=e=>{EB.tp=e.target.checked};$('#eHTF').onchange=e=>{EB.htf=e.target.checked};$('#bStart').onclick=botStart;$('#bSug').onclick=botSuggest;
 $('#hPin').onchange=e=>{HM.pin=e.target.checked;store('wdesk_hm',HM);req()};$('#hCan').onchange=e=>{HM.candles=e.target.checked;store('wdesk_hm',HM);req()};$('#hOver').onchange=e=>{HM.over=e.target.checked;store('wdesk_hm',HM);req()};$('#hLiqOn').onchange=e=>{VIS.liq=e.target.checked;saveVis();req()};
