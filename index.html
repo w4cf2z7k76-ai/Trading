@@ -230,7 +230,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <label class="row"><input type="checkbox" id="oZZ" checked> ZigZag anzeigen</label>
   <label class="row"><input type="checkbox" id="oEW" checked> Elliott-Wellen suchen (1–5, ABC, Dreieck)</label>
   <label class="row"><input type="checkbox" id="oSK" checked> SK-Setup (0-A-B) suchen</label>
-  <div class="row"><button id="aRun" class="on">Analyse starten</button><button id="aNB">📊 Noten testen</button><button id="aClear">Auto entfernen</button><button data-close>Schließen</button></div>
+  <div class="row" style="flex-wrap:wrap"><button id="aRun" class="on">Analyse starten</button><button id="aNB">📊 Noten testen</button><button id="aClear">Auto entfernen</button><button data-close>Schließen</button></div>
 </div></div>
 
 <div class="modal" id="mBT"><div class="box" style="width:min(96%,540px)">
@@ -318,6 +318,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mNB"><div class="box" style="width:min(96%,520px)"><h3>📊 Backtest der Noten</h3><div id="nbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="nbGo" class="on">Test starten</button><button data-close>Schließen</button></div></div></div>
+<div class="modal" id="mLA"><div class="box" style="width:min(96%,520px)"><h3>🔴 Live-Analysen</h3><div id="laOut" style="max-height:64vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mInbox"><div class="box" style="width:min(96%,520px)"><h3>🔔 Mitteilungen</h3><div id="inbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="inbRead">✓ Alle gelesen</button><button id="inbClr">Löschen</button><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mLive"><div class="box" style="width:min(96%,500px)"><h3>🔗 Börse & Live-Konto</h3><div id="lvOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mSym"><div class="box" style="width:min(96%,480px)">
@@ -619,17 +620,13 @@ function defaultDev(){const B=S.bars,n=Math.min(150,B.length);let s=0;for(let i=
 const DEVS=[.005,.01,.02,.03,.05,.08,.12,.2];
 function nearestDev(v){return DEVS.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)}
 function runAuto(){
- const B=S.bars;S.drawings=S.drawings.filter(d=>!d.auto);const found=[];const R=S.optEW?ewaFind(B):null;
+ const B=S.bars;S.drawings=S.drawings.filter(d=>!d.auto);const res=autoCompute(B,{ew:S.optEW,sk:S.optSK}),R=res.R;S.drawings.push(...res.draws);const found=res.found;
  const zdev=R&&R.best?R.best.dev:(S.devAuto?ewaLevels(B)[1]:S.dev);S.zz=zigzag(B,zdev);S.zzHid=false;S.ewaDev=zdev;
- const put=(c,alt)=>{const d={type:c.type,auto:true,pts:c.pts,q:c.score,g:c.g,st:c.status,lvl:c.dev};if(alt)d.alt=true;S.drawings.push(d);
-  if(c.imp&&!alt)S.drawings.push({type:'ew',auto:true,pts:c.imp,q:c.score,g:c.g,st:'Impuls 1–5 (fertig)',lvl:c.dev,sub:true})};
- if(R&&R.best){put(R.best,false);found.push(`${R.best.status} (${R.best.score} %)`);if(R.alt){put(R.alt,true);found.push(`Alternative: ${R.alt.status} (${R.alt.score} %)`)}}
- if(S.optSK){const k=skFind(B);if(k){S.drawings.push({type:'sk',auto:true,pts:k.pts,q:k.score,g:k.g,st:'SK-Setup',lvl:k.dev});found.push(`SK ${k.score} %`)}}
  if(R&&R.best&&!S.bg){try{const P=S.drawings.filter(d=>d.auto&&!d.alt).flatMap(d=>d.pts);const mn=Math.min(...P.map(q=>q.i)),mx=B.length-1;
   S.bw=clamp(PW/((mx-mn)*1.25+12),2,30);S.end=mx+Math.round((mx-mn)*.2)+6;S.yShift=0;S.yZoom=1;clampEnd();calcScale();
   const ps=P.map(q=>q.p);for(let i=mn;i<=mx;i++)ps.push(B[i].h,B[i].l);const lo=Math.min(...ps),hi=Math.max(...ps),bm=(yMin+yMax)/2,bh=(yMax-yMin)/2,half=(hi-lo)/2*1.15||bh;S.yShift=(lo+hi)/2-bm;S.yZoom=bh/half}catch(_){}}
- save();renderSheet();req();
- toast(found.length?'⚡ '+found.join(' · ')+' – Details in 📋':'Keine gültige Struktur gefunden – andere Zeiteinheit probieren');
+ save();const live=laUpsert(R,res.k);renderSheet();req();
+ toast(found.length?'⚡ '+found.join(' · ')+(live?' · 🔴 Live-Analyse an':'')+' – Details in 📋':'Keine gültige Struktur gefunden – andere Zeiteinheit probieren'+(live?' · 🔴 Live-Analyse wartet auf Struktur':''));
 }
 
 /* ---------- Auto-Analyse 2.0: ATR-Abweichung, mehrere Stufen, Qualitäts-Punkte ---------- */
@@ -661,7 +658,7 @@ function ewaFind(B){const lv=ewaLevels(B),RS=rsiA(B.map(b=>b.c),14),htf=ewaHtf(B
  lv.forEach((dev,li)=>{const z=zigzag(B,dev);if(z.length<3)return;const L=z.length-1;
   // Impuls-Zählungen (vollständig oder laufend), letzter Punkt = jüngster Pivot
   for(const n of [6,5,4,3]){for(const end of n===6?[L,L-1]:[L]){const st=end-n+1;if(st<0)continue;const pts=z.slice(st,end+1);const P=pts.map(x=>x.p),I=pts.map(x=>x.i);
-    if(!ewaRules(P))continue;const G=ewaGrade(B,P,I,RS,htf);const age=B.length-1-I[I.length-1];
+    if(!ewaRules(P))continue;{const px=B[B.length-1].c,d0=Math.sign(P[1]-P[0])||1;if(n<=3?d0*(px-P[0])<0:n<=5?d0*(px-P[1])<0:false)continue}const G=ewaGrade(B,P,I,RS,htf);const age=B.length-1-I[I.length-1];
     // Folge-ABC nach fertigem Impuls
     if(n===6&&end<L){const nx=z.slice(end,L+1);if(nx.length>=3){const ab=[pts[5],...nx.slice(1,4)].map(x=>({i:x.i,p:x.p}));const A=analyze({type:'abc',pts:ab});
       if(A.checks.every(c=>c.ok||c.soft))C.push({type:'abc',pts:ab,imp:pts.map(x=>({i:x.i,p:x.p})),score:Math.round(G.score*.9),g:G.g,dev,li,status:ab.length>=4?'ABC-Korrektur '+(A.pattern||''):'Korrektur läuft · Welle C erwartet',rank:G.score+30-li*2})}}
@@ -850,7 +847,7 @@ function draw(){LB=[];
  if(S.cross)tag(PW+1,S.cross.y,fmt(pOf(S.cross.y)),'#6e7681','#fff');
  // legend
  ctx.font='11px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';
- const src=S.full?'⏪ REPLAY':S.src==='binance'?'● LIVE':S.src==='demo'?'Demo':'CSV';const lg=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}   O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}`;
+ const src=(S.full?'⏪ REPLAY':S.src==='binance'?'● LIVE':S.src==='demo'?'Demo':'CSV')+(laFind()?' · 🔴 Live-Analyse':'');const lg=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}   O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}`;
  ctx.fillStyle=hm?'rgba(0,0,0,.7)':TH.lbl;ctx.fillRect(4,S.tool!=='cursor'?44:4,Math.min(PW-8,ctx.measureText(lg).width+8),17);
  ctx.fillStyle=info.c>=info.o?TH.up:TH.dn;ctx.fillText(lg,8,(S.tool!=='cursor'?44:4)+3);
  if(S.tab!=='heat')indLegend((S.tool!=='cursor'?44:4)+20,S._ci);
@@ -885,8 +882,9 @@ function renderDrawing(d,isCur){
 /* ---------- sheet ---------- */
 function renderSheet(){
  const el=$('#sheetC');const B=S.bars,last=B[B.length-1];
- let h=`<div class="card"><h4><span>${S.custom||S.sym} · ${S.custom?'CSV':S.tf}${S.custom?'':' <small class="mut">(Demo-Daten)</small>'}</span><button id="sClose">Schließen</button></h4>
+ let h=`<div class="card"><h4><span>${S.custom||S.sym} · ${S.custom?'CSV':S.tf}${S.custom?'':S.src==='binance'?' <small class="mut">(Live)</small>':' <small class="mut">(Demo-Daten)</small>'}</span><button id="sClose">Schließen</button></h4>
  <table><tr><td>Letzter Kurs</td><td>${fmt(last.c)}</td></tr><tr><td>Hoch / Tief (geladen)</td><td>${fmt(Math.max(...B.map(b=>b.h)))} / ${fmt(Math.min(...B.map(b=>b.l)))}</td></tr><tr><td>Zeichnungen</td><td>${S.drawings.length}</td></tr></table></div>`;
+ h+=laSheet();
  if(!S.drawings.length)h+=`<p class="mut">Noch keine Analysen. Werkzeug unten wählen (z. B. <b>SK</b> oder <b>1-5</b>) und Punkte im Chart antippen – oder ⚡ Auto nutzen.</p>`;
  S.drawings.slice().reverse().forEach((d,ri)=>{const idx=S.drawings.length-1-ri;const R=analyze(d);const T=TOOLS[d.type];
   h+=`<div class="card"><h4><span><span class="dot" style="background:${T.color}"></span>${T.name}${d.auto?' <small class="mut">(Auto)</small>':''}${d.hidden?' <small class="mut">(ausgeblendet)</small>':''} ${R.checks.length?(R.valid?'<span class="ok">✓</span>':'<span class="bad">✗</span>'):''}</span><button data-focus="${idx}">Zeigen</button><button data-del="${idx}">🗑</button></h4>`;
@@ -1007,7 +1005,8 @@ function lpOpen(h){LP.hit=h;const nAuto=S.drawings.filter(d=>d.auto&&!d.hidden).
 
 /* ---------- data / persistence ---------- */
 function key(){return 'wdesk_'+(S.custom?'csv_'+S.custom:(S.src==='binance'?'live_':'')+S.sym+'_'+S.tf)}
-function save(){store(key(),S.drawings)}
+function save(){if(S.src==='binance'&&!S.custom&&!S.full&&S.bars&&S.bars.length){const B=S.bars,L=B.length-1;S.drawings.forEach(d=>(d.pts||[]).forEach(q=>{q.t=q.i>=0&&q.i<=L?B[q.i].t:B[L].t+(q.i-L)*S.tfms}))}store(key(),S.drawings)}
+function reAnchor(){if(S.src!=='binance'||S.custom||!S.bars||!S.bars.length)return;const B=S.bars,L=B.length-1;const f=t=>{let lo=0,hi=L;while(lo<=hi){const m=(lo+hi)>>1;if(B[m].t===t)return m;if(B[m].t<t)lo=m+1;else hi=m-1}return t>B[L].t?L+Math.round((t-B[L].t)/S.tfms):Math.round((t-B[0].t)/S.tfms)};S.drawings.forEach(d=>(d.pts||[]).forEach(q=>{if(q.t!=null)q.i=f(q.t)}))}
 async function loadData(){
  stopWS();const tok=loadData.tok=(loadData.tok||0)+1;
  if(S.custom){const c=(S.csvMem&&S.csvMem.name===S.custom)?S.csvMem:store('wdesk_csvdata');if(c&&c.name===S.custom){S.bars=c.bars.map(b=>({...b}))}else{S.custom=null}}
@@ -1017,7 +1016,7 @@ async function loadData(){
   if(got&&got.length>50){S.bars=got;S.src='binance'}else{S.bars=genBars(S.sym,S.tf);S.src='demo'}
   S.tfms=TFMS[S.tf]}
  else{S.src='csv';const ds=[];for(let i=1;i<Math.min(S.bars.length,50);i++)ds.push(S.bars[i].t-S.bars[i-1].t);ds.sort((a,b)=>a-b);S.tfms=ds[ds.length>>1]||864e5}
- S.drawings=store(key())||[];S.zz=null;S.btShow=null;$('#btOut')&&($('#btOut').innerHTML='');S.cur=null;S.cross=null;S.dev=nearestDev(defaultDev());
+ S.drawings=store(key())||[];reAnchor();S.zz=null;S.btShow=null;$('#btOut')&&($('#btOut').innerHTML='');S.cur=null;S.cross=null;S.dev=nearestDev(defaultDev());
  S.heatC=null;S.tfData={};S.oi=null;resetView();updQuote();renderSheet();updHint();setTool('cursor');renderAcct();renderPanel();req();startWS();startLiqWS();loadOI();bgSync();m2Load(true);foLoad(true);setTimeout(divNotify,500);
 }
 function symLbl(){const b=$('#symBtn');if(b)b.textContent=(S.custom?'📄 '+S.custom:S.sym)+' ▾'}
@@ -1345,9 +1344,85 @@ async function bgSync(){const need=bgNeeded();
 setInterval(()=>bgSync(),20000);
 
 
+
+/* ---------- Live-Analyse: Auto-Analyse bleibt dran und führt sich nach ---------- */
+const LA=store('wdesk_la')||[];const LAB={};let laBusy=false;
+const laSave=()=>store('wdesk_la',LA);
+const laKeyOf=e=>e.src+':'+e.sym+'|'+e.tf;
+const laCurKey=()=>S.custom||S.full?null:S.src+':'+S.sym+'|'+S.tf;
+const laFind=()=>{const k=laCurKey();return k?LA.find(e=>laKeyOf(e)===k):null};
+const laIsOpen=e=>!S.full&&!S.custom&&laKeyOf(e)===laCurKey()&&S.bars&&S.bars.length>50;
+function laCtx(e,B,fn){const sv={};const F=[...BGF,'devAuto','dev','bg'];F.forEach(k=>sv[k]=S[k]);
+ Object.assign(S,{sym:e.sym,tf:e.tf,bars:B,tfms:TFMS[e.tf]||S.tfms,tfData:{},custom:null,src:e.src,full:false,bg:true,devAuto:e.devAuto,dev:e.dev});try{return fn()}finally{F.forEach(k=>S[k]=sv[k])}}
+function autoCompute(B,o){const out=[],found=[];const R=o.ew?ewaFind(B):null;
+ const put=(c,alt)=>{const d={type:c.type,auto:true,pts:c.pts.map(q=>({i:q.i,p:q.p})),q:c.score,g:c.g,st:c.status,lvl:c.dev};if(alt)d.alt=true;out.push(d);
+  if(c.imp&&!alt)out.push({type:'ew',auto:true,pts:c.imp.map(q=>({i:q.i,p:q.p})),q:c.score,g:c.g,st:'Impuls 1–5 (fertig)',lvl:c.dev,sub:true})};
+ if(R&&R.best){put(R.best,false);found.push(`${R.best.status} (${R.best.score} %)`);if(R.alt){put(R.alt,true);found.push(`Alternative: ${R.alt.status} (${R.alt.score} %)`)}}
+ let k=null;if(o.sk){k=skFind(B);if(k){out.push({type:'sk',auto:true,pts:k.pts.map(q=>({i:q.i,p:q.p})),q:k.score,g:k.g,st:'SK-Setup',lvl:k.dev});found.push(`SK ${k.score} %`)}}
+ return{draws:out,found,R,k}}
+// Ungültigkeits-Marke und nächstes Ziel einer Zählung
+function laInfo(c,B,kind){const P=c.pts.map(q=>q.p),T=c.pts.map(q=>B[q.i]?B[q.i].t:null),n=P.length,o={type:kind==='sk'?'sk':c.type,st:kind==='sk'?'SK-Setup':c.status,q:c.score,t0:T[0],n,inv:null,invUp:false,tgt:null,tgtUp:false,tl:''};
+ if(kind==='sk'){const d=Math.sign(P[1]-P[0]);o.inv=P[0];o.invUp=d<0;o.tgt=P[2]+(P[1]-P[0]);o.tgtUp=d>0;o.tl='SK-Ziel';return o}
+ const d=Math.sign(P[1]-P[0])||1,w1=Math.abs(P[1]-P[0]);
+ if(c.type==='ew'){if(n<=3){o.inv=P[0];o.invUp=d<0;o.tgt=P[2]+d*w1*1.618;o.tgtUp=d>0;o.tl='Ziel Welle 3'}
+  else if(n<=5){o.inv=P[1];o.invUp=d<0;if(n===5){o.tgt=P[4]+d*w1;o.tgtUp=d>0;o.tl='Ziel Welle 5'}}
+  else{o.inv=P[5];o.invUp=d>0;o.tgt=retr(P[0],P[5],.382);o.tgtUp=d<0;o.tl='Korrekturziel 38,2 %'}}
+ else if(c.type==='abc'){const dA=Math.sign(P[1]-P[0]);if(n>=4){o.inv=P[3];o.invUp=dA>0}else if(n===3){o.tgt=P[2]+dA*Math.abs(P[1]-P[0]);o.tgtUp=dA>0;o.tl='Ziel Welle C'}}
+ return o}
+function laNew(R,k,B){return{cur:R&&R.best?laInfo(R.best,B):{none:true},skc:k?laInfo(k,B,'sk'):null}}
+function laUpsert(R,k){const key=laCurKey();if(!key)return false;let e=LA.find(x=>laKeyOf(x)===key);
+ if(!e){if(LA.length>=10){toast('Maximal 10 Live-Analysen – unter ☰ › Live-Analysen eine beenden');return false}e={id:Date.now().toString(36),src:S.src,sym:S.sym,tf:S.tf,created:Date.now(),hist:[]};LA.push(e)}
+ const B=S.bars,L=B.length-1;Object.assign(e,{ew:!!S.optEW,sk:!!S.optSK,devAuto:S.devAuto,dev:S.dev,lastT:B[L-1].t,chkT:B[L].t,bH:B[L].h,bL:B[L].l,ts:Date.now()},laNew(R,k,B));
+ e.hist.unshift({t:Date.now(),m:'Gestartet: '+(e.cur.none?'keine Zählung':e.cur.st+' · '+e.cur.q+' %')});if(e.hist.length>30)e.hist.length=30;laSave();return true}
+function laRemove(e){const i=LA.indexOf(e);if(i>=0)LA.splice(i,1);delete LAB[e.id];laSave()}
+async function laBars(e){if(laIsOpen(e))return S.bars;if(e.src!=='binance'||!BIN[e.sym])return null;let c=LAB[e.id];
+ if(!c||Date.now()-c.full>6*36e5){try{c=LAB[e.id]={bars:await fetchBinance(e.sym,e.tf),full:Date.now()}}catch(_){return c?c.bars:null}return c.bars}
+ try{const k=await getJ(`https://api.binance.com/api/v3/klines?symbol=${BIN[e.sym]}&interval=${BINTF[e.tf]}&limit=3`);const B=c.bars;
+  k.forEach(x=>{const nb={t:+x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],v:+x[5]},l=B[B.length-1];if(nb.t===l.t)Object.assign(l,nb);else if(nb.t>l.t)B.push(nb)});if(B.length>1200)B.splice(0,B.length-1200)}catch(_){}
+ return c.bars}
+function laApply(e,B,draws){draws.forEach(d=>d.pts.forEach(q=>{q.t=B[q.i]?B[q.i].t:null}));
+ const merge=arr=>{const hid=new Set(arr.filter(d=>d.auto&&d.hidden).map(d=>d.type+(d.alt?'*':'')));draws.forEach(d=>{if(hid.has(d.type+(d.alt?'*':'')))d.hidden=true});return arr.filter(d=>!d.auto).concat(draws)};
+ if(laIsOpen(e)){S.drawings=merge(S.drawings);save();req();if($('#sheet')&&$('#sheet').classList.contains('open'))renderSheet()}
+ else{const k='wdesk_'+(e.src==='binance'?'live_':'')+e.sym+'_'+e.tf;store(k,merge(store(k)||[]))}}
+function laProc(e,B,msgs){const L=B.length-1;if(L<60)return;const nm=`${e.sym.replace('/USD','')} ${e.tf}`,add=(title,body)=>{msgs.push({e,title:`🔴 ${nm}: ${title}`,body,short:`${nm} – ${title}`});e.hist.unshift({t:Date.now(),m:title+(body?' · '+body:'')});if(e.hist.length>30)e.hist.length=30};
+ let hi=-Infinity,lo=Infinity;for(let i=L;i>=0&&(i===L||B[i].t>=(e.chkT||B[L].t));i--){const b=B[i];if(b.t===e.chkT&&e.bH!=null){if(b.h>e.bH)hi=Math.max(hi,b.h);if(b.l<e.bL)lo=Math.min(lo,b.l)}else{hi=Math.max(hi,b.h);lo=Math.min(lo,b.l)}}e.chkT=B[L].t;e.bH=B[L].h;e.bL=B[L].l;
+ const closedT=B[L-1].t;let rerun=e.lastT!==closedT;
+ const chk=(c,lab)=>{if(!c||c.none)return;if(!c.dead&&c.inv!=null&&(c.invUp?hi>c.inv:lo<c.inv)){c.dead=true;rerun=true;add(`${lab} ungültig`,`${c.st} – Marke ${fmt(c.inv)} gebrochen`)}
+  if(!c.hit&&!c.dead&&c.tgt!=null&&(c.tgtUp?hi>=c.tgt:lo<=c.tgt)){c.hit=true;add(`${c.tl} erreicht`,`${fmt(c.tgt)} · ${c.st}`)}};
+ chk(e.cur,'Zählung');chk(e.skc,'SK-Setup');e.ts=Date.now();if(!rerun)return;
+ const res=laCtx(e,B,()=>autoCompute(B,{ew:e.ew,sk:e.sk})),nw=laNew(res.R,res.k,B);e.lastT=closedT;
+ if(e.ew){const o=e.cur,n=nw.cur;
+  const weak=!n.none&&n.q<35;
+  if(n.none||weak){if(o&&!o.none&&(o.dead||o.q>=35))add('keine starke Zählung mehr','Analyse läuft weiter')}
+  else if(!o||o.none||o.q<35)add('neue Zählung',`${n.st} · ${n.q} %`);
+  else if(o.type===n.type&&o.t0===n.t0){if(o.st!==n.st)add(n.st,`${n.q} %${n.tgt!=null?' · '+n.tl+' '+fmt(n.tgt):''}`);if(o.hit)n.hit=true}
+  else add(o.dead?'neue Zählung':'Zählung gewechselt',`${n.st} · ${n.q} %${o.dead?'':' (vorher: '+o.st+')'}`);
+  e.cur=n}
+ if(e.sk){const o=e.skc,n=nw.skc;if(n&&n.q>=50&&(!o||o.t0!==n.t0))add('neues SK-Setup',`${n.q} % · Ziel ${fmt(n.tgt)}`);if(n&&o&&o.t0===n.t0&&o.hit)n.hit=true;e.skc=n}
+ laApply(e,B,res.draws)}
+async function laKick(reason){if(laBusy||!LA.length)return;laBusy=true;const msgs=[];
+ try{for(const e of LA.slice()){try{const B=await laBars(e);if(B&&B.length>60)laProc(e,B,msgs)}catch(_){}}}finally{laBusy=false}laSave();
+ if(msgs.length){if(reason==='open'&&msgs.length>1)notify('live','🔴 Während du weg warst',msgs.map(m=>m.short).join(' · '),{tab:'chart',sym:null});
+  else msgs.forEach(m=>notify('live',m.title,m.body,{sym:m.e.src==='binance'||m.e.src==='demo'?m.e.sym:null,tf:m.e.tf,tab:'chart'}));if(!document.hidden)toast(msgs[0].title)}
+ if($('#mLA')&&$('#mLA').classList.contains('open'))laOpen()}
+setInterval(()=>laKick('tick'),60000);setTimeout(()=>laKick('open'),4000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>laKick('open'),2500)});
+function laAgo(t){const m=Math.round((Date.now()-t)/6e4);return m<1?'gerade':m<60?'vor '+m+' Min.':'vor '+Math.round(m/60)+' Std.'}
+function laOpen(){const el=$('#laOut');
+ el.innerHTML=LA.length?LA.map(e=>{const c=e.cur||{};return `<div class="pos" data-la="${e.id}"><b>${e.sym}</b> ${e.tf}${e.src==='demo'?' <small class="mut">Demo – nur bei offenem Chart</small>':''}<br>
+  <span style="font-size:13px">${c.none?'<span class="mut">keine gültige Zählung</span>':`${c.dead?'<s>':''}${c.st}${c.dead?'</s> <span class="bad">ungültig</span>':''} · <b>${c.q} %</b>`}${e.skc?` · SK ${e.skc.q} %`:''}</span><br>
+  <span class="mut" style="font-size:11px">${c.inv!=null&&!c.dead?'Ungültig bei '+fmt(c.inv)+' · ':''}${c.tgt!=null&&!c.hit?c.tl+' '+fmt(c.tgt)+' · ':''}geprüft ${laAgo(e.ts||e.created)}</span>
+  ${e.hist&&e.hist.length?`<details style="font-size:12px;margin-top:2px"><summary class="mut">Verlauf (${e.hist.length})</summary>${e.hist.slice(0,10).map(h=>`<div>${new Date(h.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${h.m}</div>`).join('')}</details>`:''}
+  <div class="row"><button data-lao="${e.id}" class="on">Chart öffnen</button><button data-lax="${e.id}" class="danger">Beenden</button></div></div>`}).join('')
+  :'<div class="mut" style="padding:16px 0;text-align:center">Keine Live-Analyse aktiv.<br>⚡ Auto › „Analyse starten“ startet eine für das aktuelle Paar und die Zeiteinheit.</div>';
+ el.querySelectorAll('[data-lao]').forEach(b=>b.onclick=()=>{const e=LA.find(x=>x.id===b.dataset.lao);if(!e)return;$('#mLA').classList.remove('open');setTab('chart');if(!laIsOpen(e))openSymTf(e.sym,e.tf)});
+ el.querySelectorAll('[data-lax]').forEach(b=>b.onclick=()=>{const e=LA.find(x=>x.id===b.dataset.lax);if(!e)return;laRemove(e);if(laKeyOf(e)===laCurKey()){S.drawings=S.drawings.filter(d=>!d.auto);save();req()}else{const k='wdesk_'+(e.src==='binance'?'live_':'')+e.sym+'_'+e.tf;store(k,(store(k)||[]).filter(d=>!d.auto))}toast('Live-Analyse beendet');laOpen()});
+ $('#mLA').classList.add('open')}
+function laSheet(){const e=laFind();if(!e)return'';return `<div class="card"><h4><span>🔴 Live-Analyse ${e.tf}</span><small class="mut">geprüft ${laAgo(e.ts||e.created)}</small></h4>${(e.hist||[]).slice(0,8).map(h=>`<div style="font-size:12px">${new Date(h.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${h.m}</div>`).join('')}<div class="mut" style="font-size:11px;margin-top:4px">Prüft bei jedem Kerzenschluss neu und den Kurs jede Minute auf Ungültigkeit/Ziel. Beenden: ⚡ Auto › „Auto entfernen“.</div></div>`}
+
 /* ---------- Mitteilungen (Posteingang mit rotem Punkt) ---------- */
 const INB=store('wdesk_inbox')||[];
-const INBIC={trade:'💼',bot:'🤖',setup:'🌊',usdtd:'💵',cal:'📅',alarm:'🔔',div:'📐',report:'📈'};
+const INBIC={live:'🔴',trade:'💼',bot:'🤖',setup:'🌊',usdtd:'💵',cal:'📅',alarm:'🔔',div:'📐',report:'📈'};
 const inbN=()=>INB.filter(x=>!x.read).length;
 function inbAdd(kind,title,body,nav){if(nav&&nav.skip)return;try{if(isRp()&&!S.bg)return}catch(_){}
  const n=Object.assign({sym:S.custom?null:S.sym,tf:S.custom?null:S.tf,tab:kind==='bot'?'bots':'chart'},nav||{});
@@ -1377,7 +1452,7 @@ $('#inbClr').onclick=()=>{if(!confirm('Alle Mitteilungen löschen?'))return;INB.
 setTimeout(inbBadge,300);
 
 /* ---------- Benachrichtigungen ---------- */
-const NT=Object.assign({on:false,trade:true,bot:true,setup:false,usdtd:true,cal:true,alarm:true,div:true,report:true,stf:'4h'},store('wdesk_notif')||{});
+const NT=Object.assign({on:false,live:true,trade:true,bot:true,setup:false,usdtd:true,cal:true,alarm:true,div:true,report:true,stf:'4h'},store('wdesk_notif')||{});
 const ntHas=()=>'Notification' in window;
 const ntOK=()=>ntHas()&&Notification.permission==='granted';
 function notify(kind,title,body,nav){try{inbAdd(kind,title,body,nav)}catch(_){}if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
@@ -1427,7 +1502,7 @@ function renderSet(){const el=$('#setOut'),ok=ntOK(),lb=store('wdesk_lastbk');co
  if(!ntHas())h+='<div class="warn" style="font-size:13px">Geht nur in der installierten App (vom Home-Bildschirm geöffnet, iOS 16.4 oder neuer).</div>';
  else{h+=`<div class="row"><button id="ntOn" class="${NT.on&&ok?'on':''}">${NT.on&&ok?'✅ An':'Einschalten'}</button>${NT.on&&ok?'<button id="ntOff">Aus</button><button id="ntTest">Test senden</button>':''}</div>`;
   if(Notification.permission==='denied')h+='<div class="warn" style="font-size:12px">Vom iPhone blockiert – erlauben unter Einstellungen › Mitteilungen › Wellen-Desk.</div>';
-  if(NT.on&&ok)h+=cb('trade','Trades: Stop, Ziele (SK/TP), Order ausgeführt')+cb('bot','Bots: Einstieg, Ausstieg, Stop')+cb('setup','Neue Elliott-Setups (Watchlist, alle 15 Min.)')+cb('usdtd','USDT.D-Alarm (wenn deine Marke gekreuzt wird)')+cb('cal','Wirtschaftskalender: 15 Min. vor wichtigen Terminen')+cb('alarm','Preis-Alarme')+cb('div','Neue Divergenzen (offener Chart)')+cb('report','Wochen-Bericht (sonntags)')+
+  if(NT.on&&ok)h+=cb('live','🔴 Live-Analyse: neue Welle, ungültig, Ziel erreicht')+cb('trade','Trades: Stop, Ziele (SK/TP), Order ausgeführt')+cb('bot','Bots: Einstieg, Ausstieg, Stop')+cb('setup','Neue Elliott-Setups (Watchlist, alle 15 Min.)')+cb('usdtd','USDT.D-Alarm (wenn deine Marke gekreuzt wird)')+cb('cal','Wirtschaftskalender: 15 Min. vor wichtigen Terminen')+cb('alarm','Preis-Alarme')+cb('div','Neue Divergenzen (offener Chart)')+cb('report','Wochen-Bericht (sonntags)')+
    (NT.setup?`<div class="row" style="font-size:13px">Zeiteinheit <span class="chips" id="ntTf" style="margin:0">${TFL.map(t=>`<button data-t="${t}" class="${t===NT.stf?'on':''}">${t}</button>`).join('')}</span></div>`:'');
   h+='<div class="mut" style="font-size:11px;margin-top:4px">Kommen, solange die App offen ist oder gerade erst in den Hintergrund ging. Bei gesperrtem iPhone pausiert iOS die App.</div>'}
  h+='</div>';
@@ -1786,7 +1861,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   ${FEAT.report?R('rep','📈','Wochen-Bericht',''):''}
   ${FEAT.train?R('train','🎯','Replay-Training',TR.rounds?TR.pts+' Punkte':''):''}
   ${R('bt','🧪','SK-Backtest','')}</div>
-  <div class="mgt">Konto</div><div class="mgrp">${R('live','🔗','Börse & Live-Konto',LIVE.mode==='app'?'Demo (App)':LIVE.mode==='bdemo'?'Bybit-Demo':'BYBIT LIVE')}</div>
+  <div class="mgt">Konto</div><div class="mgrp">${R('la','🔴',`Live-Analysen${LA.length?' ('+LA.length+')':''}`,LA.length?LA.map(e=>e.sym.replace('/USD','')+' '+e.tf).slice(0,3).join(', '):'keine aktiv')}${R('live','🔗','Börse & Live-Konto',LIVE.mode==='app'?'Demo (App)':LIVE.mode==='bdemo'?'Bybit-Demo':'BYBIT LIVE')}</div>
   <div class="mgt">Funktionen</div><div class="mgrp">
   ${R('feat','🧩','Funktionen ein/aus',Object.keys(FTXT).filter(k=>FEAT[k]).length+' von '+Object.keys(FTXT).length+' an')}
   ${R('guard','🛡️','Schutz-Regeln',FEAT.guard?(guardMsg()?'gesperrt':'Limit '+ff(String(GD.max))+' %'):'aus')}</div>
@@ -1809,7 +1884,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   close();
   if(m==='jr')acOpen();
   else if(m==='stat'){acOpen();setTimeout(()=>{const c=$('#sgC');if(c)c.scrollIntoView({block:'start'})},60)}
-  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='live')lvOpen();else if(m==='inbox')inbOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
+  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='live')lvOpen();else if(m==='la')laOpen();else if(m==='inbox')inbOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
   else if(m==='design')$('#bDesign').click();else if(m==='m2')$('#bM2').click();else if(m==='csv')$('#file').click();
   else if(m==='help')$('#mHelp').classList.add('open');
   else if(m==='reset'){acOpen();setTimeout(()=>{const r=$('#acReset');if(r)r.scrollIntoView({block:'center'})},60)}});
@@ -2584,6 +2659,7 @@ $('#bAuto').onclick=()=>{const c=$('#devChips');const inf=()=>{$('#devInfo').tex
  $('#oZZ').checked=S.showZZ;$('#oEW').checked=S.optEW;$('#oSK').checked=S.optSK;$('#mAuto').classList.add('open')};
 $('#aRun').onclick=()=>{S.showZZ=$('#oZZ').checked;S.optEW=$('#oEW').checked;S.optSK=$('#oSK').checked;$('#mAuto').classList.remove('open');runAuto()};
 $('#aNB').onclick=nbOpen;$('#nbGo').onclick=nbRun;
+$('#aClear').addEventListener('click',()=>{const e=laFind();if(e){laRemove(e);toast('Auto entfernt · Live-Analyse beendet')}});
 $('#aClear').onclick=()=>{S.drawings=S.drawings.filter(d=>!d.auto);S.zz=null;save();renderSheet();req();$('#mAuto').classList.remove('open')};
 document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m||e.target.hasAttribute('data-close'))m.classList.remove('open')})});
 $('#hUndo').onclick=undo;$('#hCancel').onclick=()=>{if(S.pick){const f=S.pick.field;S.pick=null;updHint();if(f.startsWith('tk'))tkOpen(true);return}setTool('cursor')};
