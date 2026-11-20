@@ -22,6 +22,9 @@ select,button,.btn{background:var(--btn);color:var(--txt);border:1px solid var(-
 button.on{background:var(--onbg);border-color:var(--acc);color:var(--acc)}
 #quote{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;line-height:1.15;padding-left:6px;white-space:nowrap}
 #quote b{font-size:15px}
+#bMenu.has-n::after{content:attr(data-n);position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#ff3b5c;color:#fff;font:700 10px/17px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px var(--bg,#0d1117);pointer-events:none}
+.inb{display:flex;gap:10px;align-items:flex-start;padding:10px 8px;border-bottom:1px solid var(--line);cursor:pointer}.inb.rd{opacity:.55}.inb-ic{position:relative;width:28px;text-align:center;font-size:18px}.inb-ic i{position:absolute;top:-1px;right:0;width:9px;height:9px;border-radius:50%;background:#ff3b5c}.inb-t{font-weight:600;font-size:14px}.inb-b{font-size:13px;margin-top:2px}.inb-w{font-size:11px;color:var(--mut);margin-top:3px}.inb-go{color:var(--mut);align-self:center}
+.mdot{display:inline-block;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff3b5c;color:#fff;font:700 11px/18px system-ui;text-align:center;margin-left:6px}
 #modeBtn{font-weight:700;font-size:12px;letter-spacing:.04em;white-space:nowrap}#modeBtn.mode-bdemo{color:#ffb347!important;border-color:#ffb347!important}#modeBtn.mode-blive{color:#fff!important;background:#e5354f!important;border-color:#ff5c7a!important}
 html.is-live #wrap{border-color:#ff5c7a!important;box-shadow:0 0 0 1px #ff5c7a inset}html.is-live #tabbar{border-color:#ff5c7a!important}html.is-bdemo #wrap{border-color:#ffb347!important}
 #trBar{position:absolute;left:6px;right:6px;bottom:26px;z-index:4;display:none;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;padding:10px;border-radius:20px;background:rgba(24,27,58,.88);border:1px solid var(--acc);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}#trBar button{min-height:40px;flex:1;min-width:0;padding:6px 4px;font-size:14px}
@@ -313,6 +316,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mGuard"><div class="box" style="width:min(96%,460px)"><h3>🛡️ Schutz-Regeln</h3><div id="gdOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
+<div class="modal" id="mInbox"><div class="box" style="width:min(96%,520px)"><h3>🔔 Mitteilungen</h3><div id="inbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="inbRead">✓ Alle gelesen</button><button id="inbClr">Löschen</button><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mLive"><div class="box" style="width:min(96%,500px)"><h3>🔗 Börse & Live-Konto</h3><div id="lvOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mSym"><div class="box" style="width:min(96%,480px)">
   <h3>🔎 Coin wählen</h3>
@@ -1108,7 +1112,7 @@ function closePart(p,px,q,why){q=Math.min(q,p.qty);if(q<=0)return;const fee=px*q
  if(p.qty<=p.qty0*1e-6)finishPos(p,why)}
 function finishPos(p,why){AC.pos=AC.pos.filter(x=>x!==p);const qx=p.exits.reduce((s,e)=>s+e.q,0)||1,avg=p.exits.reduce((s,e)=>s+e.px*e.q,0)/qx,r=p.real/(p.risk$||1);
  AC.hist.push({key:p.key,label:p.label,mode:pmode(p),lev:p.lev||1,dir:p.dir,entry:p.entry,exit:avg,pnl:p.real,R:r,t0:p.t0,t1:nowT(),why,replay:!!p.replay,bot:p.bot||null,wave:p.wave||null,id:p.id,tf:p.btf||p.tf||null,strat:p.bot?'Elliott-Bot':(p.strat||null),note:''});shotLater(p,'b');
- toast(`${p.dir>0?'Long':'Short'} geschlossen (${why}): ${money(p.real)} · ${fR(r)}`);notify(p.bot?'bot':'trade',`${p.real>=0?'✅':'❌'} ${p.label} ${p.dir>0?'Long':'Short'} geschlossen`,`${why} · ${money(p.real)} · ${fR(r)}`)}
+ toast(`${p.dir>0?'Long':'Short'} geschlossen (${why}): ${money(p.real)} · ${fR(r)}`);if(!p.replay)notify(p.bot?'bot':'trade',`${p.real>=0?'✅':'❌'} ${p.label} ${p.dir>0?'Long':'Short'} geschlossen`,`${why} · ${money(p.real)} · ${fR(r)}`,{tab:p.bot?'bots':pmode(p),pid:p.id})}
 function whySL(p){if(p.sl===p.sl0)return'Stop';if(p.sl===p.entry)return'Break-even';return p.dir*(p.sl-p.entry)>0?'Trailing-Stop':'Stop'}
 function onPrice(h,l,c,closed){let ch=false;const fresh=new Set();try{alCheck(h,l,c);if(closed&&!S.bg)setTimeout(divNotify,50)}catch(_){}
  AC.ord.filter(mine).forEach(o=>{const d=o.dir;let fp=null;
@@ -1118,7 +1122,7 @@ function onPrice(h,l,c,closed){let ch=false;const fresh=new Set();try{alCheck(h,
    if(!o.act){if(!fin(o.price)||(d>0?l<=o.price:h>=o.price)){o.act=true;o.ext=d>0?l:h;ch=true}}
    else{o.ext=d>0?Math.min(o.ext,l):Math.max(o.ext,h);const trg=o.ext*(1+d*o.tpct/100);if(d>0?h>=trg:l<=trg)fp=trg}}
   if(fp!=null){AC.ord=AC.ord.filter(x=>x!==o);ch=true;const p=openPos(o,fp);
-   if(p){fresh.add(p.id);toast(`${TYPN[o.type]} ${p.dir>0?'Long':'Short'} ausgeführt @ ${fmt(fp)}`);notify('trade',`📥 ${p.label}: ${TYPN[o.type]} ausgeführt`,`${p.dir>0?'Long':'Short'} @ ${fmt(fp)}`);if(p.sl!=null&&!p.csl&&(p.dir>0?l<=p.sl:h>=p.sl))closePart(p,p.sl,p.qty,'Stop')}
+   if(p){fresh.add(p.id);toast(`${TYPN[o.type]} ${p.dir>0?'Long':'Short'} ausgeführt @ ${fmt(fp)}`);notify('trade',`📥 ${p.label}: ${TYPN[o.type]} ausgeführt`,`${p.dir>0?'Long':'Short'} @ ${fmt(fp)}`,{tab:pmode(p)});if(p.sl!=null&&!p.csl&&(p.dir>0?l<=p.sl:h>=p.sl))closePart(p,p.sl,p.qty,'Stop')}
    else toast(`${TYPN[o.type]} verworfen – Stop/Guthaben passt beim Auslösen nicht`)}});
  AC.pos.filter(mine).forEach(p=>{if(fresh.has(p.id))return;const d=p.dir;
   if(p.sl!=null){const hit=p.csl?(closed&&(d>0?c<=p.sl:c>=p.sl)):(d>0?l<=p.sl:h>=p.sl);if(hit){closePart(p,p.csl?c:p.sl,p.qty,whySL(p)+(p.csl?' (Kerzenschluss)':''));ch=true;return}}
@@ -1126,7 +1130,7 @@ function onPrice(h,l,c,closed){let ch=false;const fresh=new Set();try{alCheck(h,
   if(p.ttOn){p.ttExt=d>0?Math.max(p.ttExt,h):Math.min(p.ttExt,l);const trg=p.ttExt*(1-d*p.ttp/100);if(d>0?l<=trg:h>=trg){closePart(p,trg,p.qty,'Trailing-TP');ch=true;return}}
   p.tps.forEach((t,k)=>{if(t.hit||!AC.pos.includes(p))return;if(d>0?h>=t.p:l<=t.p){t.hit=true;ch=true;const last=p.tps.every(x=>x.hit);
     if(last&&p.ttp>0){p.ttOn=true;p.ttExt=t.p;toast('Letztes Ziel erreicht – Trailing-TP läuft weiter')}
-    else{closePart(p,t.p,last?p.qty:p.qty0*t.pct/100,'TP '+(k+1));if(!last)notify(p.bot?'bot':'trade',`🎯 ${p.label}: Ziel ${k+1} erreicht`,`@ ${fmt(t.p)} · ${t.pct} % geschlossen`)}
+    else{closePart(p,t.p,last?p.qty:p.qty0*t.pct/100,'TP '+(k+1));if(!last)notify(p.bot?'bot':'trade',`🎯 ${p.label}: Ziel ${k+1} erreicht`,`@ ${fmt(t.p)} · ${t.pct} % geschlossen`,{tab:p.bot?'bots':pmode(p)})}
     if(k===0&&p.be&&AC.pos.includes(p))p.sl=p.sl==null?p.entry:(d>0?Math.max(p.sl,p.entry):Math.min(p.sl,p.entry))}});
   if(AC.pos.includes(p)&&p.trail>0){p.ext=d>0?Math.max(p.ext,h):Math.min(p.ext,l);const ns=p.ext*(1-d*p.trail/100);if(p.sl==null||d*(ns-p.sl)>0){p.sl=ns;ch=true}}});
  if(botTick(h,l,c))ch=true;
@@ -1285,16 +1289,48 @@ async function bgSync(){const need=bgNeeded();
   if(tfs.size&&BGX[y]===c&&inCtx(c,()=>eBotTick(false)))bgAfter()}}
 setInterval(()=>bgSync(),20000);
 
+
+/* ---------- Mitteilungen (Posteingang mit rotem Punkt) ---------- */
+const INB=store('wdesk_inbox')||[];
+const INBIC={trade:'💼',bot:'🤖',setup:'🌊',usdtd:'💵',cal:'📅',alarm:'🔔',div:'📐',report:'📈'};
+const inbN=()=>INB.filter(x=>!x.read).length;
+function inbAdd(kind,title,body,nav){if(nav&&nav.skip)return;try{if(isRp()&&!S.bg)return}catch(_){}
+ const n=Object.assign({sym:S.custom?null:S.sym,tf:S.custom?null:S.tf,tab:kind==='bot'?'bots':'chart'},nav||{});
+ INB.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),t:Date.now(),kind,title,body:body||'',nav:n,read:false});
+ if(INB.length>150)INB.length=150;store('wdesk_inbox',INB);inbBadge();if($('#mInbox')&&$('#mInbox').classList.contains('open'))inbRender()}
+function inbBadge(){const n=inbN(),b=$('#bMenu');if(b){b.classList.toggle('has-n',n>0);b.dataset.n=n>99?'99+':String(n)}
+ try{if(navigator.setAppBadge){if(n)navigator.setAppBadge(n).catch(()=>{});else navigator.clearAppBadge().catch(()=>{})}}catch(_){}}
+function inbAgo(t){const m=Math.floor((Date.now()-t)/6e4);if(m<1)return'gerade eben';if(m<60)return'vor '+m+' Min.';const d=new Date(t),td=new Date();
+ const hm=d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});if(d.toDateString()===td.toDateString())return'heute '+hm;
+ const y=new Date(td-864e5);if(d.toDateString()===y.toDateString())return'gestern '+hm;return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+' '+hm}
+let INBF='all';
+function inbRender(){const el=$('#inbOut');const L=INB.filter(x=>INBF==='all'||(INBF==='new'?!x.read:x.kind===INBF));const n=inbN();
+ const kinds=[...new Set(INB.map(x=>x.kind))];
+ let h=`<div class="chips" style="margin:0 0 8px">${[['all','Alle'],['new',`Neu${n?' ('+n+')':''}`],...kinds.map(k=>[k,INBIC[k]||'•'])].map(([k,t])=>`<button data-f="${k}" class="${INBF===k?'on':''}">${t}</button>`).join('')}</div>`;
+ h+=L.length?L.map(x=>`<div class="inb ${x.read?'rd':''}" data-id="${x.id}"><div class="inb-ic">${INBIC[x.kind]||'•'}${x.read?'':'<i></i>'}</div><div style="flex:1;min-width:0"><div class="inb-t">${x.title}</div>${x.body?`<div class="inb-b">${x.body}</div>`:''}<div class="inb-w">${inbAgo(x.t)}${x.nav&&x.nav.sym?' · '+x.nav.sym+(x.nav.tf?' '+x.nav.tf:''):''}</div></div><div class="inb-go">›</div></div>`).join('')
+  :`<div class="mut" style="text-align:center;padding:24px 0">${INB.length?'Nichts in dieser Auswahl':'Noch keine Mitteilungen.<br>Hier landet alles, was die App meldet.'}</div>`;
+ el.innerHTML=h;$('#inbRead').style.display=n?'':'none';$('#inbClr').style.display=INB.length?'':'none';
+ el.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{INBF=b.dataset.f;inbRender()});
+ el.querySelectorAll('.inb').forEach(d=>d.onclick=()=>{const x=INB.find(y=>y.id===d.dataset.id);if(!x)return;x.read=true;store('wdesk_inbox',INB);inbBadge();inbGo(x)})}
+function inbGo(x){const n=x.nav||{};$('#mInbox').classList.remove('open');
+ if(n.act==='live'){lvOpen();return}if(n.act==='cal'){calOpen();return}if(n.act==='rep'){repOpen();return}
+ try{if(n.sym&&(n.sym!==S.sym||S.custom||(n.tf&&n.tf!==S.tf)))openSymTf(n.sym,n.tf||S.tf)}catch(_){}
+ setTab(n.tab||'chart')}
+function inbOpen(){INBF=inbN()?'new':'all';inbRender();$('#mInbox').classList.add('open')}
+$('#inbRead').onclick=()=>{INB.forEach(x=>x.read=true);store('wdesk_inbox',INB);inbBadge();inbRender()};
+$('#inbClr').onclick=()=>{if(!confirm('Alle Mitteilungen löschen?'))return;INB.length=0;store('wdesk_inbox',INB);inbBadge();inbRender()};
+setTimeout(inbBadge,300);
+
 /* ---------- Benachrichtigungen ---------- */
 const NT=Object.assign({on:false,trade:true,bot:true,setup:false,usdtd:true,cal:true,alarm:true,div:true,report:true,stf:'4h'},store('wdesk_notif')||{});
 const ntHas=()=>'Notification' in window;
 const ntOK=()=>ntHas()&&Notification.permission==='granted';
-function notify(kind,title,body){if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
+function notify(kind,title,body,nav){try{inbAdd(kind,title,body,nav)}catch(_){}if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
  try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,o)).catch(()=>{try{new Notification(title,o)}catch(_){}});else new Notification(title,o)}catch(_){}}
 const NTSEEN=new Set(store('wdesk_ntseen')||[]);
-async function ntSetupScan(){if(!NT.on||!NT.setup||!ntOK())return;let rows;try{rows=await wlScan(NT.stf)}catch(e){return}
+async function ntSetupScan(){if(!NT.setup)return;let rows;try{rows=await wlScan(NT.stf)}catch(e){return}
  rows.forEach(r=>{const x=r.set;if(!x||!x.valid||x.age>1)return;const k=r.sym+'|'+NT.stf+'|'+x.t+'|'+x.wave;if(NTSEEN.has(k))return;NTSEEN.add(k);
-  notify('setup',`🌊 ${r.sym.replace('/USD','')} ${NT.stf}: ${WNAME[x.wave]} ${x.side>0?'Long':'Short'}`,`Kurs ${fmt(r.px)} · Stop ${fmt(x.stop)} · Ziel ${fmt(x.tp)}`)});
+  notify('setup',`🌊 ${r.sym.replace('/USD','')} ${NT.stf}: ${WNAME[x.wave]} ${x.side>0?'Long':'Short'}`,`Kurs ${fmt(r.px)} · Stop ${fmt(x.stop)} · Ziel ${fmt(x.tp)}`,{sym:r.sym,tf:NT.stf})});
  store('wdesk_ntseen',[...NTSEEN].slice(-200))}
 setInterval(ntSetupScan,15*60000);setTimeout(ntSetupScan,20000);
 
@@ -1347,9 +1383,9 @@ function renderSet(){const el=$('#setOut'),ok=ntOK(),lb=store('wdesk_lastbk');co
   ${bkPend?`<div class="warn" style="font-size:13px;margin-top:6px">Sicherung vom ${new Date(bkPend.t).toLocaleString('de-DE')} laden? Alles Aktuelle wird ersetzt.</div><div class="row"><button id="bkYes" class="danger">Ja, ersetzen</button><button id="bkNo">Abbrechen</button></div>`:''}
   <div class="mut" style="font-size:11px;margin-top:4px">„Sichern“ öffnet das Teilen-Menü – dort „In Dateien sichern“ wählen. Alles liegt nur auf diesem iPhone; ohne Sicherung ist es weg, wenn Safari-Daten gelöscht werden.</div></div>`;
  el.innerHTML=h;
- const on=$('#ntOn');if(on)on.onclick=()=>{Notification.requestPermission().then(r=>{if(r==='granted'){NT.on=true;store('wdesk_notif',NT);renderSet();notify('trade','🔔 Wellen-Desk','Benachrichtigungen sind an.')}else{toast('Nicht erlaubt');renderSet()}})};
+ const on=$('#ntOn');if(on)on.onclick=()=>{Notification.requestPermission().then(r=>{if(r==='granted'){NT.on=true;store('wdesk_notif',NT);renderSet();notify('trade','🔔 Wellen-Desk','Benachrichtigungen sind an.',{skip:1})}else{toast('Nicht erlaubt');renderSet()}})};
  const off=$('#ntOff');if(off)off.onclick=()=>{NT.on=false;store('wdesk_notif',NT);renderSet()};
- const ts=$('#ntTest');if(ts)ts.onclick=()=>{const o=NT.trade;NT.trade=true;notify('trade','🔔 Test','So sehen Meldungen aus.');NT.trade=o};
+ const ts=$('#ntTest');if(ts)ts.onclick=()=>{const o=NT.trade;NT.trade=true;notify('trade','🔔 Test','So sehen Meldungen aus.',{skip:1});NT.trade=o};
  el.querySelectorAll('[data-nt]').forEach(c=>c.onchange=()=>{NT[c.dataset.nt]=c.checked;store('wdesk_notif',NT);renderSet();if(c.dataset.nt==='setup'&&c.checked)ntSetupScan()});
  el.querySelectorAll('#ntTf button').forEach(b=>b.onclick=()=>{NT.stf=b.dataset.t;store('wdesk_notif',NT);renderSet()});
  $('#bkEx').onclick=bkExport;$('#bkIm').onclick=()=>{$('#bkFile').value='';$('#bkFile').click()};
@@ -1432,9 +1468,9 @@ function calWarn(){const b=$('#calWarn');if(!b)return;if(!CAL.ev){b.style.displa
  const e=CAL.ev.find(x=>x.s===3&&!x.hol&&(!CAL.cc.length||CAL.cc.includes(x.cc))&&x.t>now-15*6e4&&x.t<now+60*6e4);
  if(!e){b.style.display='none';return}const m=Math.round((e.t-now)/6e4);
  b.textContent=(m>0?`⚠️ in ${m} Min.: `:m>-1?'⚠️ JETZT: ':`⚠️ vor ${-m} Min.: `)+`${e.cc} ${calName(e.title)||e.title} ★★★`;b.style.display=S.tab==='heat'?'none':'block'}
-function calTick(){if(!CAL.ev)return;calWarn();if(!NT.on||!NT.cal)return;const now=Date.now();
+function calTick(){if(!CAL.ev)return;calWarn();if(!NT.cal)return;const now=Date.now();
  CAL.ev.forEach(e=>{if(e.hol||e.s<3||(CAL.cc.length&&!CAL.cc.includes(e.cc)))return;const dm=e.t-now,k=e.t+'|'+e.title;if(dm>0&&dm<=15*6e4&&!CALN.has(k)){CALN.add(k);
-  notify('cal',`📅 In ${Math.max(1,Math.round(dm/6e4))} Min.: ${e.cc} ${calName(e.title)||e.title} ★★★`,`Prognose ${e.fc||'–'} · Vorher ${e.pv||'–'} · Vorsicht mit offenen Positionen`)}});
+  notify('cal',`📅 In ${Math.max(1,Math.round(dm/6e4))} Min.: ${e.cc} ${calName(e.title)||e.title} ★★★`,`Prognose ${e.fc||'–'} · Vorher ${e.pv||'–'} · Vorsicht mit offenen Positionen`,{act:'cal',sym:null})}});
  store('wdesk_caln',[...CALN].slice(-100))}
 $('#calWarn').onclick=calOpen;$('#calR').onclick=()=>{calLoad(true).then(renderCal);renderCal()};
 setTimeout(()=>calLoad().then(()=>{calTick();renderCal()}),3000);setInterval(()=>{calLoad().then(()=>{calTick();renderCal()})},60000);
@@ -1557,7 +1593,7 @@ function renderRep(){const R=repCalc(RPW),P=repCalc(RPW+1),d=x=>new Date(x).toLo
  h+=`<div class="mut" style="font-size:11px">Konto jetzt ${money(AC.bal)} · Start ${money(AC.start)}</div>`;
  $('#repOut').innerHTML=h;$('#repOut').querySelectorAll('[data-rw]').forEach(b=>b.onclick=()=>{RPW=+b.dataset.rw;renderRep()})}
 function repTick(){if(!FEAT.report)return;const d=new Date();if(d.getDay()!==0||d.getHours()<18)return;const k=weekStart(0);if(store('wdesk_repn')===k)return;store('wdesk_repn',k);const R=repCalc(0);
- notify('report','📈 Dein Wochen-Bericht ist fertig',R.n?`${R.n} Trades · ${pct(R.wr)} Treffer · ${money(R.pnl)}`:'Diese Woche keine Trades');toast('📈 Wochen-Bericht ist fertig – ☰ › Wochen-Bericht')}
+ notify('report','📈 Dein Wochen-Bericht ist fertig',R.n?`${R.n} Trades · ${pct(R.wr)} Treffer · ${money(R.pnl)}`:'Diese Woche keine Trades',{act:'rep',sym:null});toast('📈 Wochen-Bericht ist fertig – ☰ › Wochen-Bericht')}
 setInterval(repTick,10*6e4);setTimeout(repTick,15000);
 
 /* ---- 7. Replay-Training ---- */
@@ -1641,7 +1677,7 @@ function lvBind(el){const g=el.querySelector('#lvGo');if(g)g.onclick=lvOpen;cons
 // --- 90-Tage-Erinnerung ---
 function lvKeyLeft(e){const t=LIVE.kd[e];return t?90-Math.floor((Date.now()-t)/864e5):null}
 function lvKeyCheck(){['demo','live'].forEach(e=>{const l=lvKeyLeft(e);if(l==null||l>10)return;const k='wdesk_lvrem_'+e,d=new Date().toDateString();if(store(k)===d)return;store(k,d);
- const nm=e==='live'?'Live':'Demo',msg=l<=0?`Bybit-${nm}-Schlüssel ist abgelaufen – neuen erstellen`:`Bybit-${nm}-Schlüssel läuft in ${l} Tag${l>1?'en':''} ab`;toast('🔑 '+msg);if(l<=5)notify('trade','🔑 '+msg,'☰ › Börse & Live-Konto › Schlüssel erneuern')})}
+ const nm=e==='live'?'Live':'Demo',msg=l<=0?`Bybit-${nm}-Schlüssel ist abgelaufen – neuen erstellen`:`Bybit-${nm}-Schlüssel läuft in ${l} Tag${l>1?'en':''} ab`;toast('🔑 '+msg);notify('trade','🔑 '+msg,'☰ › Börse & Live-Konto › Schlüssel erneuern',{act:'live',sym:null})})}
 setTimeout(lvKeyCheck,6000);setInterval(lvKeyCheck,6*36e5);
 // --- Einstellungs-Fenster ---
 let LVP=null;
@@ -1700,6 +1736,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   ${R('feat','🧩','Funktionen ein/aus',Object.keys(FTXT).filter(k=>FEAT[k]).length+' von '+Object.keys(FTXT).length+' an')}
   ${R('guard','🛡️','Schutz-Regeln',FEAT.guard?(guardMsg()?'gesperrt':'Limit '+ff(String(GD.max))+' %'):'aus')}</div>
   <div class="mgt">Benachrichtigungen</div><div class="mgrp">
+  <button class="mrow" data-m="inbox"><span style="width:24px;text-align:center">📬</span>Mitteilungen${inbN()?`<span class="mdot">${inbN()}</span>`:''}<small>${INB.length?inbAgo(INB[0].t):'leer'} ›</small></button>
   <button class="mrow" data-m="ntq"><span style="width:24px;text-align:center">🔔</span>Push-Benachrichtigungen<small class="${ok?'ok':''}">${ok?'an':'aus'} ›</small></button>
   ${ok?['trade','bot','setup','usdtd','cal','alarm','div','report'].map(k=>`<label class="mrow"><span style="width:24px"></span>${{trade:'Trades (Stop, Ziele, Orders)',bot:'Bots',setup:'Neue Setups (alle 15 Min.)',usdtd:'USDT.D-Alarm',cal:'Wirtschaftskalender (15 Min. vorher)',alarm:'Preis-Alarme',div:'Divergenzen',report:'Wochen-Bericht'}[k]}<input type="checkbox" data-mn="${k}" ${NT[k]?'checked':''} style="margin-left:auto;transform:scale(1.3)"></label>`).join(''):''}</div>
   <div class="mgt">Anzeige</div><div class="mgrp">
@@ -1717,7 +1754,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   close();
   if(m==='jr')acOpen();
   else if(m==='stat'){acOpen();setTimeout(()=>{const c=$('#sgC');if(c)c.scrollIntoView({block:'start'})},60)}
-  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='live')lvOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
+  else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='live')lvOpen();else if(m==='inbox')inbOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
   else if(m==='design')$('#bDesign').click();else if(m==='m2')$('#bM2').click();else if(m==='csv')$('#file').click();
   else if(m==='help')$('#mHelp').classList.add('open');
   else if(m==='reset'){acOpen();setTimeout(()=>{const r=$('#acReset');if(r)r.scrollIntoView({block:'center'})},60)}});
@@ -1731,7 +1768,7 @@ async function udLoad(){let j;try{j=await getJ('https://api.coingecko.com/api/v3
  const d=g.market_cap_percentage.usdt,b=g.market_cap_percentage.btc,c=(g.market_cap_change_percentage_24h_usd||0)/100,prev=UD.last,now=Date.now();
  UD.last={t:now,d,b,d24:d*(1+c)};const h=UD.hist;if(!h.length||now-h[h.length-1].t>15*6e4)h.push({t:now,d,b});while(h.length&&now-h[0].t>30*864e5)h.shift();
  if(UD.alert&&prev&&(prev.d-UD.alert)*(d-UD.alert)<0){const up=d>UD.alert,msg=up?`USDT.D über ${ff(UD.alert)} % gestiegen`:`USDT.D unter ${ff(UD.alert)} % gefallen`;
-  toast('💵 '+msg);notify('usdtd','💵 '+msg,`Jetzt ${ff(d.toFixed(3))} % · ${up?'meist Druck auf Bitcoin':'meist Rückenwind für Bitcoin'}`)}
+  toast('💵 '+msg);notify('usdtd','💵 '+msg,`Jetzt ${ff(d.toFixed(3))} % · ${up?'meist Druck auf Bitcoin':'meist Rückenwind für Bitcoin'}`,{sym:null})}
  store('wdesk_usdtd',{hist:UD.hist,alert:UD.alert,last:UD.last});renderUD()}
 function renderUD(){const el=$('#udOut');if(!el||!$('#mWL').classList.contains('open'))return;const L=UD.last;
  if(!L){el.innerHTML=`<div class="card" style="font-size:13px">💵 <b>USDT.D</b> <span class="mut">${UD.err?'– keine Verbindung zu CoinGecko (nur in der installierten App).':'lädt …'}</span></div>`;return}
