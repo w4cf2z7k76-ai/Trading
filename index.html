@@ -22,6 +22,8 @@ select,button,.btn{background:var(--btn);color:var(--txt);border:1px solid var(-
 button.on{background:var(--onbg);border-color:var(--acc);color:var(--acc)}
 #quote{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;line-height:1.15;padding-left:6px;white-space:nowrap}
 #quote b{font-size:15px}
+#syBar{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:9000;background:#2b2f3a;border:1px solid #f0b90b;color:#fff;border-radius:14px;padding:8px 10px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:space-between;box-shadow:0 6px 24px rgba(0,0,0,.4)}#syBar button{flex:none}
+html.sync-ro #pnList button,html.sync-ro #bList button,html.sync-ro #tkSend{opacity:.45}
 #bMenu.has-n::after{content:attr(data-n);position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#ff3b5c;color:#fff;font:700 10px/17px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px var(--bg,#0d1117);pointer-events:none}
 .inb{display:flex;gap:10px;align-items:flex-start;padding:10px 8px;border-bottom:1px solid var(--line);cursor:pointer}.inb.rd{opacity:.55}.inb-ic{position:relative;width:28px;text-align:center;font-size:18px}.inb-ic i{position:absolute;top:-1px;right:0;width:9px;height:9px;border-radius:50%;background:#ff3b5c}.inb-t{font-weight:600;font-size:14px}.inb-b{font-size:13px;margin-top:2px}.inb-w{font-size:11px;color:var(--mut);margin-top:3px}.inb-go{color:var(--mut);align-self:center}
 .mdot{display:inline-block;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff3b5c;color:#fff;font:700 11px/18px system-ui;text-align:center;margin-left:6px}
@@ -404,6 +406,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 </div></div>
 
 <script>
+const SY={ro:false,on:false};
 (()=>{
 const $=s=>document.querySelector(s);
 const cv=$('#cv'),ctx=cv.getContext('2d');
@@ -1162,13 +1165,13 @@ function openPos(o,price){
   sl:fin(o.sl)?o.sl:null,sl0:fin(o.sl)?o.sl:null,tps:o.tps.map(t=>({...t,hit:false})),be:o.be,trail:o.trail||0,ttp:o.ttp||0,csl:!!o.csl,ext:price,t0:nowT(),real:-fee,risk$:z.risk$,replay:o.replay,exits:[],tf:o.tf||curTf(),strat:o.strat||null};
  AC.pos.push(p);shotLater(p,'a');return p}
 function shotLater(p,suf){if(S.bg||p.key!==pkey())return;setTimeout(()=>{if(!S.bg&&p.key===pkey()&&!!p.replay===isRp())shotTake(p.id,suf)},80)}
-function closePart(p,px,q,why){q=Math.min(q,p.qty);if(q<=0)return;const fee=px*q*AC.fee,pnl=(px-p.entry)*p.dir*q-fee;AC.bal+=pnl;p.real+=pnl;p.qty-=q;p.exits.push({px,q,why});
+function closePart(p,px,q,why){if(SY.ro)return;q=Math.min(q,p.qty);if(q<=0)return;const fee=px*q*AC.fee,pnl=(px-p.entry)*p.dir*q-fee;AC.bal+=pnl;p.real+=pnl;p.qty-=q;p.exits.push({px,q,why});
  if(p.qty<=p.qty0*1e-6)finishPos(p,why)}
 function finishPos(p,why){AC.pos=AC.pos.filter(x=>x!==p);const qx=p.exits.reduce((s,e)=>s+e.q,0)||1,avg=p.exits.reduce((s,e)=>s+e.px*e.q,0)/qx,r=p.real/(p.risk$||1);
  AC.hist.push({key:p.key,label:p.label,mode:pmode(p),lev:p.lev||1,dir:p.dir,entry:p.entry,exit:avg,pnl:p.real,R:r,t0:p.t0,t1:nowT(),why,replay:!!p.replay,bot:p.bot||null,wave:p.wave||null,id:p.id,tf:p.btf||p.tf||null,strat:p.bot?'Elliott-Bot':(p.strat||null),note:''});shotLater(p,'b');
  toast(`${p.dir>0?'Long':'Short'} geschlossen (${why}): ${money(p.real)} · ${fR(r)}`);if(!p.replay)notify(p.bot?'bot':'trade',`${p.real>=0?'✅':'❌'} ${p.label} ${p.dir>0?'Long':'Short'} geschlossen`,`${why} · ${money(p.real)} · ${fR(r)}`,{tab:p.bot?'bots':pmode(p),pid:p.id})}
 function whySL(p){if(p.sl===p.sl0)return'Stop';if(p.sl===p.entry)return'Break-even';return p.dir*(p.sl-p.entry)>0?'Trailing-Stop':'Stop'}
-function onPrice(h,l,c,closed){let ch=false;const fresh=new Set();if(fin(c))AC.pos.forEach(p=>{if(mine(p))p.lpx=c});try{alCheck(h,l,c);if(closed&&!S.bg)setTimeout(divNotify,50)}catch(_){}
+function onPrice(h,l,c,closed){if(SY.ro)return;let ch=false;const fresh=new Set();if(fin(c))AC.pos.forEach(p=>{if(mine(p))p.lpx=c});try{alCheck(h,l,c);if(closed&&!S.bg)setTimeout(divNotify,50)}catch(_){}
  AC.ord.filter(mine).forEach(o=>{const d=o.dir;let fp=null;
   if(o.type==='limit'){if(d>0?l<=o.price:h>=o.price)fp=o.price}
   else if(o.type==='stop'){if(d>0?h>=o.price:l<=o.price)fp=o.price}
@@ -1190,7 +1193,7 @@ function onPrice(h,l,c,closed){let ch=false;const fresh=new Set();if(fin(c))AC.p
  if(botTick(h,l,c))ch=true;
  if(closed&&eBotTick(true))ch=true;
  if(ch){saveAcct();renderAcct();renderPanel()}}
-function placeOrder(o){o.key=pkey();o.label=S.custom||S.sym;o.replay=isRp();
+function placeOrder(o){if(syRO())return;o.key=pkey();o.label=S.custom||S.sym;o.replay=isRp();
  if(o.type==='market'){const p=openPos(o,lastP());if(!p){toast('Order abgelehnt');return}toast(`${o.mode==='spot'?'Spot-Kauf':(p.dir>0?'Long':'Short')+' '+p.lev+'×'} eröffnet @ ${fmt(p.entry)}`)}
  else{AC.ord.push({...o,id:++uid,t:nowT()});toast(`${TYPN[o.type]} platziert${fin(o.price)?' @ '+fmt(o.price):''}`)}
  saveAcct();renderAcct();renderPanel();req()}
@@ -1205,7 +1208,7 @@ function panic(mode){const f=x=>mine(x)&&(!mode||(x.mode||'fut')===mode);const p
 
 /* ---------- bots ---------- */
 function botSell(bt,px){const pnl=(px-bt.buyP)*bt.qty-px*bt.qty*AC.fee;AC.bal+=pnl;bt.pnl+=pnl;bt.qty=0}
-function botTick(h,l,c){let ch=false;
+function botTick(h,l,c){if(SY.ro)return;let ch=false;
  AC.bots.filter(mine).forEach(bt=>{if(bt.state==='stopped'||bt.state==='done'||bt.type==='elliott')return;
   if(bt.type==='channel'){
    if(bt.state==='wait'){if(l<=bt.low){bt.qty=bt.inv/bt.low;bt.buyP=bt.low;const f=bt.low*bt.qty*AC.fee;AC.bal-=f;bt.pnl-=f;bt.state='hold';bt.just=true;ch=true;notify('bot','📥 '+bt.label+' Channel-Bot',`Gekauft @ ${fmt(bt.low)}`)}}
@@ -1220,7 +1223,7 @@ function botTick(h,l,c){let ch=false;
     if(!s.held&&s.armed&&l<=L){s.held=true;s.just=true;s.qty=bt.inv/bt.slots.length/L;s.buyP=L;const f=L*s.qty*AC.fee;AC.bal-=f;bt.pnl-=f;ch=true}})}});
  return ch}
 function botUnreal(bt){const px=lastP();if(bt.type==='elliott')return AC.pos.filter(p=>p.bot===bt.id).reduce((s,p)=>s+upnl(p),0);if(bt.type==='channel')return bt.state==='hold'?(px-bt.buyP)*bt.qty:0;return bt.slots.reduce((s,x)=>s+(x.held?(px-x.buyP)*x.qty:0),0)}
-function botStop(bt){const px=lastP();if(bt.type==='elliott')AC.pos.filter(p=>p.bot===bt.id).forEach(p=>closePart(p,px,p.qty,'Bot gestoppt'));if(bt.type==='channel'&&bt.state==='hold')botSell(bt,px);
+function botStop(bt){if(syRO())return;const px=lastP();if(bt.type==='elliott')AC.pos.filter(p=>p.bot===bt.id).forEach(p=>closePart(p,px,p.qty,'Bot gestoppt'));if(bt.type==='channel'&&bt.state==='hold')botSell(bt,px);
  if(bt.type==='grid')bt.slots.forEach(s=>{if(s.held){const pnl=(px-s.buyP)*s.qty-px*s.qty*AC.fee;AC.bal+=pnl;bt.pnl+=pnl;s.held=false}});bt.state='stopped';after()}
 const BT={type:'channel',amt:25};
 function botRead(){return{type:BT.type,low:num($('#bLow').value),high:num($('#bHigh').value),stop:num($('#bStop').value),n:Math.round(num($('#bN').value)||10),inv:(()=>{const u=num($('#bUsd').value);return u>0?u:AC.bal*BT.amt/100})(),auto:$("#bAutoR").checked}}
@@ -1235,7 +1238,7 @@ function botUpd(){const E=BT.type==='elliott';$('#cgForm').style.display=E?'none
  const g=o.type==='channel'?(o.high/o.low-1):((o.high-o.low)/o.n)/((o.high+o.low)/2),net=g-2*AC.fee;
  el.innerHTML=`<table><tr><td>Kapital</td><td>${money(o.inv)}</td></tr><tr><td>Gewinn je ${o.type==='channel'?'Zyklus':'Stufe'}</td><td class="${net>0?'ok':'bad'}">${pct(net)} (nach Gebühren)</td></tr>
  ${fin(o.stop)?`<tr><td>Max. Verlust bei Stop</td><td class="bad">≈ ${pct(o.type==='channel'?(1-o.stop/o.low):(1-o.stop/((o.low+o.high)/2)))}</td></tr>`:'<tr><td>Stop</td><td class="warn">keiner – Kurs kann weiter fallen</td></tr>'}</table>`}
-function botStart(){{const gm=guardMsg();if(gm){toast(gm);return}}if(LIVE.mode!=='app'){toast('Bots über Bybit kommen in Schritt 4 – zum Üben oben auf „DEMO“ umschalten.');return}if(BT.type==='elliott'){eStart();return}const o=botRead(),err=botCheck(o);if(err){toast(err);return}
+function botStart(){if(syRO())return;{const gm=guardMsg();if(gm){toast(gm);return}}if(LIVE.mode!=='app'){toast('Bots über Bybit kommen in Schritt 4 – zum Üben oben auf „DEMO“ umschalten.');return}if(BT.type==='elliott'){eStart();return}const o=botRead(),err=botCheck(o);if(err){toast(err);return}
  const bt={id:++uid,key:pkey(),label:S.custom||S.sym,replay:isRp(),type:o.type,low:o.low,high:o.high,stop:fin(o.stop)?o.stop:null,inv:o.inv,auto:o.auto,state:'wait',qty:0,cyc:0,pnl:0,t0:nowT()};
  if(o.type==='grid'){const px=lastP();bt.levels=[...Array(o.n+1)].map((_,i)=>o.low+(o.high-o.low)*i/o.n);bt.slots=[...Array(o.n)].map((_,i)=>({held:false,armed:bt.levels[i]<px,qty:0,buyP:0}));bt.state='run'}
  AC.bots.push(bt);after();setTimeout(bgSync,500);toast((o.type==='channel'?'Channel':'Grid')+'-Bot gestartet')}
@@ -1400,7 +1403,7 @@ function laProc(e,B,msgs){const L=B.length-1;if(L<60)return;const nm=`${e.sym.re
   e.cur=n}
  if(e.sk){const o=e.skc,n=nw.skc;if(n&&n.q>=50&&(!o||o.t0!==n.t0))add('neues SK-Setup',`${n.q} % · Ziel ${fmt(n.tgt)}`);if(n&&o&&o.t0===n.t0&&o.hit)n.hit=true;e.skc=n}
  laApply(e,B,res.draws)}
-async function laKick(reason){if(laBusy||!LA.length)return;laBusy=true;const msgs=[];
+async function laKick(reason){if(laBusy||!LA.length||SY.ro)return;laBusy=true;const msgs=[];
  try{for(const e of LA.slice()){try{const B=await laBars(e);if(B&&B.length>60)laProc(e,B,msgs)}catch(_){}}}finally{laBusy=false}laSave();
  if(msgs.length){if(reason==='open'&&msgs.length>1)notify('live','🔴 Während du weg warst',msgs.map(m=>m.short).join(' · '),{tab:'chart',sym:null});
   else msgs.forEach(m=>notify('live',m.title,m.body,{sym:m.e.src==='binance'||m.e.src==='demo'?m.e.sym:null,tf:m.e.tf,tab:'chart'}));if(!document.hidden)toast(msgs[0].title)}
@@ -1455,7 +1458,7 @@ setTimeout(inbBadge,300);
 const NT=Object.assign({on:false,live:true,trade:true,bot:true,setup:false,usdtd:true,cal:true,alarm:true,div:true,report:true,stf:'4h'},store('wdesk_notif')||{});
 const ntHas=()=>'Notification' in window;
 const ntOK=()=>ntHas()&&Notification.permission==='granted';
-function notify(kind,title,body,nav){try{inbAdd(kind,title,body,nav)}catch(_){}if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
+function notify(kind,title,body,nav){if(SY.ro)return;try{inbAdd(kind,title,body,nav)}catch(_){}if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
  try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,o)).catch(()=>{try{new Notification(title,o)}catch(_){}});else new Notification(title,o)}catch(_){}}
 const NTSEEN=new Set(store('wdesk_ntseen')||[]);
 async function ntSetupScan(){if(!NT.setup)return;let rows;try{rows=await wlScan(NT.stf)}catch(e){return}
@@ -1618,7 +1621,7 @@ const alSave=()=>store('wdesk_alerts',AL.map(a=>({id:a.id,key:a.key,label:a.labe
 function alAdd(p,note){if(isRp()){toast('Alarme gehen nur im Live-Chart, nicht im Replay');return}if(!isFinite(p))return;
  AL.push({id:Date.now(),key:alKey(),label:S.custom||S.sym,p,note:note||'',t0:Date.now(),last:lastP()});alSave();setTimeout(bgSync,300);req();
  toast(`🔔 Alarm bei ${fmt(p)} gesetzt`+(ntOK()&&NT.on&&NT.alarm?'':' – Push unter ☰ › Benachrichtigungen einschalten'))}
-function alCheck(h,l,c){if(!FEAT.alarm||isRp()||!AL.length)return;const k=pkey();let hit=[];
+function alCheck(h,l,c){if(SY.ro)return;if(!FEAT.alarm||isRp()||!AL.length)return;const k=pkey();let hit=[];
  AL.forEach(a=>{if(a.key!==k)return;const lp=a.last;a.last=c;if(lp==null)return;if((lp-a.p)*(c-a.p)<=0||(l<=a.p&&h>=a.p))hit.push(a)});
  if(!hit.length)return;hit.forEach(a=>{const up=c>=a.p;toast(`🔔 ${a.label}: ${fmt(a.p)} erreicht`);notify('alarm',`🔔 ${a.label} hat ${fmt(a.p)} erreicht`,(a.note?a.note+' · ':'')+`Kurs jetzt ${fmt(c)} (${up?'von unten':'von oben'})`);const i=AL.indexOf(a);if(i>=0)AL.splice(i,1)});alSave();req()}
 function drawAlerts(){if(!FEAT.alarm||isRp()||S.tab==='heat')return;const k=alKey();AL.forEach(a=>{if(a.key!==k)return;const y=Math.round(yOf(a.p))+.5;if(y<0||y>PH)return;
@@ -1822,6 +1825,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
    <div class="row"><button id="lvTest">Verbindung testen</button><button id="lvOut2">Abmelden</button></div>`:
    `<div class="fld"><label>Passwort</label><input id="lvPw" type="password" class="inp" placeholder="dein APP_PASSWORD" autocomplete="current-password"></div><div class="row"><button id="lvIn" class="on">Anmelden</button></div>`}
   <div id="lvMsg" style="font-size:13px;margin-top:4px"></div></div>
+ ${syCard()}
  <div class="card"><h4><span>🔐 Face ID</span>${LIVE.pk?'<span class="ok" style="font-size:12px">eingerichtet</span>':''}</h4>
   ${faceAvail()?`<div class="row"><button id="lvFace">${LIVE.pk?'Neu einrichten':'Face ID einrichten'}</button>${LIVE.pk?'<button id="lvFaceT">Testen</button>':''}</div>
   <label class="row" style="font-size:13px"><input type="checkbox" id="lvFO" ${LIVE.faceOrder?'checked':''}> Vor jeder Live-Order Face ID abfragen (ab Schritt 3)</label>`:'<div class="warn" style="font-size:13px">Face ID geht nur in der installierten App auf dem iPhone.</div>'}
@@ -1842,7 +1846,48 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  const fo=$('#lvFO');if(fo)fo.onchange=()=>{LIVE.faceOrder=fo.checked;liveSave()};
  el.querySelectorAll('[data-kd]').forEach(i=>i.onchange=()=>{const v=i.value?Date.parse(i.value+'T12:00:00'):null;if(v)LIVE.kd[i.dataset.kd]=v;else delete LIVE.kd[i.dataset.kd];liveSave();lvOpen()});
  $('#lvGen').onclick=()=>{const s=b64u(crypto.getRandomValues(new Uint8Array(32)));$('#lvGenOut').innerHTML=`<code>${s}</code><br><button id="lvCp" style="margin-top:4px">Kopieren</button>`;$('#lvCp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(s).then(()=>toast('Kopiert ✅'),()=>toast('Bitte markieren und kopieren'))}};
- $('#mLive').classList.add('open')}
+ syBind();$('#mLive').classList.add('open')}
+
+/* ---------- Geräte-Abgleich über den eigenen Server (Cloudflare KV) ---------- */
+Object.assign(SY,{on:false,v:0,h:null,pushT:0,last:null,err:null},store('wdesk_sync')||{});SY.ro=false;SY.lead=null;SY.busy=false;
+const syMeta=()=>store('wdesk_sync',{on:SY.on,v:SY.v,h:SY.h,pushT:SY.pushT,last:SY.last});
+const DEVID=store('wdesk_devid')||(()=>{const d=Math.random().toString(36).slice(2,10);store('wdesk_devid',d);return d})();
+const DEVN=/iPhone/.test(navigator.userAgent)?'iPhone':/iPad/.test(navigator.userAgent)?'iPad':/Android/.test(navigator.userAgent)?'Android':'PC';
+const SYEX=new Set(['wdesk_sync','wdesk_devid','wdesk_lvtok','wdesk_live','wdesk_seen']);
+const syKeys=()=>Object.keys(localStorage).filter(k=>k.startsWith('wdesk_')&&!SYEX.has(k)&&!k.startsWith('wdesk_lvrem'));
+function syHash(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(i);return(h>>>0).toString(36)+s.length}
+function sySnap(){const d={};syKeys().forEach(k=>{let v=localStorage.getItem(k);if(k==='wdesk_acct'){try{const a=JSON.parse(v);(a.pos||[]).forEach(p=>delete p.lpx);v=JSON.stringify(a)}catch(_){}}d[k]=v});return d}
+function syApply(r){const keep=new Set(Object.keys(r.data||{}));syKeys().forEach(k=>{if(!keep.has(k))localStorage.removeItem(k)});Object.entries(r.data||{}).forEach(([k,v])=>{if(v!=null)localStorage.setItem(k,v)});
+ SY.v=r.v;SY.h=syHash(JSON.stringify(r.data||{}));SY.last=Date.now();syMeta();try{sessionStorage.setItem('wdesk_synced',(r.head&&r.head.name)||'Server')}catch(_){}location.reload()}
+async function syPush(force){if(!SY.on||SY.ro||!lvTokOK()||SY.busy)return;const d=sySnap(),h=syHash(JSON.stringify(d));if(!force&&h===SY.h)return;SY.busy=true;
+ try{const r=await lvApi('/sync',{base:SY.v,data:d,dev:DEVID,name:DEVN,force:force==='force'});SY.v=r.v;SY.h=h;SY.pushT=Date.now();SY.err=null;SY.lead=r.lead;syMeta()}
+ catch(e){if(e.code==='conflict'){SY.busy=false;await syCheck(true);return}SY.err=e.message}finally{SY.busy=false}syBadge()}
+async function syClaim(){const hd=await lvApi('/sync/lead',{dev:DEVID,name:DEVN});SY.lead=hd.lead;SY.ro=false;syBadge();return hd}
+// beim Öffnen/Sichtbarwerden: neuesten Stand holen und dieses Gerät aktiv machen
+async function syCheck(claim){if(!SY.on||!lvTokOK())return syBadge();try{const hd=await lvApi('/sync/head');SY.err=null;
+  if(hd.v>SY.v){const r=await lvApi('/sync');if(claim)await lvApi('/sync/lead',{dev:DEVID,name:DEVN});syApply(r);return}
+  SY.lead=hd.lead;if(claim&&(!hd.lead||hd.lead.id!==DEVID)){await syClaim();toast('🔄 Dieses Gerät ist jetzt aktiv')}
+  else SY.ro=!!(hd.lead&&hd.lead.id!==DEVID);if(!SY.ro&&hd.v<SY.v)await syPush('force')}catch(e){SY.err=e.code==='nokv'?'Speicher (KV) fehlt in Cloudflare':e.message}syBadge()}
+function syBadge(){document.documentElement.classList.toggle('sync-ro',!!SY.ro);let b=$('#syBar');
+ if(SY.ro){if(!b){b=document.createElement('div');b.id='syBar';document.body.appendChild(b)}b.innerHTML=`👁 Nur Ansicht – aktiv auf <b>${(SY.lead&&SY.lead.name)||'anderem Gerät'}</b> <button id="syTake">Hier übernehmen</button>`;$('#syTake').onclick=async()=>{toast('Übernehme …');await syCheck(true)}}
+ else if(b)b.remove();if($('#syStat'))$('#syStat').innerHTML=syStatus()}
+function syStatus(){if(!SY.on)return'<span class="mut">aus</span>';if(SY.err)return`<span class="bad">${SY.err}</span>`;
+ return `${SY.ro?'👁 Nur Ansicht (aktiv: '+((SY.lead&&SY.lead.name)||'?')+')':'✅ aktiv auf diesem Gerät ('+DEVN+')'} · Stand ${SY.v}${SY.pushT?' · gesendet '+laAgo(SY.pushT):''}`}
+const syRO=()=>{if(SY.ro){toast('👁 Nur Ansicht – oben „Hier übernehmen“ tippen');return true}return false};
+function syCard(){return `<div class="card"><h4><span>🔄 Geräte-Abgleich</span></h4><div id="syStat" style="font-size:13px">${syStatus()}</div>
+ ${!lvTokOK()?'<div class="mut" style="font-size:12px">Erst oben am Server anmelden.</div>':SY.on?`<div class="row"><button id="syNow">Jetzt abgleichen</button><button id="syOff">Ausschalten</button></div>`:`<div class="row"><button id="syOn" class="on">Einschalten</button></div>`}
+ <div id="syAsk"></div><div class="mut" style="font-size:11px">Konto, Positionen, Orders, Bots, Tagebuch, Zeichnungen, Live-Analysen, Alarme und Einstellungen liegen dann auch auf deinem Server – jedes Gerät sieht denselben Stand. Bots, Stops und Ziele führt nur das <b>aktive</b> Gerät aus (das zuletzt geöffnete); das andere zeigt nur an.</div></div>`}
+function syBind(){const on=$('#syOn');if(on)on.onclick=async()=>{const a=$('#syAsk');a.innerHTML='<span class="mut">Prüfe Server …</span>';
+  try{const hd=await lvApi('/sync/head');if(!hd.v){SY.on=true;SY.v=0;SY.h=null;syMeta();await syPush('force');await syClaim();toast('🔄 Abgleich an – dieser Stand liegt jetzt auf dem Server');lvOpen();return}
+   a.innerHTML=`<div class="warn" style="font-size:13px;margin-top:6px">Auf dem Server liegt schon ein Stand von <b>${hd.name||'?'}</b> (${new Date(hd.t).toLocaleString('de-DE')}).</div><div class="row" style="flex-wrap:wrap"><button id="syDl" class="on">⬇️ Server-Stand laden (ersetzt diesen)</button><button id="syUl">⬆️ Diesen Stand hochladen (ersetzt Server)</button></div>`;
+   $('#syDl').onclick=async()=>{SY.on=true;SY.v=0;syMeta();await syCheck(true)};$('#syUl').onclick=async()=>{if(!confirm('Server-Stand mit diesem Gerät überschreiben?'))return;SY.on=true;SY.v=hd.v;syMeta();await syPush('force');await syClaim();toast('Hochgeladen ✅');lvOpen()}}
+  catch(e){a.innerHTML=`<span class="bad">${e.code==='nokv'?'Speicher fehlt: in Cloudflare unter Bindings einen KV-Namespace mit Namen WDESK verbinden.':e.message}</span>`}};
+ const nw=$('#syNow');if(nw)nw.onclick=async()=>{await syCheck(true);await syPush();syBadge();toast('Abgeglichen ✅')};
+ const of=$('#syOff');if(of)of.onclick=()=>{SY.on=false;SY.ro=false;syMeta();syBadge();lvOpen()}}
+setInterval(()=>{if(!SY.on||!lvTokOK())return;syCheck(false).then(()=>{if(!SY.ro&&Date.now()-SY.pushT>90000)syPush()})},20000);
+document.addEventListener('visibilitychange',()=>{if(!SY.on)return;if(document.hidden)syPush();else syCheck(true)});
+setTimeout(()=>{let n=null;try{n=sessionStorage.getItem('wdesk_synced');if(n){sessionStorage.removeItem('wdesk_synced');toast('🔄 Stand von '+n+' geladen')}}catch(_){}if(SY.on)syCheck(!n)},1200);
+
 $('#modeBtn').onclick=()=>{if(LIVE.mode==='blive'&&!LVU)lvUnlock();else lvOpen()};
 setTimeout(()=>{updMode();lvRefresh(true)},1500);
 
@@ -2327,7 +2372,7 @@ function bindPos(el){
  el.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.cl);if(p)posRun(p,()=>closeNow(p,'Manuell'))});
  el.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.fl);if(p)posRun(p,()=>flip(p))});
  el.querySelectorAll('[data-be]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.be);if(!p)return;posRun(p,()=>{if(p.dir*(lastP()-p.entry)<=0){toast('Kurs ist nicht im Gewinn – Einstand-Stop wäre sofort ausgelöst');return}p.sl=p.entry;after();toast('Stop auf Einstand gesetzt')})});
- el.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{AC.ord=AC.ord.filter(o=>o.id!=b.dataset.cx);after()})}
+ el.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{if(syRO())return;AC.ord=AC.ord.filter(o=>o.id!=b.dataset.cx);after()})}
 const LV={spot:'open',fut:'open',bots:'open'};
 function renderPanel(){if(S.bg)return;
  if(S.tab==='spot'||S.tab==='fut'){const m=S.tab,ps=AC.pos.filter(p=>pmode(p)===m),os=AC.ord.filter(o=>(o.mode||'fut')===m);
