@@ -683,6 +683,8 @@ function skFind(B){const lv=ewaLevels(B),htf=ewaHtf(B),C=[],atr=(()=>{let s=0;fo
 /* ---------- rendering ---------- */
 let pending=false;function req(){if(S.bg)return;if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;draw();m2Draw()})}}
 function niceStep(range,n){const raw=range/n;const m=Math.pow(10,Math.floor(Math.log10(raw)));const f=raw/m;return(f<1.5?1:f<3?2:f<7?5:10)*m}
+let LB=[];const lbHit=(x,y,w,h)=>LB.some(r=>x<r.x+r.w&&x+w>r.x&&y<r.y+r.h&&y+h>r.y);
+function lbPlace(x,y,w,h,dy,tries,must,one){for(let k=0;k<=(tries==null?6:tries);k++){const off=k===0?0:one?k*dy:(k%2?-1:1)*Math.ceil(k/2)*dy,yy=y+off;if(yy<0||yy+h>PH)continue;if(!lbHit(x,yy,w,h)){LB.push({x,y:yy,w,h});return off}}if(must){LB.push({x,y,w,h});return 0}return null}
 function tag(x,y,text,bg,fg,align){ctx.font='10px system-ui,sans-serif';const w=ctx.measureText(text).width+8;const X=align==='right'?x-w:align==='center'?x-w/2:x;
  ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect?ctx.roundRect(X,y-8,w,16,4):ctx.rect(X,y-8,w,16);ctx.fill();ctx.fillStyle=fg||'#0d1117';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(text,X+4,y+0.5)}
 /* ---------- Indikatoren ---------- */
@@ -801,7 +803,7 @@ function renderInd(){const nf=(k,f,l,mn,mx,st)=>`<label class="row" style="font-
  el.querySelectorAll('input[data-mai]').forEach(c=>c.addEventListener('focus',()=>{if(INDX)INDX.mi=+c.dataset.mai}));
  const n=INDL.filter(([k])=>IND[k].on).length,btn=$('#indBtn');if(btn)btn.classList.toggle('on',n>0)}
 
-function draw(){
+function draw(){LB=[];
  if(!S.bars.length||!W)return;if(!isFinite(S.bw)||!isFinite(S.end))resetView();if(!isFinite(S.yShift))S.yShift=0;if(!isFinite(S.yZoom)||S.yZoom<=0)S.yZoom=1;clampEnd();calcScale();if(!isFinite(yMin)||!isFinite(yMax)){S.yShift=0;S.yZoom=1;calcScale()}
  const PB=H-AXB;PH=PB-indPaneH();clampEnd();calcScale();
  const B=S.bars,hm=heatOn();ctx.clearRect(0,0,W,H);if(hm||TH.chart){ctx.fillStyle=hm?'#000':TH.chart;ctx.fillRect(0,0,W,H)}
@@ -862,7 +864,7 @@ function renderDrawing(d,isCur){
  R.lines.forEach(l=>{const x0=Math.max(0,xOf(pts[Math.min(l.x0,pts.length-1)].i));const y=Math.round(yOf(l.p))+.5;
   ctx.strokeStyle=l.color;ctx.lineWidth=1;ctx.setLineDash(l.dash?[5,4]:[]);ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(PW,y);ctx.stroke();ctx.setLineDash([]);
   ctx.font='10px system-ui,sans-serif';ctx.textAlign='right';ctx.textBaseline='bottom';const t=l.label+' ('+fmt(l.p)+')';
-  ctx.fillStyle=TH.lbl;const w=ctx.measureText(t).width;ctx.fillRect(PW-6-w-2,y-13,w+4,12);ctx.fillStyle=l.color;ctx.fillText(t,PW-6,y-2)});
+  const w=ctx.measureText(t).width,o=lbPlace(PW-8-w,y-13,w+4,12,13,8,!d.alt&&!d.sub);if(o==null)return;const yt=y+o;if(o){ctx.strokeStyle=l.color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(PW-4,y);ctx.lineTo(PW-4,yt-7);ctx.stroke()}ctx.fillStyle=TH.lbl;ctx.fillRect(PW-6-w-2,yt-13,w+4,12);ctx.fillStyle=l.color;ctx.fillText(t,PW-6,yt-2)});
  const xl=(u,v)=>{const p1=pts[u],p2=pts[v];const di=p2.i-p1.i;if(!di)return;const sl=(p2.p-p1.p)/di;ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(xOf(p1.i),yOf(p1.p));const ie=iOf(PW);ctx.lineTo(PW,yOf(p1.p+sl*(ie-p1.i)));ctx.stroke();ctx.setLineDash([])};
  if(d.type==='tri'||d.type==='diag'){if(pts.length>=4)xl(1,3);if(pts.length>=5)xl(2,4)}
  if(d.type!=='hline'){
@@ -875,9 +877,9 @@ function renderDrawing(d,isCur){
  const names=NAMES[d.type];
  pts.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);const nb=k>0?pts[k-1].p:(pts[1]?pts[1].p:q.p);const high=q.p>=nb;
   ctx.fillStyle=isCur?'#f0b90b':col;ctx.beginPath();ctx.arc(x,y,3,0,7);ctx.fill();
-  const nm=names[k];if(nm){const ty=high?y-14:y+14;ctx.fillStyle=complete&&!R.valid?'#ef5350':col;ctx.beginPath();ctx.arc(x,ty,9,0,7);ctx.fill();
+  const nm=names[k];if(nm){const lo2=d.alt||d.sub;const o=lbPlace(x-9,(high?y-14:y+14)-9,18,18,high?-20:20,lo2?0:2,!lo2,true);if(o==null)return;const ty=(high?y-14:y+14)+o;ctx.fillStyle=complete&&!R.valid?'#ef5350':col;ctx.beginPath();ctx.arc(x,ty,9,0,7);ctx.fill();
    ctx.fillStyle='#0d1117';ctx.font='bold 11px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(nm,x,ty+.5)}});
- if(R.pattern){const q=pts[pts.length-1];const nb=pts.length>1?pts[pts.length-2].p:q.p;ctx.font='10px system-ui,sans-serif';const tw=ctx.measureText(R.pattern).width+8;let tx=xOf(q.i)+14;if(tx+tw>PW-4)tx=Math.max(4,xOf(q.i)-14-tw);tag(tx,clamp(yOf(q.p)+(q.p>=nb?-30:30),10,PH-10),R.pattern,'rgba(22,27,34,.92)',col)}
+ if(R.pattern){const q=pts[pts.length-1];const nb=pts.length>1?pts[pts.length-2].p:q.p;ctx.font='10px system-ui,sans-serif';const tw=ctx.measureText(R.pattern).width+8;let tx=xOf(q.i)+14;if(tx+tw>PW-4)tx=Math.max(4,xOf(q.i)-14-tw);const ty0=clamp(yOf(q.p)+(q.p>=nb?-30:30),10,PH-10);const o=lbPlace(tx,ty0-8,tw,16,18,8,!d.alt&&!d.sub);if(o!=null)tag(tx,ty0+o,R.pattern,'rgba(22,27,34,.92)',col)}
  ctx.restore()}
 
 /* ---------- sheet ---------- */
@@ -1249,16 +1251,16 @@ function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,2
  list.slice(0,30).forEach(bt=>{const bc=!mine(bt)&&bgOf(bt),m=mine(bt)||!!bc,act=bt.state!=='stopped'&&bt.state!=='done',u=m&&act?(bc?inCtx(bc,()=>botUnreal(bt)):botUnreal(bt)):0;const bgN=bc?' <span class="mut" style="font-size:11px">· läuft im Hintergrund</span>':'';
   const st={wait:'wartet auf Kauf',hold:'hält Position',run:'läuft',stopped:'beendet',done:'fertig'}[bt.state];
   if(bt.type==='elliott'){eMig(bt);const pn=eBotPnl(bt),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(',');
-   h+=`<div class="pos"><b>🌊 Elliott-Bot</b> ${bt.label} · ${bt.tfs.map(tfName).join(' + ')}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
+   h+=`<div class="pos" data-bid="${bt.id}"><b>🌊 Elliott-Bot</b> ${bt.label} · ${bt.tfs.map(tfName).join(' + ')}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
    <span class="mut">Wellen ${w} · ${({both:'Long+Short',long:'nur Long',short:'nur Short'})[bt.dir]} · Größe ${bt.dev?ff(bt.dev*100)+' %':'auto'} · Risiko ${bt.riskUsd>0?money(bt.riskUsd):ff(bt.risk)+' %'}${bt.htf?' · Trend-Filter':''}</span><br>
    ${bt.tfs.map(tf=>`<span style="font-size:12px"><b>${tfName(tf)}</b>: ${(bt.st[tf]&&bt.st[tf].last)?bt.st[tf].last.replace(tfName(tf)+': ',''):(mine(bt)&&!tfAvail(tf)?'<span class="warn">keine Daten in dieser Ansicht</span>':'wartet auf Wellenpunkt')}</span>`).join('<br>')}<br>
    Ergebnis: <b class="${pn>=0?'ok':'bad'}">${money(pn)}</b> · ${bt.trades} Trades${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
    ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">'+(bt.replay?'Läuft nur im Replay':'Startet im Hintergrund … (braucht Live-Kurse)')+'</div>'):''}</div>`;return}
-  h+=`<div class="pos"><b>${bt.type==='channel'?'Channel':'Grid'}-Bot</b> ${bt.label}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
+  h+=`<div class="pos" data-bid="${bt.id}"><b>${bt.type==='channel'?'Channel':'Grid'}-Bot</b> ${bt.label}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
   <span class="mut">${fmt(bt.low)} – ${fmt(bt.high)}${bt.stop?' · Stop '+fmt(bt.stop):''}${bt.type==='grid'?` · ${bt.slots.length} Stufen · ${bt.slots.filter(s=>s.held).length} gekauft`:''} · ${money(bt.inv)}</span><br>
   Gewinn: <b class="${bt.pnl>=0?'ok':'bad'}">${money(bt.pnl)}</b> · ${bt.cyc} ${bt.type==='channel'?'Zyklen':'Verkäufe'}${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
   ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen & verkaufen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">'+(bt.replay?'Läuft nur im Replay':'Startet im Hintergrund … (braucht Live-Kurse)')+'</div>'):''}</div>`});
- h+='</div>';$('#bList').innerHTML=h;$('#bList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV.bots=b.dataset.lv;renderBots()});{const c=$('#bClr');if(c)c.onclick=()=>{if(Date.now()-(LV.clr||0)<2500){AC.bots=AC.bots.filter(isAct);saveAcct();LV.clr=0;renderBots();toast('Beendete Bots entfernt')}else{LV.clr=Date.now();toast('Nochmal tippen zum Leeren')}}}$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(!bt)return;const bc=!mine(bt)&&bgOf(bt);if(bc){inCtx(bc,()=>botStop(bt));after()}else botStop(bt)})}
+ h+='</div>';$('#bList').innerHTML=h;$('#bList').querySelectorAll('.pos[data-bid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id='b'+d.dataset.bid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.bots.find(x=>'b'+x.id===id))}else posTap={id,t:now}}));$('#bList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV.bots=b.dataset.lv;renderBots()});{const c=$('#bClr');if(c)c.onclick=()=>{if(Date.now()-(LV.clr||0)<2500){AC.bots=AC.bots.filter(isAct);saveAcct();LV.clr=0;renderBots();toast('Beendete Bots entfernt')}else{LV.clr=Date.now();toast('Nochmal tippen zum Leeren')}}}$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(!bt)return;const bc=!mine(bt)&&bgOf(bt);if(bc){inCtx(bc,()=>botStop(bt));after()}else botStop(bt)})}
 
 /* ---------- Elliott-Bot (mehrere Zeiteinheiten) ---------- */
 const curTf=()=>S.custom?'csv':S.tf;
@@ -2236,7 +2238,7 @@ function posHTML(p){const own=mine(p),bc=!own&&bgOf(p),m=own||!!bc,u=own?upnl(p)
  return `<div class="pos" data-pid="${p.id}" style="cursor:pointer"><b class="${p.dir>0?'ok':'bad'}">${fut?(p.dir>0?'Long':'Short'):'Spot'}</b> ${p.label} <span class="mut">${fut?(p.lev||1)+'×':''}${p.replay?' · Replay':''}</span> @ ${fmt(p.entry)}${m?` · <b class="${u>=0?'ok':'bad'}">${u>=0?'+':''}${money(u)}</b>`:''}${bc&&cp?` <span class="mut" style="font-size:12px">· Kurs ${fmt(cp)}</span>`:''}
  <br><span class="mut">SL ${p.sl!=null?fmt(p.sl):'–'}${p.liq!=null?` · Liq ${fmt(p.liq)}`:''} · ${p.tps.map((t,k)=>`TP${k+1} ${fmt(t.p)}${t.hit?' ✓':''}`).join(' · ')||'kein TP'} · Rest ${Math.round(p.qty/p.qty0*100)} %${p.trail?` · Trail ${ff(p.trail)} %`:''}${p.ttOn?' · Trailing-TP aktiv':p.ttp?` · Trail-TP ${ff(p.ttp)} %`:''}${p.csl?' · SL bei Kerzenschluss':''}</span>
  ${m?`<div class="row" style="flex-wrap:wrap"><button data-be="${p.id}">SL → Einstand</button>${fut?`<button data-fl="${p.id}">⇅ Flip</button>`:''}<button data-cl="${p.id}" class="danger">${fut?'Schließen':'Verkaufen'}</button></div>${bc?'<div class="mut" style="font-size:11px">Doppelt tippen → Chart von '+p.label+'</div>':''}`:'<div class="mut" style="font-size:11px">'+(p.replay?'Läuft im Replay':'Kurs wird geladen … · doppelt tippen → Chart öffnen')+'</div>'}</div>`}
-function ordHTML(o){return `<div class="pos">⏳ ${TYPN[o.type]||'Limit'} <b class="${o.dir>0?'ok':'bad'}">${o.mode==='spot'?'Spot':o.dir>0?'Long':'Short'}</b> ${o.label}${o.replay?' (Replay)':''} ${fin(o.price)?'@ '+fmt(o.price):''}${o.type==='trail'?` · ${ff(o.tpct)} % Rücklauf${o.act?' · aktiv':''}`:''} <span class="mut">SL ${fin(o.sl)?fmt(o.sl):'–'}</span> <button data-cx="${o.id}">Stornieren</button></div>`}
+function ordHTML(o){return `<div class="pos" data-oid="${o.id}">⏳ ${TYPN[o.type]||'Limit'} <b class="${o.dir>0?'ok':'bad'}">${o.mode==='spot'?'Spot':o.dir>0?'Long':'Short'}</b> ${o.label}${o.replay?' (Replay)':''} ${fin(o.price)?'@ '+fmt(o.price):''}${o.type==='trail'?` · ${ff(o.tpct)} % Rücklauf${o.act?' · aktiv':''}`:''} <span class="mut">SL ${fin(o.sl)?fmt(o.sl):'–'}</span> <button data-cx="${o.id}">Stornieren</button></div>`}
 function posRun(p,fn){const bc=!mine(p)&&bgOf(p);if(bc){inCtx(bc,fn);after()}else fn()}
 let posTap={id:null,t:0};
 function posOpenChart(p){if(!p||p.replay)return;if(mine(p)){toast(p.label+' ist schon im Chart');return}
@@ -2245,6 +2247,7 @@ function posOpenChart(p){if(!p||p.replay)return;if(mine(p)){toast(p.label+' ist 
  else{const y=p.key.split(':')[1];if(SYMS[y]){S.custom=null;S.sym=y;$('#sym').value=y;loadData()}}}
 function bindPos(el){
  el.querySelectorAll('.pos[data-pid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id=d.dataset.pid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.pos.find(x=>String(x.id)===id))}else posTap={id,t:now}}));
+ el.querySelectorAll('.pos[data-oid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id='o'+d.dataset.oid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.ord.find(x=>'o'+x.id===id))}else posTap={id,t:now}}));
  el.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.cl);if(p)posRun(p,()=>closeNow(p,'Manuell'))});
  el.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.fl);if(p)posRun(p,()=>flip(p))});
  el.querySelectorAll('[data-be]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.be);if(!p)return;posRun(p,()=>{if(p.dir*(lastP()-p.entry)<=0){toast('Kurs ist nicht im Gewinn – Einstand-Stop wäre sofort ausgelöst');return}p.sl=p.entry;after();toast('Stop auf Einstand gesetzt')})});
