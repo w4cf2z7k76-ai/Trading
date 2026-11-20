@@ -22,6 +22,7 @@ select,button,.btn{background:var(--btn);color:var(--txt);border:1px solid var(-
 button.on{background:var(--onbg);border-color:var(--acc);color:var(--acc)}
 #quote{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;line-height:1.15;padding-left:6px;white-space:nowrap}
 #quote b{font-size:15px}
+#pcTile{position:absolute;left:10px;z-index:4;background:rgba(22,27,34,.86);border:1px solid #ff9800;color:#e6edf3;border-radius:12px;padding:5px 9px;font-size:11px;line-height:1.35;cursor:pointer;max-width:70%;backdrop-filter:blur(6px)}
 #syBar{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:9000;background:#2b2f3a;border:1px solid #f0b90b;color:#fff;border-radius:14px;padding:8px 10px;font-size:13px;display:flex;align-items:center;gap:8px;justify-content:space-between;box-shadow:0 6px 24px rgba(0,0,0,.4)}#syBar button{flex:none}
 html.sync-ro #pnList button,html.sync-ro #bList button,html.sync-ro #tkSend{opacity:.45}
 #bMenu.has-n::after{content:attr(data-n);position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#ff3b5c;color:#fff;font:700 10px/17px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px var(--bg,#0d1117);pointer-events:none}
@@ -321,6 +322,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mNB"><div class="box" style="width:min(96%,520px)"><h3>📊 Backtest der Noten</h3><div id="nbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="nbGo" class="on">Test starten</button><button data-close>Schließen</button></div></div></div>
 <div class="modal" id="mLA"><div class="box" style="width:min(96%,520px)"><h3>🔴 Live-Analysen</h3><div id="laOut" style="max-height:64vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
+<div class="modal" id="mPC"><div class="box" style="width:min(96%,560px)"><h3>⛏ Bitcoin-Produktionskosten</h3><div id="pcOut" style="max-height:66vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mInbox"><div class="box" style="width:min(96%,520px)"><h3>🔔 Mitteilungen</h3><div id="inbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="inbRead">✓ Alle gelesen</button><button id="inbClr">Löschen</button><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mLive"><div class="box" style="width:min(96%,500px)"><h3>🔗 Börse & Live-Konto</h3><div id="lvOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mSym"><div class="box" style="width:min(96%,480px)">
@@ -514,7 +516,7 @@ function calcScale(){
  const B=S.bars;const a=Math.max(0,Math.floor(iOf(0))),b=Math.min(B.length-1,Math.ceil(S.end));
  let lo=Infinity,hi=-Infinity;for(let i=a;i<=b;i++){lo=Math.min(lo,B[i].l);hi=Math.max(hi,B[i].h)}
  if(!isFinite(lo)){const l=B[B.length-1];lo=l.l;hi=l.h}
- try{const lv=[];AC.pos.filter(mine).forEach(p=>lv.push(p.entry,p.sl,...p.tps.filter(t=>!t.hit).map(t=>t.p)));AC.ord.filter(mine).forEach(o=>lv.push(o.price,o.sl,...o.tps.map(t=>t.p)));if(TKV&&(S.tab==='spot'||S.tab==='fut'||$('#mTrade').classList.contains('open'))){const o=tkRead();lv.push(o.type==='market'?B[B.length-1].c:o.price,o.sl);if(o.tps[0])lv.push(o.tps[0].p)}
+ try{const lv=[];AC.pos.filter(mine).forEach(p=>lv.push(p.entry,p.sl,...p.tps.filter(t=>!t.hit).map(t=>t.p)));AC.ord.filter(mine).forEach(o=>lv.push(o.price,o.sl,...o.tps.map(t=>t.p)));try{if(IND.pc.on&&pcIsBTC()&&PC.diff&&S.tab!=='heat'){const t=B[B.length-1].t,e=pcElec(t);if(isFinite(e))lv.push(e*.97,e*IND.pc.tot*1.03)}}catch(_){}if(TKV&&(S.tab==='spot'||S.tab==='fut'||$('#mTrade').classList.contains('open'))){const o=tkRead();lv.push(o.type==='market'?B[B.length-1].c:o.price,o.sl);if(o.tps[0])lv.push(o.tps[0].p)}
   const ref=B[B.length-1].c;lv.forEach(v=>{if(Math.abs(v-ref)/ref<.35){lo=Math.min(lo,v);hi=Math.max(hi,v)}})}catch(_){}
  const mid=(lo+hi)/2+S.yShift;let half=(hi-lo)/2*(heatOn()?1.3:1.12)/S.yZoom;if(!(half>0))half=Math.abs(mid)*0.01||1;
  yMin=mid-half;yMax=mid+half;
@@ -691,7 +693,7 @@ function tag(x,y,text,bg,fg,align){ctx.font='10px system-ui,sans-serif';const w=
 const IND_DEF={
  vol:{on:false,ma:20},vp:{on:false,rows:40,w:28,va:70},
  ma:{on:false,l:[{on:true,t:'EMA',n:21,c:'#ffd166'},{on:true,t:'EMA',n:55,c:'#7cb4ff'},{on:false,t:'SMA',n:200,c:'#ff7a93'}]},
- bb:{on:false,n:20,k:2},vwap:{on:false},
+ bb:{on:false,n:20,k:2},vwap:{on:false},pc:{on:false,kwh:.05,eff:1,tot:1.6},
  rsi:{on:false,n:14,ob:70,os:30},macd:{on:false,f:12,s:26,g:9},srsi:{on:false,n:14,st:14,k:3,d:3},atr:{on:false,n:14},fund:{on:false},oi:{on:false},ph:{},pz:{}};
 const IND=(()=>{const s=store('wdesk_ind')||{},o=JSON.parse(JSON.stringify(IND_DEF));for(const k in o)if(s[k])Object.assign(o[k],s[k]);return o})();
 const indSave=()=>store('wdesk_ind',IND);
@@ -723,9 +725,87 @@ function indCalc(){const B=S.bars,k=B.length+'|'+(B.length?B[B.length-1].t+'|'+B
  if(IND.atr.on){const tr=B.map((b,i)=>i?Math.max(b.h-b.l,Math.abs(b.h-B[i-1].c),Math.abs(b.l-B[i-1].c)):b.h-b.l),o=new Array(B.length).fill(NaN);let a=NaN;for(let i=0;i<B.length;i++){if(i===IND.atr.n-1){let s=0;for(let j=0;j<=i;j++)s+=tr[j];a=s/IND.atr.n}else if(i>=IND.atr.n)a=(a*(IND.atr.n-1)+tr[i])/IND.atr.n;o[i]=a}v.atr=o}
  if(IND.fund.on)v.fund=foAlign(FO.key===S.sym+'|'+S.tf?FO.fund:null,'r',B);if(IND.oi.on)v.oi=foAlign(FO.key===S.sym+'|'+S.tf?FO.oi:null,'v',B);
  ICACHE.k=k;ICACHE.v=v;return v}
+
+/* ---------- ⛏ Bitcoin-Produktionskosten (Kostenband) ---------- */
+const PC={diff:null,ts:0,daily:null,dts:0,busy:false,dbusy:false,err:null,derr:null,next:0,sig:null,sigK:''};
+const pcIsBTC=()=>/^BTC/.test(S.custom||S.sym);
+const PC_HALV=[[Date.UTC(2009,0,3),50],[Date.UTC(2012,10,28),25],[Date.UTC(2016,6,9),12.5],[Date.UTC(2020,4,11),6.25],[Date.UTC(2024,3,20),3.125],[Date.UTC(2028,3,15),1.5625]];
+// Ø-Effizienz der laufenden Geräte (Schätzung, J/TH) – nicht die neuesten Modelle
+const PC_EFF=[[2014,800],[2015,400],[2016,200],[2017,130],[2018,100],[2019,80],[2020,65],[2021,50],[2022,40],[2023,33],[2024,27],[2025,22],[2026,19],[2027,16],[2028,14],[2030,11]].map(([y,e])=>[Date.UTC(y,0,1),e]);
+function pcEff(t){const E=PC_EFF;if(t<=E[0][0])return E[0][1];for(let k=1;k<E.length;k++)if(t<=E[k][0]){const [t0,e0]=E[k-1],[t1,e1]=E[k],f=(t-t0)/(t1-t0);return Math.exp(Math.log(e0)+(Math.log(e1)-Math.log(e0))*f)}return E[E.length-1][1]}
+function pcReward(t){let r=50;for(const [h,v] of PC_HALV)if(t>=h)r=v;return r}
+function pcDiff(t){const D=PC.diff;if(!D||!D.length)return NaN;if(t<D[0][0])return D[0][1];let lo=0,hi=D.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(D[m][0]<=t)lo=m;else hi=m-1}return D[lo][1]}
+// Stromkosten je BTC: Difficulty × 2^32 Hashes → TH × J/TH → kWh × $/kWh ÷ Blockbelohnung
+function pcElec(t,o){o=o||IND.pc;const d=pcDiff(t);if(!isFinite(d))return NaN;return d*4294967296/1e12*pcEff(t)*o.eff/3.6e6*o.kwh/pcReward(t)}
+const pcTot=(t,o)=>pcElec(t,o)*(o||IND.pc).tot;
+function pcParse(j){const out=[];const add=(t,d)=>{t=+t;d=+d;if(!(d>0)||!(t>0))return;out.push([t<1e11?t*1000:t,d])};
+ if(Array.isArray(j))j.forEach(x=>Array.isArray(x)?add(x[0],x[2]):add(x.time||x.timestamp,x.difficulty));
+ else if(j&&Array.isArray(j.difficulty))j.difficulty.forEach(x=>add(x.time||x.timestamp,x.difficulty));
+ out.sort((a,b)=>a[0]-b[0]);return out.filter((x,i)=>!i||x[0]!==out[i-1][0])}
+async function pcLoad(force){if(PC.busy)return;if(!force&&Date.now()<PC.next)return;
+ if(!PC.diff){const c=store('wdesk_pc_diff');if(c&&c.d&&c.d.length){PC.diff=c.d;PC.ts=c.ts}}
+ if(!force&&PC.diff&&Date.now()-PC.ts<12*36e5)return;PC.busy=true;
+ const U=['https://mempool.space/api/v1/mining/hashrate','https://mempool.space/api/v1/mining/hashrate/all','https://mempool.space/api/v1/mining/difficulty-adjustments','https://mempool.space/api/v1/mining/hashrate/3y'];
+ let best=null;for(const u of U){try{const d=pcParse(await getJ(u));if(d.length&&(!best||d[0][0]<best[0][0]))best=d;if(best&&best[0][0]<Date.UTC(2014,0,1))break}catch(_){}}
+ PC.busy=false;if(best&&best.length){PC.diff=best;PC.ts=Date.now();PC.err=null;store('wdesk_pc_diff',{ts:PC.ts,d:best});PC.sigK='';ICACHE.k='';req()}else{PC.err='mempool.space nicht erreichbar';PC.next=Date.now()+6e4;req()}
+ if($('#mPC')&&$('#mPC').classList.contains('open'))pcRender()}
+async function pcLoadDaily(force){if(PC.dbusy)return;if(!PC.daily){const c=store('wdesk_pc_daily');if(c&&c.d&&c.d.length){PC.daily=c.d;PC.dts=c.ts}}
+ if(!force&&PC.daily&&Date.now()-PC.dts<6*36e5)return;PC.dbusy=true;
+ try{let D=PC.daily?PC.daily.slice(0,-1):[],start=D.length?D[D.length-1][0]+864e5:Date.UTC(2017,7,17);
+  for(let k=0;k<12;k++){const r=await getJ(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=${start}&limit=1000`);if(!r.length)break;
+   r.forEach(x=>{const t=+x[0];if(!D.length||t>D[D.length-1][0])D.push([t,+x[1],+x[2],+x[3],+x[4]])});const last=+r[r.length-1][0];if(r.length<1000||last>=Date.now()-864e5)break;start=last+864e5}
+  PC.daily=D;PC.dts=Date.now();PC.derr=null;store('wdesk_pc_daily',{ts:PC.dts,d:D});PC.sigK=''}catch(e){PC.derr='Tageskurse nicht geladen: '+e.message}
+ PC.dbusy=false;req();if($('#mPC')&&$('#mPC').classList.contains('open'))pcRender()}
+// Signale: Tagesschluss fällt ins Band (≤ obere Linie), vorher ≥ 30 Tage über dem Band → Einstieg nächstes Tages-Open
+function pcSignals(){const D=PC.daily;if(!D||!PC.diff)return[];const o=IND.pc,k=o.kwh+'|'+o.eff+'|'+o.tot+'|'+D.length+'|'+PC.diff.length;if(PC.sigK===k)return PC.sig;
+ const S2=[];let above=0;for(let i=0;i<D.length-1;i++){const t=D[i][0],up=pcTot(t);if(!isFinite(up)){above=0;continue}
+  if(D[i][4]<=up){if(above>=30)S2.push({i,t,ci:D[i][4],up,lo:pcElec(t)});above=0}else above++}
+ PC.sig=S2;PC.sigK=k;return S2}
+function pcFwd(i0,H){const D=PC.daily,e=D[i0+1];if(!e)return null;const ep=e[1],r={t:e[0],ep};H.forEach(h=>{const j=i0+1+h;r['r'+h]=D[j]?D[j][4]/ep-1:null});
+ let mn=Infinity;const end=Math.min(D.length-1,i0+1+180);for(let j=i0+1;j<=end;j++)mn=Math.min(mn,D[j][3]);r.dd=mn/ep-1;r.full=!!D[i0+181];return r}
+function pcBacktest(){const D=PC.daily,H=[7,30,90,180];if(!D||D.length<400)return null;const sig=pcSignals().map(s=>Object.assign({},s,pcFwd(s.i,H))).filter(s=>s.ep);
+ let seed=12345;const rnd=()=>(seed=(seed*1103515245+12345)%2147483648)/2147483648;const first=D.findIndex(x=>isFinite(pcTot(x[0])));const R=[];
+ for(let k=0;k<1000;k++){const i=first+Math.floor(rnd()*(D.length-182-first));if(i>=first)R.push(pcFwd(i,H))}
+ const st=(arr,f)=>{const v=arr.map(f).filter(x=>x!=null&&isFinite(x));if(!v.length)return null;v.sort((a,b)=>a-b);return{n:v.length,avg:v.reduce((s,x)=>s+x,0)/v.length,med:v[Math.floor(v.length/2)],pos:v.filter(x=>x>0).length/v.length}};
+ const sum=a=>{const o={};H.forEach(h=>o[h]=st(a,x=>x['r'+h]));o.dd=st(a.filter(x=>x.full),x=>x.dd);return o};return{sig,S:sum(sig),R:sum(R),H}}
+// Chart: Band + Pfeile
+function pcDraw(a,b){if(!IND.pc.on||!pcIsBTC()||S.tab==='heat')return;if(!PC.diff){pcLoad();return}if(!PC.daily)pcLoadDaily();const B=S.bars,lo=[],hi=[];
+ for(let i=a;i<=b;i++){lo[i]=pcElec(B[i].t);hi[i]=lo[i]*IND.pc.tot}
+ ctx.fillStyle='rgba(255,152,0,.16)';ctx.beginPath();let st=false;for(let i=a;i<=b;i++){if(!isFinite(hi[i]))continue;const x=xOf(i);st?ctx.lineTo(x,yOf(hi[i])):ctx.moveTo(x,yOf(hi[i]));st=true}for(let i=b;i>=a;i--){if(isFinite(lo[i]))ctx.lineTo(xOf(i),yOf(lo[i]))}ctx.fill();
+ indLine(hi,a,b,'#ffb74d',1.4);indLine(lo,a,b,'#ff8f00',1.6,[5,3]);
+ const sg=pcSignals();if(sg.length){ctx.font='bold 13px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='top';sg.forEach(s=>{const te=s.t+864e5;let i=-1;for(let k=a;k<=b;k++){if(B[k].t<=te&&te<B[k].t+S.tfms){i=k;break}}if(i<0)return;const x=xOf(i),y=yOf(B[i].l)+6;ctx.fillStyle='#ff9800';ctx.fillText('▲',x,y);ctx.font='9px system-ui,sans-serif';ctx.fillText('⛏',x,y+14);ctx.font='bold 13px system-ui,sans-serif'})}}
+function pcNow(){const t=Date.now(),lo=pcElec(t),hi=lo*IND.pc.tot,px=lastP();if(!isFinite(lo)||!fin(px))return null;return{lo,hi,px,vsLo:px/lo-1,vsHi:px/hi-1,st:px>hi?'über':px>=lo?'im':'unter'}}
+function pcTile(){let el=$('#pcTile');const show=IND.pc.on&&pcIsBTC()&&S.tab!=='heat'&&!S.full;if(!show){if(el)el.style.display='none';return}
+ if(!el){el=document.createElement('div');el.id='pcTile';$('#wrap').appendChild(el);el.onclick=pcOpen}
+ const n=PC.diff?pcNow():null;el.style.display='';el.style.top=Math.max(40,PH-58)+'px';
+ el.innerHTML=!n?`⛏ Produktionskosten · <span class="mut">${PC.err||'lade Daten …'}</span>`:`⛏ Strom <b>${fmtK(n.lo)}</b> · Gesamt <b>${fmtK(n.hi)}</b><br>Preis ${n.vsLo>=0?'+':''}${ff((n.vsLo*100).toFixed(0))} % vs. Strom · <b class="${n.st==='über'?'':n.st==='im'?'warn':'bad'}">${n.st==='über'?'ÜBER':n.st==='im'?'IM':'UNTER'} BAND</b>`}
+function pcOpen(){pcLoad();pcLoadDaily();pcRender();$('#mPC').classList.add('open')}
+function pcRender(){const el=$('#pcOut'),o=IND.pc,n=PC.diff?pcNow():null,pct=x=>x==null?'–':(x>=0?'+':'')+ff((x*100).toFixed(1))+' %';
+ const sl=(k,l,mn,mx,stp,fm)=>`<label style="display:block;font-size:13px;margin:8px 0 2px">${l}: <b id="pcV_${k}">${fm(o[k])}</b></label><input type="range" data-pc="${k}" min="${mn}" max="${mx}" step="${stp}" value="${o[k]}" style="width:100%">`;
+ let h=`<div class="card"><h4><span>Jetzt</span><small class="mut">${pcIsBTC()?'':'nur bei BTC im Chart'}</small></h4>${n?`<table style="width:100%;font-size:13px">
+  <tr><td>Kostenboden (nur Strom)</td><td style="text-align:right"><b>${fmt(n.lo)}</b></td></tr><tr><td>Gesamtkosten (inkl. Hardware/Betrieb)</td><td style="text-align:right"><b>${fmt(n.hi)}</b></td></tr>
+  <tr><td>Preis</td><td style="text-align:right">${fmt(n.px)}</td></tr><tr><td>Preis vs. Strom / vs. Gesamt</td><td style="text-align:right">${pct(n.vsLo)} / ${pct(n.vsHi)}</td></tr>
+  <tr><td>Status</td><td style="text-align:right"><b class="${n.st==='über'?'ok':n.st==='im'?'warn':'bad'}">${n.st==='über'?'über dem Band':n.st==='im'?'im Band':'unter dem Band'}</b></td></tr></table>`:`<div class="mut">${PC.err||'Lade Difficulty von mempool.space …'}</div>`}</div>
+ <div class="card"><h4><span>🎚 Annahmen (Regler)</span><button id="pcRst" style="font-size:12px">Standard</button></h4>
+  ${sl('kwh','Strompreis',.02,.12,.005,v=>ff(v.toFixed(3))+' $/kWh')}${sl('eff','Effizienz-Faktor (1 = Ø-Geräte, < 1 = effizienter)',.5,1.5,.05,v=>ff(v.toFixed(2))+'× → heute '+ff((pcEff(Date.now())*v).toFixed(1))+' J/TH')}${sl('tot','Gesamtkosten-Faktor (Strom × …)',1.2,2.5,.05,v=>ff(v.toFixed(2))+'×')}
+  ${n?`<div style="font-size:12px;margin-top:8px"><b>Empfindlichkeit</b> – Kostenboden heute bei<br>${[.03,.04,.05,.06,.08].map(k=>`${ff(k.toFixed(2))} $ → ${fmtK(pcElec(Date.now(),Object.assign({},o,{kwh:k})))}`).join(' · ')}</div>`:''}</div>`;
+ const bt=PC.daily&&PC.diff?pcBacktest():null;
+ if(!bt)h+=`<div class="card"><h4><span>📊 Backtest</span></h4><div class="mut">${PC.derr||'Lade BTC-Tageskurse seit 2017 …'}</div></div>`;
+ else{const rw=(lab,s)=>`<tr><td>${lab}</td>${bt.H.map(h2=>`<td style="text-align:right">${s[h2]?`${pct(s[h2].avg)}<br><small class="mut">${pct(s[h2].med)} · ${ff((s[h2].pos*100).toFixed(0))}% +</small>`:'–'}</td>`).join('')}<td style="text-align:right">${s.dd?pct(s.dd.avg):'–'}</td></tr>`;
+  h+=`<div class="card"><h4><span>📊 Backtest (seit ${new Date(PC.daily[0][0]).getUTCFullYear()})</span></h4>
+  <table style="width:100%;font-size:12px"><tr class="mut"><td></td>${bt.H.map(x=>`<td style="text-align:right">${x} T</td>`).join('')}<td style="text-align:right">Max DD</td></tr>${rw(`<b>Signale (${bt.sig.length})</b>`,bt.S)}${rw('Zufall (1000)',bt.R)}</table>
+  <div class="mut" style="font-size:11px">Oben Ø-Rendite, darunter Median · Anteil im Plus. Max DD = tiefster Stand in 180 Tagen nach Einstieg.</div>
+  ${bt.sig.length?`<table style="width:100%;font-size:12px;margin-top:8px"><tr class="mut"><td>Signal</td><td style="text-align:right">Einstieg</td>${bt.H.map(x=>`<td style="text-align:right">${x} T</td>`).join('')}<td style="text-align:right">DD</td></tr>
+  ${bt.sig.map(s=>`<tr><td>${new Date(s.t).toLocaleDateString('de-DE')}</td><td style="text-align:right">${fmtK(s.ep)}</td>${bt.H.map(x=>`<td style="text-align:right" class="${s['r'+x]==null?'mut':s['r'+x]>=0?'ok':'bad'}">${s['r'+x]==null?'–':pct(s['r'+x])}</td>`).join('')}<td style="text-align:right" class="bad">${pct(s.dd)}</td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">Mit diesen Annahmen gab es kein Signal.</div>'}
+  <div class="warn" style="font-size:11px;margin-top:6px">Nur ${bt.sig.length} Ereignis${bt.sig.length===1?'':'se'} – statistisch dünn. Effizienz je Ära ist eine Schätzung; Gebühren sind nicht eingerechnet. Kein Anlage-Rat.</div></div>`}
+ h+=`<div class="mut" style="font-size:11px">Daten: Difficulty ${PC.diff?PC.diff.length+' Werte seit '+new Date(PC.diff[0][0]).getUTCFullYear():'–'} (mempool.space) · Tageskurse ${PC.daily?PC.daily.length+' Tage':'–'} (Binance). Signal = Tagesschluss fällt ins Band nach ≥ 30 Tagen darüber; Einstieg = nächstes Tages-Open.</div>`;
+ el.innerHTML=h;
+ el.querySelectorAll('[data-pc]').forEach(r=>{r.oninput=()=>{const k=r.dataset.pc;IND.pc[k]=+r.value;indSave();PC.sigK='';req();const f={kwh:v=>ff(v.toFixed(3))+' $/kWh',eff:v=>ff(v.toFixed(2))+'× → heute '+ff((pcEff(Date.now())*v).toFixed(1))+' J/TH',tot:v=>ff(v.toFixed(2))+'×'}[k];$('#pcV_'+k).textContent=f(+r.value)};r.onchange=()=>pcRender()});
+ $('#pcRst').onclick=()=>{const on=IND.pc.on;IND.pc=JSON.parse(JSON.stringify(IND_DEF.pc));IND.pc.on=on;indSave();PC.sigK='';req();pcRender()}}
+
 // --- Zeichnen im Kurs-Bereich (innerhalb clip) ---
 function indLine(arr,a,b,col,w,dash){ctx.strokeStyle=col;ctx.lineWidth=w||1.4;ctx.setLineDash(dash||[]);ctx.beginPath();let st=false;for(let i=Math.max(0,a-1);i<=Math.min(arr.length-1,b+1);i++){const v=arr[i];if(!isFinite(v)){st=false;continue}const x=xOf(i),y=yOf(v);st?ctx.lineTo(x,y):ctx.moveTo(x,y);st=true}ctx.stroke();ctx.setLineDash([])}
-function indDrawPrice(a,b){if(S.tab==='heat')return;const v=indCalc(),B=S.bars;
+function indDrawPrice(a,b){if(S.tab==='heat')return;try{pcDraw(a,b)}catch(_){}const v=indCalc(),B=S.bars;
  if(IND.vol.on&&B.some(x=>x.v)){let mx=0;for(let i=a;i<=b;i++)mx=Math.max(mx,B[i].v||0);if(mx>0){const hh=PH*.18,bw=Math.max(1,S.bw*.7);ctx.globalAlpha=.38;
    for(let i=a;i<=b;i++){const k=B[i],hgt=(k.v||0)/mx*hh;ctx.fillStyle=k.c>=k.o?TH.up:TH.dn;ctx.fillRect(xOf(i)-bw/2,PH-hgt,bw,hgt)}ctx.globalAlpha=1;
    if(v.volma){ctx.strokeStyle=TH.acc;ctx.lineWidth=1;ctx.beginPath();let st=false;for(let i=a;i<=b;i++){const q=v.volma[i];if(!isFinite(q)){st=false;continue}const x=xOf(i),y=PH-q/mx*hh;st?ctx.lineTo(x,y):ctx.moveTo(x,y);st=true}ctx.stroke()}}}
@@ -744,6 +824,7 @@ function indDrawPrice(a,b){if(S.tab==='heat')return;const v=indCalc(),B=S.bars;
 function indLegend(y0,ci){const v=indCalc(),it=[],f=x=>isFinite(x)?fmt(x):'–';
  if(IND.ma.on&&v.ma)IND.ma.l.forEach((m,k)=>{if(m.on&&v.ma[k])it.push([`${m.t} ${m.n} ${f(v.ma[k][ci])}`,m.c])});
  if(IND.bb.on&&v.bb)it.push([`BB ${IND.bb.n},${IND.bb.k}`,'#7cb4ff']);if(IND.vwap.on&&v.vwap)it.push([`VWAP ${f(v.vwap[ci])}`,'#e879f9']);
+ if(IND.pc.on&&pcIsBTC()&&PC.diff){const t=S.bars[ci]?S.bars[ci].t:Date.now(),e=pcElec(t);if(isFinite(e))it.push([`⛏ ${fmtK(e)}–${fmtK(e*IND.pc.tot)}`,'#ffb74d'])}
  if(IND.vol.on)it.push([`Vol ${S.bars[ci]&&S.bars[ci].v?fmtK(S.bars[ci].v):'–'}`,TH.mut]);if(IND.vp.on)it.push(['Vol-Profil',TH.mut]);
  if(!it.length)return;ctx.font='10px system-ui,sans-serif';ctx.textBaseline='top';ctx.textAlign='left';let x=8;it.forEach(([t,c])=>{const w=ctx.measureText(t).width;if(x+w>PW-8)return;ctx.fillStyle=TH.lbl;ctx.fillRect(x-3,y0,w+6,14);ctx.fillStyle=c;ctx.fillText(t,x,y0+2);x+=w+10})}
 const fmtK=n=>n>=1e9?ff((n/1e9).toFixed(2))+' Mrd':n>=1e6?ff((n/1e6).toFixed(2))+' Mio':n>=1e3?ff((n/1e3).toFixed(1))+'k':ff(n.toFixed(2));
@@ -777,14 +858,14 @@ function indDrawPanes(a,b,ci){const HS=indPaneHs();if(!HS.length)return;const v=
   ctx.font='10px system-ui,sans-serif';ctx.textBaseline='top';ctx.textAlign='left';const w=ctx.measureText(legend).width;ctx.fillStyle=TH.lbl;ctx.fillRect(4,y0+3,w+8,14);ctx.fillStyle=lines[0]?lines[0][1]:TH.txt;ctx.fillText(legend,8,y0+5);
   ctx.restore()})}
 // --- Auswahl-Fenster ---
-const INDL=[['ma','Gleitende Durchschnitte','EMA/SMA-Linien, z. B. 21 / 55 / 200','Kurs'],['bb','Bollinger-Bänder','Schwankungsband um den Durchschnitt','Kurs'],['vwap','VWAP','Volumengewichteter Ø-Preis (Tages-Start)','Kurs'],
+const INDL=[['ma','Gleitende Durchschnitte','EMA/SMA-Linien, z. B. 21 / 55 / 200','Kurs'],['bb','Bollinger-Bänder','Schwankungsband um den Durchschnitt','Kurs'],['vwap','VWAP','Volumengewichteter Ø-Preis (Tages-Start)','Kurs'],['pc','⛏ Produktionskosten (nur BTC)','Strom- & Gesamtkosten pro BTC als Band · Signale & Backtest','Kurs'],
  ['vol','Volumen','Balken unten im Chart + Durchschnitt','Kurs'],['vp','Volumen-Profil (seitlich)','Wo am meisten gehandelt wurde, mit POC & Value Area','Kurs'],
  ['rsi','RSI','Überkauft / überverkauft','Fenster'],['macd','MACD','Trend & Momentum mit Histogramm','Fenster'],['srsi','Stochastic RSI','Schnelle Wendepunkte','Fenster'],['atr','ATR','Durchschnittliche Schwankung – gut für Stop-Abstand','Fenster'],['fund','Funding-Rate','Wer zahlt wen? Stark positiv = viele Longs (Binance-Futures)','Fenster'],['oi','Open Interest','Offene Futures-Positionen in $ (Binance, max. 30 Tage)','Fenster']];
 let INDX=null;
 function indOpen(){renderInd();$('#mInd').classList.add('open')}
 function renderInd(){const nf=(k,f,l,mn,mx,st)=>`<label class="row" style="font-size:13px;margin:4px 0">${l}<input class="inp" data-ik="${k}" data-if="${f}" inputmode="decimal" value="${ff(String(IND[k][f]))}" style="width:74px;flex:none;margin-left:auto" data-mn="${mn}" data-mx="${mx}"></label>`;
  const cfg={ma:()=>IND.ma.l.map((m,i)=>`<div class="row" style="font-size:13px;margin:4px 0;gap:6px"><input type="checkbox" data-mai="${i}" data-maf="on" ${m.on?'checked':''}><span style="width:12px;height:12px;border-radius:6px;background:${m.c};display:inline-block"></span><span class="chips" style="margin:0">${['EMA','SMA'].map(t=>`<button data-mai="${i}" data-mat="${t}" class="${m.t===t?'on':''}" style="padding:4px 8px">${t}</button>`).join('')}</span><input class="inp" data-mai="${i}" data-maf="n" inputmode="numeric" value="${m.n}" style="width:62px;flex:none;margin-left:auto"></div>`).join('')+`<div class="row" style="gap:6px;margin-top:2px">${['#ffd166','#7cb4ff','#ff7a93','#5ef0b4','#e879f9','#ffffff'].map(c=>`<button data-mac="${c}" aria-label="Farbe" style="width:26px;height:26px;padding:0;border-radius:13px;background:${c}"></button>`).join('')}<small class="mut">Farbe für Linie ${(INDX&&INDX.mi||0)+1}</small></div>`,
-  bb:()=>nf('bb','n','Länge',2,200)+nf('bb','k','Abweichung (σ)',.5,5),vwap:()=>'<div class="mut" style="font-size:12px">Startet bei Intraday jeden Tag neu, ab 1D jeden Monat.</div>',
+  pc:()=>'<div class="mut" style="font-size:12px">Unteres Band = reine Stromkosten pro BTC, oberes = Gesamtkosten. Daten: mempool.space (Difficulty), Binance (Tageskurse).</div><div class="row"><button id="pcCfg" class="on">🎚 Regler & Backtest öffnen</button></div>',bb:()=>nf('bb','n','Länge',2,200)+nf('bb','k','Abweichung (σ)',.5,5),vwap:()=>'<div class="mut" style="font-size:12px">Startet bei Intraday jeden Tag neu, ab 1D jeden Monat.</div>',
   vol:()=>nf('vol','ma','Durchschnitt (Länge)',1,200),vp:()=>nf('vp','rows','Zeilen',10,120)+nf('vp','w','Breite (% vom Chart)',10,60)+nf('vp','va','Value Area (%)',50,95),
   rsi:()=>nf('rsi','n','Länge',2,100)+nf('rsi','ob','Überkauft',50,95)+nf('rsi','os','Überverkauft',5,50),macd:()=>nf('macd','f','Schnell',2,100)+nf('macd','s','Langsam',3,200)+nf('macd','g','Signal',2,100),
   fund:()=>'<div class="mut" style="font-size:12px">Positiv = Longs zahlen Shorts (Markt gierig, Rücksetzer möglich). Negativ = Shorts zahlen (oft Short-Squeeze-Gefahr). Alle 8 Std. von Binance.</div>',oi:()=>'<div class="mut" style="font-size:12px">Steigt der Kurs und das OI → neues Geld, Trend stark. Steigt der Kurs, aber OI fällt → Shorts schließen, Trend schwächer. Daten max. 30 Tage.</div>',
@@ -794,6 +875,7 @@ function renderInd(){const nf=(k,f,l,mn,mx,st)=>`<label class="row" style="font-
  $('#indOut').innerHTML=h;const el=$('#indOut'),ch=()=>{indSave();ICACHE.k='';resize();foLoad(true)};
  el.querySelectorAll('[data-it]').forEach(c=>c.onchange=()=>{IND[c.dataset.it].on=c.checked;if(c.checked&&!INDX)INDX={k:c.dataset.it};ch();renderInd()});
  el.querySelectorAll('[data-ie]').forEach(b=>b.onclick=()=>{INDX=INDX&&INDX.k===b.dataset.ie?null:{k:b.dataset.ie};renderInd()});
+ {const pb=el.querySelector('#pcCfg');if(pb)pb.onclick=()=>{$('#mInd').classList.remove('open');pcOpen()}}
  el.querySelectorAll('[data-ir]').forEach(b=>b.onclick=()=>{const k=b.dataset.ir,on=IND[k].on;IND[k]=JSON.parse(JSON.stringify(IND_DEF[k]));IND[k].on=on;ch();renderInd()});
  el.querySelectorAll('input[data-ik]').forEach(i=>i.onchange=()=>{let v=num(i.value);const mn=+i.dataset.mn,mx=+i.dataset.mx;if(!isFinite(v)){renderInd();return}v=Math.max(mn,Math.min(mx,v));if(!['k'].includes(i.dataset.if)||i.dataset.ik!=='bb')v=Math.round(v);IND[i.dataset.ik][i.dataset.if]=v;ch();renderInd()});
  el.querySelectorAll('input[data-maf="on"]').forEach(c=>c.onchange=()=>{IND.ma.l[+c.dataset.mai].on=c.checked;INDX={k:'ma',mi:+c.dataset.mai};ch();renderInd()});
@@ -853,7 +935,7 @@ function draw(){LB=[];
  const src=(S.full?'⏪ REPLAY':S.src==='binance'?'● LIVE':S.src==='demo'?'Demo':'CSV')+(laFind()?' · 🔴 Live-Analyse':'');const lg=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}   O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}`;
  ctx.fillStyle=hm?'rgba(0,0,0,.7)':TH.lbl;ctx.fillRect(4,S.tool!=='cursor'?44:4,Math.min(PW-8,ctx.measureText(lg).width+8),17);
  ctx.fillStyle=info.c>=info.o?TH.up:TH.dn;ctx.fillText(lg,8,(S.tool!=='cursor'?44:4)+3);
- if(S.tab!=='heat')indLegend((S.tool!=='cursor'?44:4)+20,S._ci);
+ if(S.tab!=='heat')indLegend((S.tool!=='cursor'?44:4)+20,S._ci);try{pcTile()}catch(_){}
 }
 function renderDrawing(d,isCur){
  const R=analyze(d),pts=d.pts,col=d.type==='trend'?TH.txt:TOOLS[d.type].color;if(!pts.length)return;if(d.alt||d.sub){R.lines=[];R.zones=[]}if(d.auto&&d.st&&!d.sub)R.pattern=(d.alt?'Alt.: ':'')+d.st+(d.q!=null?' · '+d.q+' %':'');ctx.save();if(d.alt)ctx.globalAlpha=.45;
@@ -1854,7 +1936,7 @@ const syMeta=()=>store('wdesk_sync',{on:SY.on,v:SY.v,h:SY.h,pushT:SY.pushT,last:
 const DEVID=store('wdesk_devid')||(()=>{const d=Math.random().toString(36).slice(2,10);store('wdesk_devid',d);return d})();
 const DEVN=/iPhone/.test(navigator.userAgent)?'iPhone':/iPad/.test(navigator.userAgent)?'iPad':/Android/.test(navigator.userAgent)?'Android':'PC';
 const SYEX=new Set(['wdesk_sync','wdesk_devid','wdesk_lvtok','wdesk_live','wdesk_seen']);
-const syKeys=()=>Object.keys(localStorage).filter(k=>k.startsWith('wdesk_')&&!SYEX.has(k)&&!k.startsWith('wdesk_lvrem'));
+const syKeys=()=>Object.keys(localStorage).filter(k=>k.startsWith('wdesk_')&&!SYEX.has(k)&&!k.startsWith('wdesk_lvrem')&&!k.startsWith('wdesk_pc_'));
 function syHash(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(i);return(h>>>0).toString(36)+s.length}
 function sySnap(){const d={};syKeys().forEach(k=>{let v=localStorage.getItem(k);if(k==='wdesk_acct'){try{const a=JSON.parse(v);(a.pos||[]).forEach(p=>delete p.lpx);v=JSON.stringify(a)}catch(_){}}d[k]=v});return d}
 function syApply(r){const keep=new Set(Object.keys(r.data||{}));syKeys().forEach(k=>{if(!keep.has(k))localStorage.removeItem(k)});Object.entries(r.data||{}).forEach(([k,v])=>{if(v!=null)localStorage.setItem(k,v)});
