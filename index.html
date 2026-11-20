@@ -224,13 +224,13 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 
 <div class="modal" id="mAuto"><div class="box">
   <h3>⚡ Automatische Analyse</h3>
-  <p class="mut">Erkennt Swing-Hochs/-Tiefs per ZigZag und sucht darin die jüngste gültige Elliott-Zählung (1–5) und das jüngste SK-Setup (0-A-B).</p>
-  <div class="row">ZigZag-Abweichung:</div>
+  <p class="mut">Sucht auf mehreren Stufen nach Elliott-Zählungen (auch laufende Wellen, ABC und Dreiecke) und SK-Setups, bewertet sie nach den Richtlinien und zeigt die beste Zählung plus Alternative.</p>
+  <div class="row">ZigZag-Abweichung: <small class="mut" id="devInfo" style="margin-left:6px"></small></div>
   <div class="chips" id="devChips"></div>
   <label class="row"><input type="checkbox" id="oZZ" checked> ZigZag anzeigen</label>
-  <label class="row"><input type="checkbox" id="oEW" checked> Elliott-Wellen 1–5 suchen</label>
+  <label class="row"><input type="checkbox" id="oEW" checked> Elliott-Wellen suchen (1–5, ABC, Dreieck)</label>
   <label class="row"><input type="checkbox" id="oSK" checked> SK-Setup (0-A-B) suchen</label>
-  <div class="row"><button id="aRun" class="on">Analyse starten</button><button id="aClear">Auto entfernen</button><button data-close>Schließen</button></div>
+  <div class="row"><button id="aRun" class="on">Analyse starten</button><button id="aNB">📊 Noten testen</button><button id="aClear">Auto entfernen</button><button data-close>Schließen</button></div>
 </div></div>
 
 <div class="modal" id="mBT"><div class="box" style="width:min(96%,540px)">
@@ -267,7 +267,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <div class="fld"><label>TP 1</label><input id="tkTP1" inputmode="decimal"><input id="tkTP1p" class="pct" inputmode="numeric" value="50">%<button data-pick="tkTP1">📍</button></div>
   <div class="fld"><label>TP 2</label><input id="tkTP2" inputmode="decimal"><input id="tkTP2p" class="pct" inputmode="numeric" value="30">%<button data-pick="tkTP2">📍</button></div>
   <div class="fld"><label>TP 3</label><input id="tkTP3" inputmode="decimal"><input id="tkTP3p" class="pct" inputmode="numeric" value="20">%<button data-pick="tkTP3">📍</button></div>
-  <div class="row" id="rRisk">Risiko <span class="chips" id="tkRisk" style="margin:0"></span></div>
+  <div class="row" id="rRisk" style="flex-wrap:wrap">Risiko <span class="chips" id="tkRisk" style="margin:0"></span><span id="tkKelly"></span></div>
   <div class="fld" id="fStake"><label>Einsatz $</label><input id="tkStake" inputmode="decimal" placeholder="optional, z. B. 200 (statt Risiko %)"></div>
   <div class="row" id="rAmt">Betrag <span class="chips" id="tkAmt" style="margin:0"></span></div>
   <div class="row" id="rLev">Hebel <span class="chips" id="tkLev" style="margin:0"></span></div>
@@ -279,6 +279,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
    <p class="mut" style="font-size:11px">Trailing-Einstieg (Typ „Trailing“): kauft erst, wenn der Kurs nach dem Tief um den Rücklauf-% wieder steigt. Trailing-TP: nach dem letzten Ziel läuft der Gewinn weiter, bis der Kurs um X % zurückfällt. Stop-Order: Einstieg beim Ausbruch über einen Preis.</p>
   </details>
   <div class="row" style="flex-wrap:wrap;font-size:13px">Strategie <span class="chips" id="tkStrat" style="margin:0"></span></div>
+  <div id="tkConf"></div>
   <div class="card" id="tkPrev"></div>
   <div class="row" style="flex-wrap:wrap"><button id="tkSK">⇢ Aus SK-Setup</button><button id="tkSend" class="on">Order senden</button><button data-close>Abbrechen</button></div>
 </div></div>
@@ -316,6 +317,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mGuard"><div class="box" style="width:min(96%,460px)"><h3>🛡️ Schutz-Regeln</h3><div id="gdOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
+<div class="modal" id="mNB"><div class="box" style="width:min(96%,520px)"><h3>📊 Backtest der Noten</h3><div id="nbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="nbGo" class="on">Test starten</button><button data-close>Schließen</button></div></div></div>
 <div class="modal" id="mInbox"><div class="box" style="width:min(96%,520px)"><h3>🔔 Mitteilungen</h3><div id="inbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="inbRead">✓ Alle gelesen</button><button id="inbClr">Löschen</button><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mLive"><div class="box" style="width:min(96%,500px)"><h3>🔗 Börse & Live-Konto</h3><div id="lvOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mSym"><div class="box" style="width:min(96%,480px)">
@@ -617,16 +619,66 @@ function defaultDev(){const B=S.bars,n=Math.min(150,B.length);let s=0;for(let i=
 const DEVS=[.005,.01,.02,.03,.05,.08,.12,.2];
 function nearestDev(v){return DEVS.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)}
 function runAuto(){
- const z=zigzag(S.bars,S.dev);S.zz=z;S.zzHid=false;S.drawings=S.drawings.filter(d=>!d.auto);const found=[];
- if(S.optSK){for(let k=z.length-1;k>=2;k--){const o=z[k-2],a=z[k-1],b=z[k];const r=(a.p-b.p)/(a.p-o.p);
-   if(r>=.382&&r<=.786){S.drawings.push({type:'sk',auto:true,pts:[o,a,b].map(q=>({i:q.i,p:q.p}))});found.push('SK-Setup');break}}}
- if(S.optEW){for(let k=z.length-1;k>=5;k--){const pts=z.slice(k-5,k+1).map(q=>({i:q.i,p:q.p}));
-   if(analyze({type:'ew',pts}).valid){S.drawings.push({type:'ew',auto:true,pts});found.push('Elliott 1–5');break}}
-  if(!found.includes('Elliott 1–5'))for(let k=z.length-1;k>=5;k--){const pts=z.slice(k-5,k+1).map(q=>({i:q.i,p:q.p}));const A=analyze({type:'diag',pts});
-   if(A.checks.every(c=>c.ok)){S.drawings.push({type:'diag',auto:true,pts});found.push('Diagonale');break}}}
+ const B=S.bars;S.drawings=S.drawings.filter(d=>!d.auto);const found=[];const R=S.optEW?ewaFind(B):null;
+ const zdev=R&&R.best?R.best.dev:(S.devAuto?ewaLevels(B)[1]:S.dev);S.zz=zigzag(B,zdev);S.zzHid=false;S.ewaDev=zdev;
+ const put=(c,alt)=>{const d={type:c.type,auto:true,pts:c.pts,q:c.score,g:c.g,st:c.status,lvl:c.dev};if(alt)d.alt=true;S.drawings.push(d);
+  if(c.imp&&!alt)S.drawings.push({type:'ew',auto:true,pts:c.imp,q:c.score,g:c.g,st:'Impuls 1–5 (fertig)',lvl:c.dev,sub:true})};
+ if(R&&R.best){put(R.best,false);found.push(`${R.best.status} (${R.best.score} %)`);if(R.alt){put(R.alt,true);found.push(`Alternative: ${R.alt.status} (${R.alt.score} %)`)}}
+ if(S.optSK){const k=skFind(B);if(k){S.drawings.push({type:'sk',auto:true,pts:k.pts,q:k.score,g:k.g,st:'SK-Setup',lvl:k.dev});found.push(`SK ${k.score} %`)}}
+ if(R&&R.best&&!S.bg){try{const P=S.drawings.filter(d=>d.auto&&!d.alt).flatMap(d=>d.pts);const mn=Math.min(...P.map(q=>q.i)),mx=B.length-1;
+  S.bw=clamp(PW/((mx-mn)*1.25+12),2,30);S.end=mx+Math.round((mx-mn)*.2)+6;S.yShift=0;S.yZoom=1;clampEnd();calcScale();
+  const ps=P.map(q=>q.p);for(let i=mn;i<=mx;i++)ps.push(B[i].h,B[i].l);const lo=Math.min(...ps),hi=Math.max(...ps),bm=(yMin+yMax)/2,bh=(yMax-yMin)/2,half=(hi-lo)/2*1.15||bh;S.yShift=(lo+hi)/2-bm;S.yZoom=bh/half}catch(_){}}
  save();renderSheet();req();
- toast(found.length?'Gefunden: '+found.join(' + ')+' – Details in 📋':'Keine gültige Struktur – andere ZigZag-Abweichung probieren');
+ toast(found.length?'⚡ '+found.join(' · ')+' – Details in 📋':'Keine gültige Struktur gefunden – andere Zeiteinheit probieren');
 }
+
+/* ---------- Auto-Analyse 2.0: ATR-Abweichung, mehrere Stufen, Qualitäts-Punkte ---------- */
+S.devAuto=store('wdesk_devauto')!==false;
+function ewaBase(B){const n=Math.min(150,B.length);let s=0;for(let i=B.length-n;i<B.length;i++)s+=(B[i].h-B[i].l)/B[i].c;return s/n}
+function ewaLevels(B){if(!S.devAuto&&S.dev)return[S.dev];const b=ewaBase(B);return[2.5,4,6,9,13].map(m=>clamp(b*m,.003,.35))}
+const HTFF={'1m':5,'3m':5,'5m':3,'15m':4,'30m':2,'1h':4,'2h':2,'4h':6,'6h':4,'12h':2,'1D':7,'1d':7,'3D':2,'1W':4,'1w':4};
+function ewaHtf(B){const f=HTFF[S.tf]||4;return htfTrend(B,f)}
+function ewaVol(B,a,b){let s=0,n=0;for(let i=Math.min(a,b)+1;i<=Math.max(a,b);i++){s+=B[i].v||0;n++}return n?s/n:0}
+// Richtlinien bewerten → {score, g:[{t,ok,w}]}
+function ewaGrade(B,P,I,RS,htf){const n=P.length,d=Math.sign(P[1]-P[0])||1,q=P.map(v=>d*v),g=[];const G=(t,ok,w)=>g.push({t,ok:!!ok,w});
+ const w1=q[1]-q[0];
+ if(n>=3){const r2=(q[1]-q[2])/w1;G(`Welle 2 korrigiert ${pct(r2)} (ideal 50–61,8 %)`,r2>=.45&&r2<=.7,15)}
+ if(n>=4){const r3=(q[3]-q[2])/w1;G(`Welle 3 = ${ff(r3.toFixed(2))}× Welle 1 (ideal ≈ 1,618)`,r3>=1.38&&r3<=2.8,20);
+  const v3=ewaVol(B,I[2],I[3]),v1=ewaVol(B,I[0],I[1]);if(v1>0&&v3>0)G('Volumen in Welle 3 höher als in Welle 1',v3>v1,12)}
+ if(n>=5){const r4=(q[3]-q[4])/(q[3]-q[2]),r2=(q[1]-q[2])/w1;G(`Welle 4 korrigiert ${pct(r4)} (ideal 23,6–50 %)`,r4>=.2&&r4<=.52,15);
+  G('Wechsel: Welle 2 und 4 unterschiedlich tief',Math.abs(r2-r4)>=.15||Math.abs((I[2]-I[1])-(I[4]-I[3]))>=Math.max(I[2]-I[1],I[4]-I[3])*.5,8)}
+ if(n>=6){const r5=(q[5]-q[4])/w1,alt=(q[5]-q[4])/(q[3]-q[0]);G(`Welle 5 = ${ff(r5.toFixed(2))}× Welle 1 (ideal 0,618–1,618)`,(r5>=.55&&r5<=1.7)||(alt>=.55&&alt<=.7),10);
+  if(RS&&isFinite(RS[I[3]])&&isFinite(RS[I[5]]))G('RSI-Divergenz am Ende von Welle 5',d>0?RS[I[5]]<RS[I[3]]:RS[I[5]]>RS[I[3]],10);
+  const v5=ewaVol(B,I[4],I[5]),v3=ewaVol(B,I[2],I[3]);if(v5>0&&v3>0)G('Volumen in Welle 5 schwächer als in Welle 3',v5<v3,8)}
+ // Richtung der nächsten erwarteten Bewegung vs. höhere Zeiteinheit
+ const nextDir=n===6?-d:(n%2===1?d:-d);if(htf)G(`Höhere Zeiteinheit zeigt ${htf>0?'aufwärts':'abwärts'}${htf===nextDir?' – passt':' – Gegenwind'}`,htf===nextDir,10);
+ const tw=g.reduce((s,x)=>s+x.w,0),sc=tw?Math.round(g.reduce((s,x)=>s+(x.ok?x.w:0),0)/tw*100):0;return{score:sc,g}}
+function ewaRules(P,full){const d=Math.sign(P[1]-P[0])||1,q=P.map(v=>d*v),n=q.length;
+ if(n>=3&&!(q[2]>q[0]&&q[2]<q[1]))return false;if(n>=4&&!(q[3]>q[1]))return false;if(n>=5&&!(q[4]<q[3]&&q[4]>q[1]))return false;
+ if(n>=6){if(!(q[5]>q[4]))return false;const a=q[1]-q[0],b=q[3]-q[2],c=q[5]-q[4];if(b<a&&b<c)return false}return true}
+const EWA_ST={3:'Welle 3 erwartet',4:'Welle 3 läuft · danach Welle 4',5:'in Welle 4/5 · Welle 5 erwartet',6:'Impuls 1–5 fertig · Korrektur erwartet'};
+function ewaFind(B){const lv=ewaLevels(B),RS=rsiA(B.map(b=>b.c),14),htf=ewaHtf(B),C=[];
+ lv.forEach((dev,li)=>{const z=zigzag(B,dev);if(z.length<3)return;const L=z.length-1;
+  // Impuls-Zählungen (vollständig oder laufend), letzter Punkt = jüngster Pivot
+  for(const n of [6,5,4,3]){for(const end of n===6?[L,L-1]:[L]){const st=end-n+1;if(st<0)continue;const pts=z.slice(st,end+1);const P=pts.map(x=>x.p),I=pts.map(x=>x.i);
+    if(!ewaRules(P))continue;const G=ewaGrade(B,P,I,RS,htf);const age=B.length-1-I[I.length-1];
+    // Folge-ABC nach fertigem Impuls
+    if(n===6&&end<L){const nx=z.slice(end,L+1);if(nx.length>=3){const ab=[pts[5],...nx.slice(1,4)].map(x=>({i:x.i,p:x.p}));const A=analyze({type:'abc',pts:ab});
+      if(A.checks.every(c=>c.ok||c.soft))C.push({type:'abc',pts:ab,imp:pts.map(x=>({i:x.i,p:x.p})),score:Math.round(G.score*.9),g:G.g,dev,li,status:ab.length>=4?'ABC-Korrektur '+(A.pattern||''):'Korrektur läuft · Welle C erwartet',rank:G.score+30-li*2})}}
+    C.push({type:'ew',pts:pts.map(x=>({i:x.i,p:x.p})),score:G.score,g:G.g,dev,li,status:EWA_ST[n],rank:G.score*(.55+.1*Math.min(4,G.g.length))+(n-3)*4-(age>40?10:0)-(end<L?8:0)})}}
+  // Dreieck A–E
+  if(z.length>=6){const pts=z.slice(L-5).map(x=>({i:x.i,p:x.p}));const A=analyze({type:'tri',pts});if(A.checks.length&&A.checks.every(c=>c.ok)&&!/ausdehn/i.test(A.pattern||''))C.push({type:'tri',pts,score:70,g:[{t:A.pattern||'Dreieck',ok:true,w:1}],dev,li,status:(A.pattern||'Dreieck')+' · Ausbruch erwartet',rank:78})}
+ });
+ C.sort((a,b)=>b.rank-a.rank);const good=C.filter(c=>c.score>=35);const best=good[0]||C[0]||null;if(best&&best.score<35)best.status+=' (schwach)';
+ const sig=c=>c.type+':'+c.pts.map(p=>p.i).join(',');const alt=best?(good.length?good:C).find(c=>sig(c)!==sig(best)&&(c.status!==best.status||Math.abs(c.pts[0].i-best.pts[0].i)>3)):null;
+ return{best,alt,htf,levels:lv}}
+function skFind(B){const lv=ewaLevels(B),htf=ewaHtf(B),C=[],atr=(()=>{let s=0;for(let i=B.length-14;i<B.length;i++)s+=B[i].h-B[i].l;return s/14})();
+ lv.forEach((dev,li)=>{const z=zigzag(B,dev);for(let k=z.length-1;k>=Math.max(2,z.length-2);k--){const o=z[k-2],a=z[k-1],b=z[k],imp=a.p-o.p,d=Math.sign(imp);if(!d)continue;const r=(a.p-b.p)/imp;if(r<.382||r>.786)continue;
+  const g=[];const G=(t,ok,w)=>g.push({t,ok:!!ok,w});G(`Rücksetzer ${pct(r)} (ideal Golden Zone 50–66,7 %)`,r>=.5&&r<=.667,30);
+  G('Impuls kräftig (≥ 3× ATR)',Math.abs(imp)>=atr*3,20);const vi=ewaVol(B,o.i,a.i),vb=ewaVol(B,a.i,b.i);if(vi>0&&vb>0)G('Rücksetzer mit weniger Volumen',vb<vi,20);
+  if(htf)G(`Höhere Zeiteinheit ${htf===d?'passt':'dagegen'}`,htf===d,20);const px=B[B.length-1].c;G('Kurs noch über/unter Punkt 0',d*(px-o.p)>0,10);
+  const tw=g.reduce((s,x)=>s+x.w,0),sc=Math.round(g.reduce((s,x)=>s+(x.ok?x.w:0),0)/tw*100);C.push({pts:[o,a,b].map(x=>({i:x.i,p:x.p})),score:sc,g,dev,rank:sc-(z.length-1-k)*15-li})}});
+ C.sort((a,b)=>b.rank-a.rank);return C[0]||null}
 
 /* ---------- rendering ---------- */
 let pending=false;function req(){if(S.bg)return;if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;draw();m2Draw()})}}
@@ -802,7 +854,7 @@ function draw(){
  if(S.tab!=='heat')indLegend((S.tool!=='cursor'?44:4)+20,S._ci);
 }
 function renderDrawing(d,isCur){
- const R=analyze(d),pts=d.pts,col=d.type==='trend'?TH.txt:TOOLS[d.type].color;if(!pts.length)return;
+ const R=analyze(d),pts=d.pts,col=d.type==='trend'?TH.txt:TOOLS[d.type].color;if(!pts.length)return;if(d.alt||d.sub){R.lines=[];R.zones=[]}if(d.auto&&d.st&&!d.sub)R.pattern=(d.alt?'Alt.: ':'')+d.st+(d.q!=null?' · '+d.q+' %':'');ctx.save();if(d.alt)ctx.globalAlpha=.45;
  const complete=pts.length>=TOOLS[d.type].n;
  R.zones.forEach(z=>{const x0=Math.max(0,xOf(pts[Math.min(z.x0,pts.length-1)].i));const y1=yOf(z.a),y2=yOf(z.b);
   ctx.fillStyle=z.color;ctx.fillRect(x0,Math.min(y1,y2),PW-x0,Math.abs(y2-y1));
@@ -826,7 +878,7 @@ function renderDrawing(d,isCur){
   const nm=names[k];if(nm){const ty=high?y-14:y+14;ctx.fillStyle=complete&&!R.valid?'#ef5350':col;ctx.beginPath();ctx.arc(x,ty,9,0,7);ctx.fill();
    ctx.fillStyle='#0d1117';ctx.font='bold 11px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(nm,x,ty+.5)}});
  if(R.pattern){const q=pts[pts.length-1];const nb=pts.length>1?pts[pts.length-2].p:q.p;ctx.font='10px system-ui,sans-serif';const tw=ctx.measureText(R.pattern).width+8;let tx=xOf(q.i)+14;if(tx+tw>PW-4)tx=Math.max(4,xOf(q.i)-14-tw);tag(tx,clamp(yOf(q.p)+(q.p>=nb?-30:30),10,PH-10),R.pattern,'rgba(22,27,34,.92)',col)}
-}
+ ctx.restore()}
 
 /* ---------- sheet ---------- */
 function renderSheet(){
@@ -836,6 +888,7 @@ function renderSheet(){
  if(!S.drawings.length)h+=`<p class="mut">Noch keine Analysen. Werkzeug unten wählen (z. B. <b>SK</b> oder <b>1-5</b>) und Punkte im Chart antippen – oder ⚡ Auto nutzen.</p>`;
  S.drawings.slice().reverse().forEach((d,ri)=>{const idx=S.drawings.length-1-ri;const R=analyze(d);const T=TOOLS[d.type];
   h+=`<div class="card"><h4><span><span class="dot" style="background:${T.color}"></span>${T.name}${d.auto?' <small class="mut">(Auto)</small>':''}${d.hidden?' <small class="mut">(ausgeblendet)</small>':''} ${R.checks.length?(R.valid?'<span class="ok">✓</span>':'<span class="bad">✗</span>'):''}</span><button data-focus="${idx}">Zeigen</button><button data-del="${idx}">🗑</button></h4>`;
+  if(d.q!=null){h+=`<div style="margin:4px 0 6px"><b>${d.alt?'Alternative · ':''}${d.st||''}</b><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div style="flex:1;height:8px;border-radius:4px;background:var(--line);overflow:hidden"><div style="width:${d.q}%;height:100%;background:${d.q>=70?'#26a69a':d.q>=45?'#f0b90b':'#ef5350'}"></div></div><b>${d.q} %</b></div><div class="mut" style="font-size:11px">Qualität nach Richtlinien${d.lvl?' · ZigZag '+ff((d.lvl*100).toFixed(1))+' %':''}</div></div>`;(d.g||[]).forEach(x=>h+=`<div class="chk ${x.ok?'ok':'warn'}">${x.ok?'✓':'○'} ${x.t}</div>`)}
   R.checks.forEach(c=>h+=`<div class="chk ${c.ok?'ok':c.soft?'warn':'bad'}">${c.ok?'✓':c.soft?'⚠':'✗'} ${c.t}</div>`);
   if(R.stats.length){h+='<table style="margin-top:6px">';R.stats.forEach(s=>h+=`<tr><td class="mut">${s[0]}</td><td>${s[1]}</td></tr>`);h+='</table>'}
   const ls=R.lines.slice().sort((a,b)=>b.p-a.p);
@@ -2029,7 +2082,7 @@ function tkCheck(o){{const gm=guardMsg();if(gm)return gm}const L=o.dir>0;
  if(o.type==='trail'&&fin(o.price)&&o.dir*(o.price-lastP())>0)return L?'Aktivierung muss unter dem Kurs liegen':'Aktivierung muss über dem Kurs liegen';
  if(o.mode==='fut'){const lq=liqPrice(o.dir,ref,o.lev);if(o.dir*(o.sl-lq)<=0)return`Stop liegt hinter dem Liquidationspreis (${fmt(lq)}) – Hebel senken`}
  const z=sizeOf(o,ref);if(!(z.qty>0))return'Kein freies Guthaben';if(z.margin>avail()+1e-6)return o.mode==='spot'?'Nicht genug Guthaben':'Nicht genug Margin – Hebel erhöhen oder Risiko senken';return''}
-function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode==='spot';
+function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode==='spot';try{tkConfUpd();tkKellyUpd()}catch(_){}
  $('#tkMode').style.display=inP?'none':'flex';$('#tkDir').style.display=sp?'none':'flex';$('#rRisk').style.display=sp?'none':'flex';$('#rAmt').style.display=sp?'flex':'none';$('#rLev').style.display=sp?'none':'flex';$('#fStake').style.display='flex';{const lb=$('#fStake label'),inp=$('#tkStake');if(lb)lb.textContent=sp?'Betrag $':'Einsatz $';inp.placeholder=sp?'optional, z. B. 500 (statt %)':'optional, z. B. 200 (statt Risiko %)'}$('#tkRisk').style.opacity=(!sp&&fin(o.stake)&&o.stake>0)?.4:1;$('#tkAmt').style.opacity=(sp&&fin(o.stake)&&o.stake>0)?.4:1;
  $('#fLimit').style.display=o.type==='market'?'none':'flex';$('#lLimit').textContent={limit:'Limit-Preis',stop:'Auslöser',trail:'Aktivierung'}[o.type]||'';$('#tkPrice').placeholder=o.type==='trail'?'leer = sofort':'';
  $('#fTpct').style.display=o.type==='trail'?'flex':'none';$('#lSL').textContent=sp?'Stop (opt.)':'Stop-Loss';
@@ -2041,6 +2094,82 @@ function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode===
  ${sp?'':`<tr><td><b>Einsatz (Margin)</b></td><td><b>${money(z.margin)}</b> <span class="mut">· ${pct(z.margin/AC.bal)} vom Konto</span></td></tr>`}<tr><td>Positionswert</td><td>${money(z.notional)}${sp?'':` <span class="mut">(${o.lev}×)</span>`}</td></tr>${sp?'':`<tr><td>Liquidation</td><td style="color:#ffa657">${fmt(liqPrice(o.dir,ref,o.lev))}</td></tr>`}
  <tr><td>Risiko bis Stop</td><td class="bad">${dist?money(z.risk$):'ganzer Betrag (kein Stop)'}</td></tr>${rr?`<tr><td>CRV</td><td>${rr}</td></tr>`:''}<tr><td>Verfügbar</td><td>${money(avail())}</td></tr></table>
  ${o.tps.length&&sum!==100?`<div class="mut" style="font-size:11px;margin-top:4px">TP-Anteile ergeben ${sum} % – die letzte TP schließt den Rest${o.ttp?' (bzw. startet den Trailing-TP)':''}.</div>`:''}`}
+
+
+/* ---------- Konfluenz-Check ---------- */
+function vpLevels(B,n,rows){n=Math.min(n||150,B.length);rows=rows||40;let lo=Infinity,hi=-Infinity;for(let i=B.length-n;i<B.length;i++){lo=Math.min(lo,B[i].l);hi=Math.max(hi,B[i].h)}
+ if(!(hi>lo))return null;const st=(hi-lo)/rows,v=new Array(rows).fill(0);for(let i=B.length-n;i<B.length;i++){const b=B[i],a=Math.max(0,Math.floor((b.l-lo)/st)),z=Math.min(rows-1,Math.floor((b.h-lo)/st)),vv=(b.v||1)/(z-a+1);for(let k=a;k<=z;k++)v[k]+=vv}
+ let pk=0;v.forEach((x,k)=>{if(x>v[pk])pk=k});const tot=v.reduce((s,x)=>s+x,0);let a=pk,b=pk,acc=v[pk];while(acc<tot*.7&&(a>0||b<rows-1)){const da=a>0?v[a-1]:-1,db=b<rows-1?v[b+1]:-1;if(db>=da){b++;acc+=v[b]}else{a--;acc+=v[a]}}
+ return{poc:lo+(pk+.5)*st,val:lo+a*st,vah:lo+(b+1)*st}}
+let CFC={k:null,v:null};
+function confl(B,dir,entry){if(!B||B.length<60||!fin(entry)||!dir)return null;const k=B.length+'|'+B[B.length-1].c+'|'+dir+'|'+(+entry).toPrecision(6);if(CFC.k===k)return CFC.v;
+ const atr=stratATR(B),tol=atr*.35,it=[];const I=(t,ok,info)=>it.push({t,ok:!!ok,info:info||''});const lv=ewaLevels(B),L=B.length-1,px=B[L].c;
+ // 1 Fib-Cluster
+ let fc=0;[lv[1],lv[2]].forEach(dev=>{const z=zigzag(B,dev).filter(q=>!q.prov);for(let j=Math.max(1,z.length-4);j<z.length;j++){const a=z[j-1].p,b=z[j].p;[.382,.5,.618,.786].forEach(f=>{if(Math.abs(retr(a,b,f)-entry)<=tol)fc++});[1.272,1.618].forEach(f=>{if(Math.abs(a+(b-a)*f-entry)<=tol)fc++})}});
+ I('Fib-Cluster am Einstieg',fc>=2,fc+' Fib-Marken in der Nähe');
+ // 2 Volumen-Profil
+ const vp=vpLevels(B,150,40);if(vp){const nm=[['POC',vp.poc],['VAH',vp.vah],['VAL',vp.val]].filter(x=>Math.abs(x[1]-entry)<=atr*.5).map(x=>x[0]);I('Volumen-Profil (POC / Value Area)',nm.length>0,nm.length?'am '+nm.join(', '):'POC '+fmt(vp.poc))}
+ // 3 Liquiditäts-Sweep
+ let sw=null;{const z=zigzag(B,lv[1]).filter(q=>!q.prov&&q.t===-dir).slice(-4);for(let i=Math.max(0,L-8);i<=L&&!sw;i++){const b=B[i];for(const q of z){if(i-q.i<3)continue;if(dir>0?(b.l<q.p&&b.c>q.p):(b.h>q.p&&b.c<q.p)){sw=q;break}}}}
+ I('Liquiditäts-Sweep (Stops abgeholt)',!!sw,sw?(dir>0?'Tief ':'Hoch ')+fmt(sw.p)+' kurz gebrochen':'');
+ // 4 RSI-Divergenz
+ let dv=null;try{dv=(divFind(B)||[]).filter(d=>d.b.i>=L-15&&d.type===(dir>0?'bull':'bear')).pop()}catch(_){}I('RSI-Divergenz in Trade-Richtung',!!dv,dv?'RSI '+ff(dv.ra.toFixed(0))+' → '+ff(dv.rb.toFixed(0)):'');
+ // 5 Höhere Zeiteinheit
+ const h=ewaHtf(B);if(h)I('Höhere Zeiteinheit in Trade-Richtung',h===dir,h>0?'aufwärts':'abwärts');
+ // 6 Wirtschaftskalender
+ try{if(CAL.ev){const e=CAL.ev.find(x=>x.s===3&&!x.hol&&x.t>Date.now()&&x.t-Date.now()<3*36e5);I('Keine ★★★-News in den nächsten 3 Std.',!e,e?(calName(e.title)||e.title)+' um '+new Date(e.t).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'')}}catch(_){}
+ // Bestätigung: Strukturbruch auf kleiner Stufe
+ let cf={ok:false,lvl:null};{const z=zigzag(B,Math.max(.002,ewaBase(B)*1.5)).filter(q=>!q.prov),piv=z.filter(q=>q.t===dir).pop();if(piv){cf.lvl=piv.p;cf.ok=dir*(px-piv.p)>0}}
+ const v={n:it.filter(x=>x.ok).length,tot:it.length,it,cf};CFC={k,v};return v}
+function conflHTML(c){if(!c)return'';const col=c.n>=4?'#26a69a':c.n>=3?'#f0b90b':'#ef5350';
+ return `<details style="margin-top:4px"><summary style="font-size:13px;cursor:pointer"><b>🧩 Konfluenz <span style="color:${col}">${c.n}/${c.tot}</span></b> · ${c.cf.ok?'<span class="ok">✅ bestätigt (Strukturbruch)</span>':c.cf.lvl!=null?`<span class="warn">⏳ Bestätigung: Schluss ${TK.dir>0?'über':'unter'} ${fmt(c.cf.lvl)}</span>`:''}</summary>
+  ${c.it.map(x=>`<div class="chk ${x.ok?'ok':'warn'}" style="font-size:12px">${x.ok?'✓':'○'} ${x.t}${x.info?` <span class="mut">· ${x.info}</span>`:''}</div>`).join('')}
+  <div class="mut" style="font-size:11px;margin-top:2px">Ab 3–4 Punkten gilt ein Setup als stark. „Bestätigt“ = kleiner Gegentrend ist gebrochen – sicherer, aber etwas schlechterer Einstieg.</div></details>`}
+function tkConfUpd(){const el=$('#tkConf');if(!el)return;const o=tkRead(),e=o.type==='market'?lastP():o.price;if(!fin(e)||S.custom&&!S.bars.length){el.innerHTML='';return}
+ try{el.innerHTML=conflHTML(confl(S.bars,o.dir,e))}catch(_){el.innerHTML=''}}
+
+/* ---------- Kelly aus dem Trade-Tagebuch ---------- */
+function kellyOf(list){const a=list.filter(t=>!t.replay&&isFinite(t.R));const n=a.length;if(!n)return{n:0};const win=a.filter(t=>t.R>0),los=a.filter(t=>t.R<=0);
+ const W=win.length/n,aw=win.length?win.reduce((s,t)=>s+t.R,0)/win.length:0,al=los.length?Math.abs(los.reduce((s,t)=>s+t.R,0)/los.length):0;
+ const R=al>0?aw/al:(aw>0?9:0),k=R>0?W-(1-W)/R:-1,half=k/2,sug=clamp(half*100,0,2);return{n,W,R,k,half,sug,ok:n>=20,firm:n>=50}}
+function kellyFor(strat){const L=AC.hist.filter(t=>!t.replay);const own=strat?L.filter(t=>(t.bot?'Elliott-Bot':(t.strat||'Manuell'))===strat):[];const K=kellyOf(own);if(K.ok)return Object.assign(K,{src:strat});return Object.assign(kellyOf(L),{src:'alle Trades'})}
+function tkKellyUpd(){const el=$('#tkKelly');if(!el)return;if(TK.mode==='spot'){el.innerHTML='';return}const K=kellyFor(TK.strat);
+ if(!K.ok){el.innerHTML=`<small class="mut" style="margin-left:4px">Kelly ab 20 Trades (${K.n||0})</small>`;return}
+ if(K.k<=0){el.innerHTML=`<small class="bad" style="margin-left:4px">Kelly ≤ 0 – ${K.src} bringt im Schnitt Verlust</small>`;return}
+ el.innerHTML=`<button id="tkKb" style="margin-left:4px" title="½ Kelly aus ${K.src}, max. 2 %">Kelly ${ff(K.sug.toFixed(2))} %<br><small>${K.firm?'':'vorläufig · '}${K.src}</small></button>`;
+ $('#tkKb').onclick=()=>{TK.risk=+K.sug.toFixed(2);$('#tkStake').value='';tkOpen(true);toast(`Risiko ${ff(TK.risk)} % (½ Kelly, gedeckelt bei 2 %)`)}}
+function kellyHTML(){const m={};AC.hist.filter(t=>!t.replay).forEach(t=>{const k=t.bot?'Elliott-Bot':(t.strat||'Manuell');(m[k]||(m[k]=[])).push(t)});
+ const rows=[['Alle Trades',kellyOf(AC.hist)],...Object.entries(m).map(([k,a])=>[k,kellyOf(a)])];
+ let h=`<div class="card"><h4><span>🎲 Kelly – sinnvolles Risiko pro Trade</span></h4><table style="width:100%;font-size:13px"><tr class="mut"><td></td><td style="text-align:right">Trades</td><td style="text-align:right">Treffer</td><td style="text-align:right">R</td><td style="text-align:right">Kelly</td><td style="text-align:right">Vorschlag</td></tr>`;
+ h+=rows.map(([k,K])=>K.n?`<tr><td><b>${k}</b></td><td style="text-align:right">${K.n}</td><td style="text-align:right">${pct(K.W)}</td><td style="text-align:right">${ff(K.R.toFixed(2))}</td><td style="text-align:right" class="${K.k>0?'ok':'bad'}">${pct(K.k)}</td><td style="text-align:right">${!K.ok?'<span class="mut">ab 20</span>':K.k<=0?'<span class="bad">nicht handeln</span>':'<b>'+ff(K.sug.toFixed(2))+' %</b>'}</td></tr>`:'').join('');
+ return h+`</table><div class="mut" style="font-size:11px;margin-top:4px">Kelly = Treffer − (1 − Treffer) ÷ R. Vorschlag = ½ Kelly, höchstens 2 % – volles Kelly schwankt zu stark. Unter 50 Trades nur vorläufig.</div></div>`}
+
+/* ---------- Backtest der Noten ---------- */
+let NBT=null;
+function nbSpec(sub,c,kind){const P=c.pts.map(q=>q.p),px=sub[sub.length-1].c,atr=stratATR(sub);
+ if(kind==='sk'){const d=Math.sign(P[1]-P[0]),imp=P[1]-P[0],e=retr(P[0],P[1],.618),inZ=d*(px-e)<=0;return{dir:d,entry:inZ?px:e,lim:!inZ,sl:P[0],tp:P[2]+imp}}
+ if(c.type!=='ew')return null;const n=P.length,d=Math.sign(P[1]-P[0]),w1=Math.abs(P[1]-P[0]);
+ if(n===3)return{dir:d,entry:px,sl:P[0],tp:P[2]+d*w1*1.618};
+ if(n===5)return{dir:d,entry:px,sl:P[1],tp:P[4]+d*w1};
+ if(n===6)return{dir:-d,entry:px,sl:P[5]+d*atr*.3,tp:retr(P[0],P[5],.382)};return null}
+function nbSim(B,from,s){let i=from,fill=!s.lim;if(s.lim){for(;i<Math.min(B.length,from+15);i++){const b=B[i];if(s.dir>0?b.l<=s.entry:b.h>=s.entry){fill=true;break}}if(!fill)return null}
+ const risk=Math.abs(s.entry-s.sl),rw=Math.abs(s.tp-s.entry)/risk;for(;i<Math.min(B.length,from+200);i++){const b=B[i];if(s.dir>0?b.l<=s.sl:b.h>=s.sl)return -1;if(s.dir>0?b.h>=s.tp:b.l<=s.tp)return rw}return null}
+function nbRun(){if(NBT&&NBT.busy)return;const B=S.bars.slice(),N=B.length;if(N<300){$('#nbOut').innerHTML='<div class="warn">Zu wenig Kerzen (mind. 300).</div>';return}
+ NBT={busy:true,tr:[],seen:new Set()};let L=200;const step=()=>{const t0=Date.now();while(L<N-20&&Date.now()-t0<40){const sub=B.slice(0,L);
+   const r=ewaFind(sub),k=skFind(sub);[[r&&r.best,'ew'],[k,'sk']].forEach(([c,kind])=>{if(!c)return;const key=kind+':'+c.pts.map(p=>p.i).join(',');if(NBT.seen.has(key))return;
+    const s=nbSpec(sub,c,kind);if(!s||!(Math.abs(s.entry-s.sl)>0)||s.dir*(s.tp-s.entry)<=0||s.dir*(s.entry-s.sl)<=0)return;NBT.seen.add(key);
+    const R=nbSim(B,L,s);if(R==null)return;let cf=null;try{cf=confl(sub,s.dir,s.entry)}catch(_){}NBT.tr.push({kind,q:c.score,R,cn:cf?cf.n:0,ct:cf?cf.tot:0,ok:cf?cf.cf.ok:false})});L+=2}
+  $('#nbOut').innerHTML=`<div class="mut">Rechne … ${Math.round((L-200)/(N-220)*100)} % · ${NBT.tr.length} Trades</div>`;
+  if(L<N-20)setTimeout(step,0);else{NBT.busy=false;nbShow()}};step()}
+function nbShow(){const T=NBT.tr,row=(lab,a)=>{if(!a.length)return`<tr><td>${lab}</td><td style="text-align:right" class="mut">0</td><td></td><td></td></tr>`;const w=a.filter(t=>t.R>0).length,aR=a.reduce((s,t)=>s+t.R,0)/a.length;
+  return`<tr><td>${lab}</td><td style="text-align:right">${a.length}</td><td style="text-align:right">${pct(w/a.length)}</td><td style="text-align:right" class="${aR>=0?'ok':'bad'}">${fR(aR)}</td></tr>`};
+ const tb=(t,rows)=>`<div class="card"><h4><span>${t}</span></h4><table style="width:100%;font-size:13px"><tr class="mut"><td></td><td style="text-align:right">Trades</td><td style="text-align:right">Treffer</td><td style="text-align:right">Ø R</td></tr>${rows.join('')}</table></div>`;
+ const by=(f)=>T.filter(f);let h='';
+ ['ew','sk'].forEach(k=>{const a=T.filter(t=>t.kind===k);h+=tb((k==='ew'?'🌊 Elliott':'📐 SK')+' nach Note',[row('unter 40 %',a.filter(t=>t.q<40)),row('40–59 %',a.filter(t=>t.q>=40&&t.q<60)),row('60–79 %',a.filter(t=>t.q>=60&&t.q<80)),row('ab 80 %',a.filter(t=>t.q>=80))])});
+ h+=tb('🧩 Nach Konfluenz',[row('0–2 Punkte',by(t=>t.cn<=2)),row('3 Punkte',by(t=>t.cn===3)),row('4+ Punkte',by(t=>t.cn>=4)),row('mit Bestätigung ✅',by(t=>t.ok)),row('ohne Bestätigung',by(t=>!t.ok))]);
+ h+=`<div class="mut" style="font-size:11px">${S.custom||S.sym} · ${S.tf} · ${S.bars.length} Kerzen · ${T.length} Trades. Gewertet: Ziel vor Stop = Gewinn (R = Ziel ÷ Risiko), Stop zuerst = −1R. Ohne Gebühren. Unter ~30 Trades pro Zeile ist das Ergebnis Zufall – mehrere Coins und Zeiteinheiten testen.</div>`;
+ $('#nbOut').innerHTML=h}
+function nbOpen(){$('#mAuto').classList.remove('open');$('#nbOut').innerHTML='<div class="mut">Testet die Auto-Analyse auf den geladenen Kerzen: an jeder Stelle nur mit den Daten bis dahin, dann wird geschaut, ob Ziel oder Stop zuerst kam.</div>';$('#mNB').classList.add('open')}
 
 /* ---------- Strategie-Automatik im Order-Fenster ---------- */
 let TKV=null;
@@ -2080,7 +2209,7 @@ function stratApply(name){TKV=null;if(!name||name==='–'||name==='Sonstiges'){r
  [0,1,2].forEach(k=>{$('#tkTP'+(k+1)).value=s.tps[k]!=null?nstr(s.tps[k]):'';$('#tkTP'+(k+1)+'p').value=s.pct[k]!=null?s.pct[k]:''});
  TKV=Object.assign(s,{key:(S.custom||S.sym)+'|'+S.tf+'|'+S.bars.length});
  if(S.end<S.bars.length-1)S.end=S.bars.length-1+Math.round(((PW||300)/S.bw)*.15);
- toast(s.msg);req()}
+ {let c=null;try{c=confl(S.bars,s.dir,s.entry)}catch(_){}toast(s.msg+(c?` · Konfluenz ${c.n}/${c.tot}${c.cf.ok?' ✅':''}`:''))}req()}
 function stratDraw(a,b){if(!TKV)return;if(TKV.key.split('|').slice(0,2).join('|')!==(S.custom||S.sym)+'|'+S.tf){TKV=null;return}
  const vis=S.tab==='spot'||S.tab==='fut'||$('#mTrade').classList.contains('open');if(!vis)return;
  ctx.save();ctx.beginPath();ctx.rect(0,0,PW,PH);ctx.clip();ctx.font='10px system-ui,sans-serif';ctx.textBaseline='middle';
@@ -2151,7 +2280,7 @@ function renderAcct(){if(S.bg)return;if(!$('#mAcct').classList.contains('open'))
  <canvas id="acEq" style="position:static;width:100%;height:110px;margin-top:8px;touch-action:auto"></canvas><table style="margin-top:6px">`;
  const dt=t=>{const d=new Date(t);return `${d.getDate()}.${d.getMonth()+1}.${String(d.getFullYear()).slice(2)}`};
  AC.hist.forEach((t,i)=>{if(t.id==null)t.id='h'+i+'_'+t.t1});AC.hist.slice().reverse().slice(0,60).forEach(t=>h+=`<tr data-jr="${t.id}" style="cursor:pointer"><td>${dt(t.t1)} <b class="${t.dir>0?'ok':'bad'}">${t.mode==='spot'?'Spot':t.dir>0?'L':'S'}</b> ${t.label}${t.mode==='fut'&&t.lev>1?' '+t.lev+'×':''}${t.replay?' <span class="mut">R</span>':''}${t.note?' 📝':''}<br><span class="mut">${fmt(t.entry)} → ${fmt(t.exit)} · ${t.why}${t.tf?' · '+t.tf:''}${t.strat?' · '+t.strat:''}</span></td><td class="${t.R>=0?'ok':'bad'}">${fR(t.R)}<br><small>${money(t.pnl)}</small></td></tr>`);
- h+=`</table><div class="mut" style="font-size:11px;margin-top:4px">Trade antippen → Tagebuch mit Bildern und Notiz.</div></div>`+statHTML()+`<div class="card"><h4><span>Konto</span></h4><div class="row">Startkapital <select id="acStart">${[1000,5000,10000,50000,100000].map(v=>`<option value="${v}" ${v===AC.start?'selected':''}>${money(v)}</option>`).join('')}</select></div>
+ h+=`</table><div class="mut" style="font-size:11px;margin-top:4px">Trade antippen → Tagebuch mit Bildern und Notiz.</div></div>`+statHTML()+kellyHTML()+`<div class="card"><h4><span>Konto</span></h4><div class="row">Startkapital <select id="acStart">${[1000,5000,10000,50000,100000].map(v=>`<option value="${v}" ${v===AC.start?'selected':''}>${money(v)}</option>`).join('')}</select></div>
  <div class="row">Gebühr je Seite <select id="acFee">${[[0,'0 %'],[.0002,'0,02 % (Maker)'],[.0004,'0,04 % (Taker)'],[.001,'0,1 % (Spot)']].map(([v,l])=>`<option value="${v}" ${v===AC.fee?'selected':''}>${l}</option>`).join('')}</select></div>
  <button id="acReset" class="danger">Konto zurücksetzen</button></div>`;
  el.innerHTML=h;bindPos(el);el.querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});el.querySelectorAll('#sgC button').forEach(b=>b.onclick=()=>{SG=b.dataset.g;renderAcct()});
@@ -2445,10 +2574,12 @@ $('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new File
   const name=f.name.replace(/\.(csv|txt)$/i,'');S.custom=name;S.csvMem={name,bars};store('wdesk_csvdata',{name,bars});S.bars=bars;buildSym();$('#sym').value='__csv';loadData();toast(bars.length+' Kerzen geladen: '+name)}
  catch(err){toast('Import fehlgeschlagen: '+err)}e.target.value=''};rd.readAsText(f)};
 $('#bHelp').onclick=()=>$('#mHelp').classList.add('open');$('#bDesign').onclick=()=>{renderDesign();$('#mDesign').classList.add('open')};
-$('#bAuto').onclick=()=>{const c=$('#devChips');c.innerHTML=DEVS.map(v=>`<button data-dev="${v}" class="${v===S.dev?'on':''}">${ff(v*100)} %</button>`).join('');
- c.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{S.dev=+b.dataset.dev;c.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+$('#bAuto').onclick=()=>{const c=$('#devChips');const inf=()=>{$('#devInfo').textContent=S.devAuto?'Auto = '+ewaLevels(S.bars).map(v=>ff((v*100).toFixed(1))).join(' / ')+' %':'nur '+ff(S.dev*100)+' %'};
+ c.innerHTML=`<button data-dev="auto" class="${S.devAuto?'on':''}">✨ Auto</button>`+DEVS.map(v=>`<button data-dev="${v}" class="${!S.devAuto&&v===S.dev?'on':''}">${ff(v*100)} %</button>`).join('');inf();
+ c.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{if(b.dataset.dev==='auto')S.devAuto=true;else{S.devAuto=false;S.dev=+b.dataset.dev}store('wdesk_devauto',S.devAuto);c.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));inf()});
  $('#oZZ').checked=S.showZZ;$('#oEW').checked=S.optEW;$('#oSK').checked=S.optSK;$('#mAuto').classList.add('open')};
 $('#aRun').onclick=()=>{S.showZZ=$('#oZZ').checked;S.optEW=$('#oEW').checked;S.optSK=$('#oSK').checked;$('#mAuto').classList.remove('open');runAuto()};
+$('#aNB').onclick=nbOpen;$('#nbGo').onclick=nbRun;
 $('#aClear').onclick=()=>{S.drawings=S.drawings.filter(d=>!d.auto);S.zz=null;save();renderSheet();req();$('#mAuto').classList.remove('open')};
 document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m||e.target.hasAttribute('data-close'))m.classList.remove('open')})});
 $('#hUndo').onclick=undo;$('#hCancel').onclick=()=>{if(S.pick){const f=S.pick.field;S.pick=null;updHint();if(f.startsWith('tk'))tkOpen(true);return}setTool('cursor')};
