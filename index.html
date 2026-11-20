@@ -504,7 +504,7 @@ function calcScale(){
  const B=S.bars;const a=Math.max(0,Math.floor(iOf(0))),b=Math.min(B.length-1,Math.ceil(S.end));
  let lo=Infinity,hi=-Infinity;for(let i=a;i<=b;i++){lo=Math.min(lo,B[i].l);hi=Math.max(hi,B[i].h)}
  if(!isFinite(lo)){const l=B[B.length-1];lo=l.l;hi=l.h}
- try{const lv=[];AC.pos.filter(mine).forEach(p=>lv.push(p.entry,p.sl,...p.tps.filter(t=>!t.hit).map(t=>t.p)));AC.ord.filter(mine).forEach(o=>lv.push(o.price,o.sl,...o.tps.map(t=>t.p)));
+ try{const lv=[];AC.pos.filter(mine).forEach(p=>lv.push(p.entry,p.sl,...p.tps.filter(t=>!t.hit).map(t=>t.p)));AC.ord.filter(mine).forEach(o=>lv.push(o.price,o.sl,...o.tps.map(t=>t.p)));if(TKV&&(S.tab==='spot'||S.tab==='fut'||$('#mTrade').classList.contains('open'))){const o=tkRead();lv.push(o.type==='market'?B[B.length-1].c:o.price,o.sl);if(o.tps[0])lv.push(o.tps[0].p)}
   const ref=B[B.length-1].c;lv.forEach(v=>{if(Math.abs(v-ref)/ref<.35){lo=Math.min(lo,v);hi=Math.max(hi,v)}})}catch(_){}
  const mid=(lo+hi)/2+S.yShift;let half=(hi-lo)/2*(heatOn()?1.3:1.12)/S.yZoom;if(!(half>0))half=Math.abs(mid)*0.01||1;
  yMin=mid-half;yMax=mid+half;
@@ -776,7 +776,7 @@ function draw(){
  if(S.zz&&S.showZZ&&!S.zzHid&&!(S.tab==='heat'&&!HM.over)){ctx.strokeStyle='rgba(240,185,11,.55)';ctx.lineWidth=1.2;ctx.setLineDash([]);ctx.beginPath();S.zz.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
  const clean=S.tab==='heat'&&!HM.over;
  if(!clean){if(VIS.draw)S.drawings.forEach(d=>{if(!d.hidden)renderDrawing(d,false)});if(S.cur)renderDrawing(S.cur,true);
- if(S.btShow)drawTrades(a,b);
+ if(S.btShow)drawTrades(a,b);stratDraw(a,b);
  drawDiv(a,b);drawPos();drawAlerts()}
  // last price
  const last=B[B.length-1];const ly=yOf(last.c);const lc=last.c>=last.o?TH.up:TH.dn;
@@ -1973,11 +1973,11 @@ function segSet(id,v){$(id).querySelectorAll('button').forEach(b=>{const on=b.da
 function tkPlace(){const inP=S.tab==='spot'||S.tab==='fut',box=$('#tkBox');if(inP){if(box.parentNode!==$('#tkHost'))$('#tkHost').appendChild(box)}else if(box.parentNode!==$('#mTrade'))$('#mTrade').appendChild(box);return inP}
 function chipRow(id,vals,cur,fmtf,set){$(id).innerHTML=vals.map(v=>`<button data-c="${v}" class="${v===cur?'on':''}">${fmtf(v)}</button>`).join('');$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{const v=b.dataset.c;set(isNaN(+v)?v:+v);tkOpen(true)})}
 function tkOpen(keep){const inP=tkPlace();
- if(!keep){['tkPrice','tkSL','tkTP1','tkTP2','tkTP3'].forEach(i=>$('#'+i).value='');$('#tkPrice').value=nstr(lastP())}
+ if(!keep){TKV=null;['tkPrice','tkSL','tkTP1','tkTP2','tkTP3'].forEach(i=>$('#'+i).value='');$('#tkPrice').value=nstr(lastP())}
  if(!$('#tkPrice').value&&TK.type!=='trail')$('#tkPrice').value=nstr(lastP());if(TK.mode==='spot')TK.dir=1;
  $('#tkSym').textContent=(S.custom||S.sym)+(isRp()?' · Replay':S.src==='binance'?' · Live':' · Demo');
  $('#tkTitle').firstChild.textContent=inP?(TK.mode==='spot'?'🪙 Spot ':'📈 Futures '):'💼 Neue Order ';
- chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>`${v} %<br><small>${money(Math.min(AC.bal*v/100,avail())).replace(',00','')}</small>`,v=>{TK.amt=v;$('#tkStake').value=''});chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);chipRow('#tkStrat',['–',...STRATS],TK.strat||'–',v=>v,v=>TK.strat=v==='–'?null:v);
+ chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>`${v} %<br><small>${money(Math.min(AC.bal*v/100,avail())).replace(',00','')}</small>`,v=>{TK.amt=v;$('#tkStake').value=''});chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);chipRow('#tkStrat',['–',...STRATS],TK.strat||'–',v=>v,v=>{TK.strat=v==='–'?null:v;stratApply(v)});
  segSet('#tkMode',TK.mode);segSet('#tkDir',TK.dir);segSet('#tkType',TK.type);tkUpd();if(!inP)$('#mTrade').classList.add('open')}
 function tkRead(){const tps=[1,2,3].map(k=>({p:num($('#tkTP'+k).value),pct:num($('#tkTP'+k+'p').value)||0})).filter(t=>fin(t.p));
  return{mode:TK.mode,dir:TK.mode==='spot'?1:TK.dir,type:TK.type,price:TK.type==='market'?lastP():num($('#tkPrice').value),sl:num($('#tkSL').value),tps,be:$('#tkBE').checked,trail:+$('#tkTrail').value,ttp:+$('#tkTTP').value,csl:$('#tkCSL').checked,tpct:num($('#tkTpct').value),stake:num($('#tkStake').value),riskPct:TK.risk,lev:TK.lev,amtPct:TK.amt,strat:TK.strat||null}}
@@ -2004,6 +2004,60 @@ function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode===
  ${sp?'':`<tr><td><b>Einsatz (Margin)</b></td><td><b>${money(z.margin)}</b> <span class="mut">· ${pct(z.margin/AC.bal)} vom Konto</span></td></tr>`}<tr><td>Positionswert</td><td>${money(z.notional)}${sp?'':` <span class="mut">(${o.lev}×)</span>`}</td></tr>${sp?'':`<tr><td>Liquidation</td><td style="color:#ffa657">${fmt(liqPrice(o.dir,ref,o.lev))}</td></tr>`}
  <tr><td>Risiko bis Stop</td><td class="bad">${dist?money(z.risk$):'ganzer Betrag (kein Stop)'}</td></tr>${rr?`<tr><td>CRV</td><td>${rr}</td></tr>`:''}<tr><td>Verfügbar</td><td>${money(avail())}</td></tr></table>
  ${o.tps.length&&sum!==100?`<div class="mut" style="font-size:11px;margin-top:4px">TP-Anteile ergeben ${sum} % – die letzte TP schließt den Rest${o.ttp?' (bzw. startet den Trailing-TP)':''}.</div>`:''}`}
+
+/* ---------- Strategie-Automatik im Order-Fenster ---------- */
+let TKV=null;
+function stratATR(B,n){n=n||14;let s=0,c=0;for(let i=Math.max(1,B.length-n);i<B.length;i++){const b=B[i],p=B[i-1].c;s+=Math.max(b.h-b.l,Math.abs(b.h-p),Math.abs(b.l-p));c++}return c?s/c:0}
+function stratCalc(name){const B=S.bars;if(!B||B.length<40)return{err:'Zu wenig Kerzen für eine Berechnung'};
+ const px=B[B.length-1].c,dev=S.dev||devOf(B),zAll=zigzag(B,dev),z=zAll.filter(q=>!q.prov),tfn=S.custom?'':' auf '+S.tf;
+ const R=(o)=>Object.assign({name,path:null,fib:null,box:null,ema:null},o);
+ if(name==='SK'){for(let k=zAll.length-1;k>=Math.max(2,zAll.length-3);k--){const o=zAll[k-2],a=zAll[k-1],b=zAll[k];const imp=a.p-o.p,d=Math.sign(imp);if(!d)continue;const r=(a.p-b.p)/imp;
+   if(r<.382||r>.786||d*(px-o.p)<=0)continue;const entry=retr(o.p,a.p,.618),inZone=d*(px-entry)<=0;
+   return R({dir:d,type:inZone?'market':'limit',entry:inZone?px:entry,sl:o.p,tps:[1,1.272,1.618].map(f=>b.p+imp*f),pct:[50,30,20],path:[o,a,b].map((q,j)=>({i:q.i,p:q.p,n:['0','A','B'][j]})),
+    fib:{a:o.p,b:a.p,i:o.i,lv:[.5,.618,.786]},msg:inZone?'SK: Kurs ist in der Golden Zone – Market-Einstieg':'SK: Limit an 0,618 gesetzt'})}
+  return{err:'Kein gültiges SK-Setup'+tfn+' – andere Zeiteinheit probieren'}}
+ if(name==='Elliott'){const m=eMatch(z,{waves:{'1':true,'3':true,'5':true,A:true,C:true},dir:'both'});if(!m||m.side*(px-m.stop)<=0)return{err:'Kein Elliott-Setup'+tfn+' – andere Zeiteinheit probieren'};
+  const P=z.slice(z.length-m.len),d=m.side,dist=m.tp-px;if(d*dist<=0)return{err:'Elliott: Ziel ist schon erreicht – kein neuer Einstieg'};
+  return R({dir:d,type:'market',entry:px,sl:m.stop,tps:[px+dist*.5,m.tp,px+dist*1.618],pct:[40,40,20],path:P.map((q,j)=>({i:q.i,p:q.p,n:m.names[j]})),
+   msg:`Elliott: Einstieg für Welle ${m.wave} (${d>0?'Long':'Short'})`})}
+ if(name==='Fibonacci'){for(let k=z.length-1;k>=Math.max(1,z.length-3);k--){const a=z[k-1],b=z[k];const mv=b.p-a.p,d=Math.sign(mv);if(!d)continue;
+   const e=retr(a.p,b.p,.618),sl=retr(a.p,b.p,.886);if(d*(px-sl)<=0)continue;let lo=Infinity,hi=-Infinity;for(let i=b.i+1;i<B.length;i++){lo=Math.min(lo,B[i].l);hi=Math.max(hi,B[i].h)}if(d>0?hi>b.p:lo<b.p)continue;
+   const inZone=d*(px-e)<=0;return R({dir:d,type:inZone?'market':'limit',entry:inZone?px:e,sl,tps:[b.p,a.p+mv*1.272,a.p+mv*1.618],pct:[50,30,20],
+    fib:{a:a.p,b:b.p,i:a.i,lv:[0,.236,.382,.5,.618,.786,.886,1,1.272,1.618]},msg:inZone?'Fibonacci: Kurs in der 0,618-Zone – Market':'Fibonacci: Limit an 0,618 gesetzt'})}
+  return{err:'Kein passender Fibonacci-Swing'+tfn}}
+ if(name==='Ausbruch'){const n=20,i2=B.length-2,i1=i2-n+1;let hi=-Infinity,lo=Infinity;for(let i=i1;i<=i2;i++){hi=Math.max(hi,B[i].h);lo=Math.min(lo,B[i].l)}
+  const H=hi-lo,atr=stratATR(B);if(!(H>0))return{err:'Keine Range gefunden'};if(H>atr*12)return{err:'Keine Seitwärts-Range'+tfn+' (Markt läuft stark) – andere Zeiteinheit probieren'};
+  const mid=(hi+lo)/2;let d=px>=mid?1:-1;const lvl=d>0?hi:lo,broken=d*(px-lvl)>0,buf=H*.02,entry=broken?px:lvl+d*buf;
+  return R({dir:d,type:broken?'market':'stop',entry,sl:mid,tps:[1,1.618,2.618].map(f=>lvl+d*H*f),pct:[50,30,20],box:{i1,i2:B.length-1,lo,hi},
+   msg:broken?'Ausbruch läuft schon – Market-Einstieg':`Ausbruch: Stop-Order ${d>0?'über':'unter'} der Range`})}
+ if(name==='Trend'){const C=B.map(b=>b.c),e1=ema(C,21),e2=ema(C,55),L=B.length-1,a1=e1[L],a2=e2[L];if(!isFinite(a2))return{err:'Zu wenig Kerzen für EMA 55'};
+  const d=a1>a2&&px>a2?1:a1<a2&&px<a2?-1:0;if(!d)return{err:'Kein klarer Trend'+tfn+' (EMA 21/55 gemischt)'};
+  const near=Math.abs(px-a1)<=stratATR(B)*.3||d*(px-a1)<0,entry=near?px:a1;const atr=stratATR(B);
+  const sw=[...z].reverse().find(q=>q.t===-d&&d*(entry-q.p)>0);let sl=sw?sw.p-d*atr*.2:entry-d*atr*1.5;if(Math.abs(entry-sl)>atr*4)sl=entry-d*atr*1.5;const r=Math.abs(entry-sl);
+  return R({dir:d,type:near?'market':'limit',entry,sl,tps:[entry+d*r*2,entry+d*r*3],pct:[60,40],ema:{e1,e2},msg:near?`Trend ${d>0?'aufwärts':'abwärts'}: Kurs an der EMA 21 – Market`:'Trend: Limit am Rücksetzer zur EMA 21'})}
+ return null}
+function stratApply(name){TKV=null;if(!name||name==='–'||name==='Sonstiges'){req();return}
+ const s=stratCalc(name);if(!s){req();return}if(s.err){toast(s.err);req();return}
+ if(TK.mode==='spot'&&s.dir<0){toast(name+': Short-Setup – dafür in Futures wechseln');req();return}
+ TK.dir=s.dir;TK.type=s.type;$('#tkPrice').value=s.type==='market'?nstr(lastP()):nstr(s.entry);$('#tkSL').value=nstr(s.sl);
+ [0,1,2].forEach(k=>{$('#tkTP'+(k+1)).value=s.tps[k]!=null?nstr(s.tps[k]):'';$('#tkTP'+(k+1)+'p').value=s.pct[k]!=null?s.pct[k]:''});
+ TKV=Object.assign(s,{key:(S.custom||S.sym)+'|'+S.tf+'|'+S.bars.length});
+ if(S.end<S.bars.length-1)S.end=S.bars.length-1+Math.round(((PW||300)/S.bw)*.15);
+ toast(s.msg);req()}
+function stratDraw(a,b){if(!TKV)return;if(TKV.key.split('|').slice(0,2).join('|')!==(S.custom||S.sym)+'|'+S.tf){TKV=null;return}
+ const vis=S.tab==='spot'||S.tab==='fut'||$('#mTrade').classList.contains('open');if(!vis)return;
+ ctx.save();ctx.beginPath();ctx.rect(0,0,PW,PH);ctx.clip();ctx.font='10px system-ui,sans-serif';ctx.textBaseline='middle';
+ if(TKV.ema){[[TKV.ema.e1,'#ffd166'],[TKV.ema.e2,'#7cb4ff']].forEach(([E,c])=>{ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.setLineDash([]);ctx.beginPath();let st=false;for(let i=Math.max(0,a-1);i<=Math.min(b+1,E.length-1);i++){if(!isFinite(E[i]))continue;const x=xOf(i),y=yOf(E[i]);st?ctx.lineTo(x,y):ctx.moveTo(x,y);st=true}ctx.stroke()})}
+ if(TKV.box){const B=TKV.box,x1=xOf(B.i1),x2=xOf(B.i2),y1=yOf(B.hi),y2=yOf(B.lo);ctx.fillStyle='rgba(255,166,87,.12)';ctx.fillRect(x1,y1,x2-x1,y2-y1);ctx.strokeStyle='#ffa657';ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.setLineDash([]);ctx.fillStyle='#ffa657';ctx.textAlign='left';ctx.fillText('Range',x1+3,y1-7)}
+ if(TKV.fib){const F=TKV.fib,x0=xOf(F.i);F.lv.forEach(l=>{const p=retr(F.a,F.b,l),y=yOf(p),key=l===.618;ctx.strokeStyle=key?'#f0b90b':'rgba(240,185,11,.55)';ctx.lineWidth=key?1.5:1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(PW,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#f0b90b';ctx.textAlign='left';ctx.fillText(String(l).replace('.',','),x0+2,y-6)})}
+ if(TKV.path){const P=TKV.path;ctx.strokeStyle='#26a69a';ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();P.forEach((q,j)=>{const x=xOf(q.i),y=yOf(q.p);j?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+  P.forEach((q,j)=>{const up=j+1<P.length?q.p>P[j+1].p:q.p>P[j-1].p;tag(xOf(q.i),yOf(q.p)+(up?-12:12),q.n,'#26a69a','#fff','center')})}
+ // Linien aus den aktuellen Feldern (folgen deinen Änderungen)
+ const o=tkRead(),ent=o.type==='market'?lastP():o.price,L=[];if(fin(ent))L.push([ent,'Einstieg','#58a6ff']);if(fin(o.sl))L.push([o.sl,'Stop','#ef5350']);o.tps.forEach((t,k)=>L.push([t.p,'TP '+(k+1),'#26a69a']));
+ const xs=Math.max(0,xOf(S.bars.length-1)-40);if(fin(ent)&&fin(o.sl)){ctx.fillStyle='rgba(239,83,80,.10)';ctx.fillRect(xs,Math.min(yOf(ent),yOf(o.sl)),PW-xs,Math.abs(yOf(ent)-yOf(o.sl)));const tl=o.tps.length?o.tps[o.tps.length-1].p:null;if(fin(tl)){ctx.fillStyle='rgba(38,166,154,.10)';ctx.fillRect(xs,Math.min(yOf(ent),yOf(tl)),PW-xs,Math.abs(yOf(ent)-yOf(tl)))}}
+ L.forEach(([p,lb,c])=>{const y=yOf(p);ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.setLineDash(lb==='Einstieg'?[]:[6,4]);ctx.beginPath();ctx.moveTo(xs,y);ctx.lineTo(PW,y);ctx.stroke();ctx.setLineDash([]);tag(PW-2,clamp(y,8,PH-8),lb+' '+fmt(p),c,'#fff','right')});
+ ctx.restore()}
+
 function tkFromSK(){const d=[...S.drawings].reverse().find(x=>x.type==='sk'&&x.pts.length>=2);if(!d){toast('Erst ein SK-Setup einzeichnen (Werkzeug SK)');return}
  const P=d.pts.map(q=>q.p),a=P[1]-P[0],dir=Math.sign(a)||1,entry=retr(P[0],P[1],.618),base=P.length>=3?P[2]:entry;
  if(TK.mode==='spot'&&dir<0){toast('Short-Setup – dafür in Futures wechseln');return}
@@ -2334,10 +2388,10 @@ $('#rpV').onclick=()=>{S.rp.sp=(S.rp.sp+1)%SPEEDS.length;if(S.rp.timer){clearInt
 $('#tkDir').onclick=e=>{const b=e.target.closest('button');if(!b)return;TK.dir=+b.dataset.v;segSet('#tkDir',TK.dir);tkUpd()};
 $('#tkType').onclick=e=>{const b=e.target.closest('button');if(!b)return;TK.type=b.dataset.v;segSet('#tkType',TK.type);tkUpd()};
 $('#tkMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;TK.mode=b.dataset.v;tkOpen(true)};
-$('#tkBox').addEventListener('input',tkUpd);$('#tkBox').addEventListener('change',tkUpd);
+$('#tkBox').addEventListener('input',()=>{tkUpd();if(TKV)req()});$('#tkBox').addEventListener('change',tkUpd);
 document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{S.pick={field:b.dataset.pick};$('#mTrade').classList.remove('open');updHint()});
 $('#tkSK').onclick=tkFromSK;
-$('#tkSend').onclick=()=>{if(LIVE.mode!=='app'){toast('Echte Orders an Bybit kommen in Schritt 3 – jetzt nur Anzeige. Zum Üben oben auf „DEMO“ umschalten.');return}const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}const go=()=>{$('#mTrade').classList.remove('open');placeOrder(o)};if(FEAT.check&&!isRp())ckOpen(o,go);else go()};
+$('#tkSend').onclick=()=>{if(LIVE.mode!=='app'){toast('Echte Orders an Bybit kommen in Schritt 3 – jetzt nur Anzeige. Zum Üben oben auf „DEMO“ umschalten.');return}const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}const go=()=>{$('#mTrade').classList.remove('open');TKV=null;placeOrder(o);req()};if(FEAT.check&&!isRp())ckOpen(o,go);else go()};
 $('#bType').onclick=e=>{const b=e.target.closest('button');if(!b)return;BT.type=b.dataset.v;renderBots()};
 $('#pBots').addEventListener('input',e=>{if(BT.type!=='elliott')botUpd()});$('#eTestB').onclick=()=>{$('#eRes').innerHTML='<div class="mut">Rechne …</div>';setTimeout(()=>eTest(),30)};$('#eTP').onchange=e=>{EB.tp=e.target.checked};$('#eHTF').onchange=e=>{EB.htf=e.target.checked};$('#bStart').onclick=botStart;$('#bSug').onclick=botSuggest;
 $('#hPin').onchange=e=>{HM.pin=e.target.checked;store('wdesk_hm',HM);req()};$('#hCan').onchange=e=>{HM.candles=e.target.checked;store('wdesk_hm',HM);req()};$('#hOver').onchange=e=>{HM.over=e.target.checked;store('wdesk_hm',HM);req()};$('#hLiqOn').onchange=e=>{VIS.liq=e.target.checked;saveVis();req()};
