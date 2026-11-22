@@ -1218,7 +1218,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.src==='
 const AC=Object.assign({bal:10000,start:10000,fee:.0004,pos:[],ord:[],hist:[],bots:[]},store('wdesk_acct')||{});
 AC.bots=AC.bots||[];
 const fin=Number.isFinite;
-function saveAcct(){store('wdesk_acct',AC)}
+function saveAcct(){store('wdesk_acct',AC);try{if(PU.on)puSched()}catch(_){}}
 const pkey=()=>S.custom?'csv:'+S.custom:S.src+':'+S.sym;
 const lastP=()=>S.bars[S.bars.length-1].c;
 const nowT=()=>S.full?S.bars[S.bars.length-1].t:Date.now();
@@ -1432,7 +1432,7 @@ setInterval(()=>bgSync(),20000);
 
 /* ---------- Live-Analyse: Auto-Analyse bleibt dran und führt sich nach ---------- */
 const LA=store('wdesk_la')||[];const LAB={};let laBusy=false;
-const laSave=()=>store('wdesk_la',LA);
+const laSave=()=>{store('wdesk_la',LA);try{puSched()}catch(_){}};
 const laKeyOf=e=>e.src+':'+e.sym+'|'+e.tf;
 const laCurKey=()=>S.custom||S.full?null:S.src+':'+S.sym+'|'+S.tf;
 const laFind=()=>{const k=laCurKey();return k?LA.find(e=>laKeyOf(e)===k):null};
@@ -1699,7 +1699,7 @@ const GD=Object.assign({max:3,maxN:0},store('wdesk_guard')||{});
 /* ---- 1. Preis-Alarme ---- */
 const AL=store('wdesk_alerts')||[];
 const alKey=()=>!S.custom&&BIN[S.sym]?'binance:'+S.sym:pkey();
-const alSave=()=>store('wdesk_alerts',AL.map(a=>({id:a.id,key:a.key,label:a.label,p:a.p,note:a.note,t0:a.t0})));
+const alSave=()=>{store('wdesk_alerts',AL.map(a=>({id:a.id,key:a.key,label:a.label,p:a.p,note:a.note,t0:a.t0,last:a.last})));try{puSched()}catch(_){}};
 function alAdd(p,note){if(isRp()){toast('Alarme gehen nur im Live-Chart, nicht im Replay');return}if(!isFinite(p))return;
  AL.push({id:Date.now(),key:alKey(),label:S.custom||S.sym,p,note:note||'',t0:Date.now(),last:lastP()});alSave();setTimeout(bgSync,300);req();
  toast(`🔔 Alarm bei ${fmt(p)} gesetzt`+(ntOK()&&NT.on&&NT.alarm?'':' – Push unter ☰ › Benachrichtigungen einschalten'))}
@@ -1908,6 +1908,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
    `<div class="fld"><label>Passwort</label><input id="lvPw" type="password" class="inp" placeholder="dein APP_PASSWORD" autocomplete="current-password"></div><div class="row"><button id="lvIn" class="on">Anmelden</button></div>`}
   <div id="lvMsg" style="font-size:13px;margin-top:4px"></div></div>
  ${syCard()}
+ ${puCard()}
  <div class="card"><h4><span>🔐 Face ID</span>${LIVE.pk?'<span class="ok" style="font-size:12px">eingerichtet</span>':''}</h4>
   ${faceAvail()?`<div class="row"><button id="lvFace">${LIVE.pk?'Neu einrichten':'Face ID einrichten'}</button>${LIVE.pk?'<button id="lvFaceT">Testen</button>':''}</div>
   <label class="row" style="font-size:13px"><input type="checkbox" id="lvFO" ${LIVE.faceOrder?'checked':''}> Vor jeder Live-Order Face ID abfragen (ab Schritt 3)</label>`:'<div class="warn" style="font-size:13px">Face ID geht nur in der installierten App auf dem iPhone.</div>'}
@@ -1928,7 +1929,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  const fo=$('#lvFO');if(fo)fo.onchange=()=>{LIVE.faceOrder=fo.checked;liveSave()};
  el.querySelectorAll('[data-kd]').forEach(i=>i.onchange=()=>{const v=i.value?Date.parse(i.value+'T12:00:00'):null;if(v)LIVE.kd[i.dataset.kd]=v;else delete LIVE.kd[i.dataset.kd];liveSave();lvOpen()});
  $('#lvGen').onclick=()=>{const s=b64u(crypto.getRandomValues(new Uint8Array(32)));$('#lvGenOut').innerHTML=`<code>${s}</code><br><button id="lvCp" style="margin-top:4px">Kopieren</button>`;$('#lvCp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(s).then(()=>toast('Kopiert ✅'),()=>toast('Bitte markieren und kopieren'))}};
- syBind();$('#mLive').classList.add('open')}
+ syBind();puBind();$('#mLive').classList.add('open')}
 
 /* ---------- Geräte-Abgleich über den eigenen Server (Cloudflare KV) ---------- */
 Object.assign(SY,{on:false,v:0,h:null,pushT:0,last:null,err:null},store('wdesk_sync')||{});SY.ro=false;SY.lead=null;SY.busy=false;
@@ -1969,6 +1970,49 @@ function syBind(){const on=$('#syOn');if(on)on.onclick=async()=>{const a=$('#syA
 setInterval(()=>{if(!SY.on||!lvTokOK())return;syCheck(false).then(()=>{if(!SY.ro&&Date.now()-SY.pushT>90000)syPush()})},20000);
 document.addEventListener('visibilitychange',()=>{if(!SY.on)return;if(document.hidden)syPush();else syCheck(true)});
 setTimeout(()=>{let n=null;try{n=sessionStorage.getItem('wdesk_synced');if(n){sessionStorage.removeItem('wdesk_synced');toast('🔄 Stand von '+n+' geladen')}}catch(_){}if(SY.on)syCheck(!n)},1200);
+
+
+/* ---------- 📲 Push vom Server (Meldungen auch bei geschlossener App) ---------- */
+const PU=Object.assign({on:false,wh:null,wt:0},store('wdesk_push')||{});const puSave=()=>store('wdesk_push',{on:PU.on,wh:PU.wh,wt:PU.wt});
+const puOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const symOf=key=>{const m=/^binance:(.+)$/.exec(key||'');return m&&BIN[m[1]]?{y:m[1],b:BIN[m[1]]}:null};
+function puItems(){const it=[],add=(id,y,cond,p,title,body,tf)=>{const s=BIN[y];if(!s||!fin(p))return;it.push({id,sym:s,cond,p:+p,title,body:body||'',nav:{sym:y,tf:tf||null}})};
+ AL.forEach(a=>{const s=symOf(a.key);if(!s)return;add('al:'+a.id,s.y,a.last!=null&&a.last>a.p?'below':'above',a.p,`🔔 ${a.label} hat ${fmt(a.p)} erreicht`,a.note)});
+ AC.pos.filter(p=>!p.replay).forEach(p=>{const s=symOf(p.key);if(!s)return;const L=p.dir>0,nm=`${p.label} ${pmode(p)==='spot'?'Spot':L?'Long':'Short'}`;
+  if(fin(p.sl))add(`sl:${p.id}:${p.sl}`,s.y,L?'below':'above',p.sl,`🛑 ${nm}: ${whySL(p)} bei ${fmt(p.sl)}`,'wird beim Öffnen der App gebucht');
+  p.tps.forEach((t,k)=>{if(!t.hit)add(`tp:${p.id}:${k}:${t.p}`,s.y,L?'above':'below',t.p,`🎯 ${nm}: Ziel ${k+1} bei ${fmt(t.p)}`,'wird beim Öffnen der App gebucht')})});
+ AC.ord.filter(o=>!o.replay&&o.type!=='trail').forEach(o=>{const s=symOf(o.key);if(!s||!fin(o.price))return;const up=o.type==='stop'?o.dir>0:o.dir<0;
+  add(`or:${o.id}:${o.price}`,s.y,up?'above':'below',o.price,`📥 ${o.label}: ${TYPN[o.type]} ${o.dir>0?'Long':'Short'} @ ${fmt(o.price)} ausgelöst`,'wird beim Öffnen der App ausgeführt')});
+ LA.filter(e=>e.src==='binance').forEach(e=>{[['cur','Zählung'],['skc','SK-Setup']].forEach(([f,lab])=>{const c=e[f];if(!c||c.none)return;const nm=`🔴 ${e.sym.replace('/USD','')} ${e.tf}`;
+  if(!c.dead&&c.inv!=null)add(`la:${e.id}:${f}:inv:${c.inv}`,e.sym,c.invUp?'above':'below',c.inv,`${nm}: ${lab} ungültig`,`${c.st} – Marke ${fmt(c.inv)} gebrochen`,e.tf);
+  if(!c.hit&&!c.dead&&c.tgt!=null)add(`la:${e.id}:${f}:tgt:${c.tgt}`,e.sym,c.tgtUp?'above':'below',c.tgt,`${nm}: ${c.tl} erreicht`,c.st,e.tf)})});
+ return it}
+let puT=null;function puSched(){clearTimeout(puT);puT=setTimeout(puSync,4000)}
+async function puSync(){if(!PU.on||!lvTokOK()||SY.ro)return;const items=puItems(),h=syHash(JSON.stringify(items));if(h===PU.wh&&Date.now()-PU.wt<6*36e5)return;
+ try{await lvApi('/watch',{dev:DEVID,items});PU.wh=h;PU.wt=Date.now();puSave()}catch(_){}}
+// Beim Öffnen: was hat der Server schon gemeldet? → Alarme still abhaken, Live-Analyse-Marken übernehmen
+async function puCatchUp(){if(!PU.on||!lvTokOK()||SY.ro)return;try{const r=await lvApi('/watch');const sent=r.sent||{};let ch=false;
+  AL.slice().forEach(a=>{if(sent['al:'+a.id]){inbAdd('alarm',`🔔 ${a.label} hat ${fmt(a.p)} erreicht`,(a.note?a.note+' · ':'')+'per Push gemeldet');AL.splice(AL.indexOf(a),1);ch=true}});if(ch)alSave();
+  LA.forEach(e=>[['cur'],['skc']].forEach(([f])=>{const c=e[f];if(!c||c.none)return;if(!c.dead&&sent[`la:${e.id}:${f}:inv:${c.inv}`]){c.dead=true;e.lastT=null;ch=true}if(!c.hit&&sent[`la:${e.id}:${f}:tgt:${c.tgt}`]){c.hit=true;ch=true}}));
+  if(ch){laSave();req()}}catch(_){}}
+async function puAlive(on){if(!PU.on||!lvTokOK())return;try{await lvApi('/push/alive',{dev:DEVID,on})}catch(_){}}
+setInterval(()=>{if(PU.on&&!document.hidden){puAlive(true);puSched()}},3*6e4);
+document.addEventListener('visibilitychange',()=>{if(!PU.on)return;if(document.hidden){puSync();puAlive(false)}else{puAlive(true);puCatchUp()}});
+setTimeout(()=>{if(PU.on){puAlive(true);puCatchUp().then(puSched)}},3000);
+async function puEnable(){const msg=t=>{$('#puMsg').innerHTML=t};if(!puOK()){msg('<span class="bad">Push geht nur in der installierten App (iPhone: Safari › Teilen › Zum Home-Bildschirm, iOS 16.4+).</span>');return}
+ try{msg('Prüfe Server …');let k;try{k=await lvApi('/push/key')}catch(e){if(e.code==='novapid'){msg('<span class="warn">Auf dem Server fehlt noch der Push-Schlüssel. Unten „VAPID_JWK erzeugen“ und in Cloudflare eintragen.</span>');return}throw e}
+  const perm=await Notification.requestPermission();if(perm!=='granted'){msg('<span class="bad">Mitteilungen wurden nicht erlaubt (iPhone: Einstellungen › Mitteilungen › Wellen-Desk).</span>');return}
+  const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe().catch(()=>{});
+  sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ub64u(k.pub)});await lvApi('/push/sub',{sub:sub.toJSON(),dev:DEVID,name:DEVN});
+  PU.on=true;PU.wh=null;puSave();await puSync();msg('<span class="ok">✅ Push eingerichtet – Test unten möglich.</span>');lvOpen()}catch(e){msg('<span class="bad">'+e.message+'</span>')}}
+function puCard(){return `<div class="card"><h4><span>📲 Push vom Server</span>${PU.on?'<span class="ok" style="font-size:12px">an</span>':''}</h4>
+ ${!lvTokOK()?'<div class="mut" style="font-size:12px">Erst oben am Server anmelden.</div>':`<div class="row" style="flex-wrap:wrap">${PU.on?'<button id="puTest">Test-Push senden</button><button id="puOff">Ausschalten</button>':'<button id="puOn" class="on">Einrichten</button>'}<button id="puGen">VAPID_JWK erzeugen</button></div>`}
+ <div id="puMsg" style="font-size:13px"></div><div id="puGenOut" style="font-size:11px;word-break:break-all"></div>
+ <div class="mut" style="font-size:11px">Dein Server prüft jede Minute Preis-Alarme, Stops/Ziele, ausgelöste Orders und Live-Analyse-Marken und meldet sie – auch wenn die App zu ist. Gebucht wird beim Öffnen der App. Bots kommen mit Schritt 4.</div></div>`}
+function puBind(){const o=$('#puOn');if(o)o.onclick=puEnable;const t=$('#puTest');if(t)t.onclick=async()=>{try{const r=await lvApi('/push/test',{});$('#puMsg').innerHTML=r.sent?'<span class="ok">Gesendet ✅ – kommt gleich an (App dafür kurz schließen)</span>':'<span class="warn">Kein Gerät angemeldet – „Ausschalten“ und neu „Einrichten“.</span>'}catch(e){$('#puMsg').innerHTML='<span class="bad">'+e.message+'</span>'}};
+ const f=$('#puOff');if(f)f.onclick=async()=>{try{await lvApi('/push/unsub',{dev:DEVID});const reg=await navigator.serviceWorker.ready;const s=await reg.pushManager.getSubscription();if(s)await s.unsubscribe()}catch(_){}PU.on=false;puSave();lvOpen()};
+ const g=$('#puGen');if(g)g.onclick=async()=>{const kp=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);const j=await crypto.subtle.exportKey('jwk',kp.privateKey);const s=JSON.stringify({kty:j.kty,crv:j.crv,x:j.x,y:j.y,d:j.d});
+  $('#puGenOut').innerHTML=`In Cloudflare als Secret <b>VAPID_JWK</b> eintragen (nur einmal nötig):<br><code>${s}</code><br><button id="puCp" style="margin-top:4px">Kopieren</button>`;$('#puCp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(s).then(()=>toast('Kopiert ✅'),()=>toast('Bitte markieren und kopieren'))}}}
 
 $('#modeBtn').onclick=()=>{if(LIVE.mode==='blive'&&!LVU)lvUnlock();else lvOpen()};
 setTimeout(()=>{updMode();lvRefresh(true)},1500);

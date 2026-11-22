@@ -1,5 +1,5 @@
 // Wellen-Desk Service Worker: App offline verfügbar, Kursdaten immer live
-const CACHE = 'wellen-desk-v54';
+const CACHE = 'wellen-desk-v55';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
@@ -17,4 +17,10 @@ self.addEventListener('notificationclick', e => {
     for (const c of cs) if ('focus' in c) return c.focus();
     return self.clients.openWindow('./');
   }));
+});
+// Push vom eigenen Server (auch wenn die App geschlossen ist)
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'Wellen-Desk', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Wellen-Desk', { body: d.body || '', tag: d.tag || undefined, icon: 'icon-192.png', badge: 'icon-192.png', data: { nav: d.nav || null } }));
 });
