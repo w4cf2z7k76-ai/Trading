@@ -1,8 +1,8 @@
 // Wellen-Desk Service Worker: App offline verfügbar, Kursdaten immer live
-const CACHE = 'wellen-desk-v55';
+const CACHE = 'wellen-desk-v56';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== 'wd-diag').map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (u.origin !== location.origin || e.request.method !== 'GET') return; // Binance & Co. nie cachen
@@ -22,5 +22,8 @@ self.addEventListener('notificationclick', e => {
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'Wellen-Desk', body: e.data ? e.data.text() : '' }; }
-  e.waitUntil(self.registration.showNotification(d.title || 'Wellen-Desk', { body: d.body || '', tag: d.tag || undefined, icon: 'icon-192.png', badge: 'icon-192.png', data: { nav: d.nav || null } }));
+  const show = self.registration.showNotification(d.title || 'Wellen-Desk', { body: d.body || '', tag: d.tag || undefined, icon: 'icon-192.png', badge: 'icon-192.png', data: { nav: d.nav || null } });
+  // Für die Diagnose merken: wann kam zuletzt ein Push an?
+  const log = caches.open('wd-diag').then(c => c.put('./__lastpush', new Response(JSON.stringify({ t: Date.now(), title: d.title || '' })))).catch(() => {});
+  e.waitUntil(Promise.all([show, log]));
 });
