@@ -1488,7 +1488,13 @@ function autoCompute(B,o){const out=[],found=[];const R=o.ew?ewaFind(B):null;
  let k=null;if(o.sk){k=skFind(B);if(k){out.push({type:'sk',auto:true,pts:k.pts.map(q=>({i:q.i,p:q.p})),q:k.score,g:k.g,st:'SK-Setup',lvl:k.dev});found.push(`SK ${k.score} %`)}}
  return{draws:out,found,R,k}}
 // Ungültigkeits-Marke und nächstes Ziel einer Zählung
-function laInfo(c,B,kind){const P=c.pts.map(q=>q.p),T=c.pts.map(q=>B[q.i]?B[q.i].t:null),n=P.length,o={type:kind==='sk'?'sk':c.type,st:kind==='sk'?'SK-Setup':c.status,q:c.score,t0:T[0],n,inv:null,invUp:false,tgt:null,tgtUp:false,tl:''};
+// Ungültig-Marke erst, wenn ihr Wendepunkt bestätigt ist: läuft die Welle noch weiter (Punkt auf der jüngsten Kerze),
+// würde sonst jede neue Spitze die Zählung „ungültig“ machen und sofort neu melden.
+function laConf(o,c,B){if(o.inv==null)return o;const k=c.pts.map(q=>q.p).lastIndexOf(o.inv);if(k<0)return o;const i=c.pts[k].i,dv=c.dev>0?c.dev:.01;let ok=false;
+ for(let j=i+1;j<B.length;j++){if(o.invUp?B[j].l<=o.inv*(1-dv):B[j].h>=o.inv*(1+dv)){ok=true;break}}
+ if(!ok){o.inv=null;o.invWait=true}return o}
+function laInfo(c,B,kind){return laConf(laInfo0(c,B,kind),c,B)}
+function laInfo0(c,B,kind){const P=c.pts.map(q=>q.p),T=c.pts.map(q=>B[q.i]?B[q.i].t:null),n=P.length,o={type:kind==='sk'?'sk':c.type,st:kind==='sk'?'SK-Setup':c.status,q:c.score,t0:T[0],n,inv:null,invUp:false,tgt:null,tgtUp:false,tl:''};
  if(kind==='sk'){const d=Math.sign(P[1]-P[0]);o.inv=P[0];o.invUp=d<0;o.tgt=P[2]+(P[1]-P[0]);o.tgtUp=d>0;o.tl='SK-Ziel';return o}
  const d=Math.sign(P[1]-P[0])||1,w1=Math.abs(P[1]-P[0]);
  if(c.type==='ew'){if(n<=3){o.inv=P[0];o.invUp=d<0;o.tgt=P[2]+d*w1*1.618;o.tgtUp=d>0;o.tl='Ziel Welle 3'}
@@ -1527,7 +1533,7 @@ function laProc(e,B,msgs){const L=B.length-1;if(L<60)return;const nm=`${e.sym.re
   e.cur=n}
  if(e.sk){const o=e.skc,n=nw.skc;if(n&&n.q>=50&&(!o||o.t0!==n.t0))add('neues SK-Setup',`${n.q} % · Ziel ${fmt(n.tgt)}`);if(n&&o&&o.t0===n.t0&&o.hit)n.hit=true;e.skc=n}
  laApply(e,B,res.draws)}
-async function laKick(reason){if(laBusy||!LA.length||SY.ro)return;laBusy=true;const msgs=[];
+async function laKick(reason){if(laBusy||!LA.length||SY.ro||((document.hidden||SV.wait)&&svAct()))return;laBusy=true;const msgs=[];
  try{for(const e of LA.slice()){try{const B=await laBars(e);if(B&&B.length>60)laProc(e,B,msgs)}catch(_){}}}finally{laBusy=false}laSave();
  if(msgs.length){if(reason==='open'&&msgs.length>1)notify('live','🔴 Während du weg warst',msgs.map(m=>m.short).join(' · '),{tab:'chart',sym:null});
   else msgs.forEach(m=>notify('live',m.title,m.body,{sym:m.e.src==='binance'||m.e.src==='demo'?m.e.sym:null,tf:m.e.tf,tab:'chart'}));if(!document.hidden)toast(msgs[0].title)}
@@ -1991,7 +1997,7 @@ const DEVN=/iPhone/.test(navigator.userAgent)?'iPhone':/iPad/.test(navigator.use
 const SYEX=new Set(['wdesk_sync','wdesk_devid','wdesk_lvtok','wdesk_live','wdesk_seen']);
 const syKeys=()=>Object.keys(localStorage).filter(k=>k.startsWith('wdesk_')&&!SYEX.has(k)&&!k.startsWith('wdesk_lvrem')&&!k.startsWith('wdesk_pc_')&&!k.startsWith('wdesk_xc_'));
 function syHash(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(i);return(h>>>0).toString(36)+s.length}
-function svMap(){const m={},add=k=>{const y=bgSym(k);if(y&&BIN[y])m[y]=BIN[y]};AC.bots.forEach(b=>{if(!b.replay&&b.state!=='stopped'&&b.state!=='done')add(b.key)});AC.pos.forEach(p=>{if(!p.replay&&p.bot!=null)add(p.key)});return m}
+function svMap(){const m={},add=k=>{const y=bgSym(k);if(y&&BIN[y])m[y]=BIN[y]};AC.bots.forEach(b=>{if(!b.replay&&b.state!=='stopped'&&b.state!=='done')add(b.key)});AC.pos.forEach(p=>{if(!p.replay&&p.bot!=null)add(p.key)});LA.forEach(e=>{if(e.src==='binance')add('binance:'+e.sym)});return m}
 function sySnap(){const d={};syKeys().forEach(k=>{let v=localStorage.getItem(k);if(k==='wdesk_acct'){try{const a=JSON.parse(v);(a.pos||[]).forEach(p=>delete p.lpx);v=JSON.stringify(a)}catch(_){}}d[k]=v});d.wdesk_srvmap=JSON.stringify(svMap());return d}
 function syApply(r){const keep=new Set(Object.keys(r.data||{}));syKeys().forEach(k=>{if(!keep.has(k))localStorage.removeItem(k)});Object.entries(r.data||{}).forEach(([k,v])=>{if(v!=null)localStorage.setItem(k,v)});
  SY.v=r.v;SY.h=syHash(JSON.stringify(r.data||{}));SY.last=Date.now();syMeta();try{sessionStorage.setItem('wdesk_synced',(r.head&&r.head.name)||'Server')}catch(_){}location.reload()}
@@ -2030,14 +2036,15 @@ setTimeout(()=>{let n=null;try{n=sessionStorage.getItem('wdesk_synced');if(n){se
 function svReq(){const c=(b,t,x)=>`<div class="chk ${b?'ok':b===null?'warn':'bad'}" style="font-size:12px">${b?'✅':b===null?'⚠️':'❌'} ${t}${x?` <span class="mut">· ${x}</span>`:''}</div>`;
  return c(lvTokOK(),'Am Server angemeldet',lvTokOK()?'':'oben anmelden')+c(SY.on,'Geräte-Abgleich an',SY.on?'':'oben einschalten – darüber holt sich der Server deine Bots')+c(PU.on?true:null,'Push an',PU.on?'':'ohne Push rechnet der Server trotzdem, meldet aber nichts')}
 function svCard(){return `<div class="card"><h4><span>☁️ Bots auf dem Server</span>${SV.on?(svAct()?'<span class="ok" style="font-size:12px">aktiv</span>':'<span class="warn" style="font-size:12px">wartet</span>'):'<span class="mut" style="font-size:12px">aus</span>'}</h4>
- <div class="mut" style="font-size:12px">Ist die App zu, rechnet dein Server deine Bots jede Minute weiter – mit demselben Code wie die App: Einstiege, Stops, Ziele, Break-even und Trailing. Jede Aktion kommt per Push. Öffnest du die App, holt sie den Stand vom Server und übernimmt wieder.</div>
+ <div class="mut" style="font-size:12px">Ist die App zu, rechnet dein Server deine Bots und Live-Analysen jede Minute weiter – mit demselben Code wie die App: Einstiege, Stops, Ziele, Break-even, Trailing, neue Zählungen und SK-Setups. Jede Meldung kommt per Push. Öffnest du die App, holt sie den Stand vom Server und übernimmt wieder.</div>
  ${SV.on?`<div style="margin-top:6px">${svReq()}</div>`:''}<div id="svMsg" style="font-size:12px;margin-top:4px"></div>
  <div class="row"><button id="svTog" class="${SV.on?'':'on'}">${SV.on?'Ausschalten':'Einschalten'}</button>${svAct()?'<button id="svChk">🔍 Server-Bots prüfen</button>':''}</div></div>`}
 function svBind(){const t=$('#svTog');if(t)t.onclick=async()=>{SV.on=!SV.on;svSave();try{await syPush()}catch(_){}toast(SV.on?'☁️ Server-Bots an':'Server-Bots aus – Bots laufen nur bei offener App');lvOpen()};
  const c=$('#svChk');if(c)c.onclick=async()=>{const el=$('#svMsg');el.innerHTML='<span class="mut">Server rechnet Probelauf …</span>';
   try{await syPush();const r=await lvApi('/eng/run',{dry:true});const L=[];
-   if(r.skip)L.push(`<span class="warn">${({nosync:'Noch kein Stand auf dem Server – Geräte-Abgleich einschalten',aus:'Auf dem Server ausgeschaltet',nobots:'Keine laufenden Live-Bots',nokv:'Speicher (KV) fehlt'})[r.skip]||r.skip}</span>`);
+   if(r.skip)L.push(`<span class="warn">${({nosync:'Noch kein Stand auf dem Server – Geräte-Abgleich einschalten',aus:'Auf dem Server ausgeschaltet',nobots:'Keine laufenden Live-Bots oder Live-Analysen',nokv:'Speicher (KV) fehlt'})[r.skip]||r.skip}</span>`);
    (r.syms||[]).forEach(x=>L.push(x.err?`<span class="bad">❌ ${x.sym}: ${x.err}</span>`:`✅ ${x.sym}: Kurs ${fmt(x.px)} von ${x.src} · ${x.bots} Bot(s)${x.pos?' · '+x.pos+' Position(en)':''}`));
+   (r.la||[]).forEach(x=>L.push(x.err?`<span class="bad">❌ 🔴 ${x.sym} ${x.tf}: ${x.err}</span>`:`✅ 🔴 Live-Analyse ${x.sym} ${x.tf}: ${x.st}`));
    if(r.ms!=null)L.push(`<span class="mut">Rechenzeit ${r.ms} ms · zuletzt gespeichert ${r.w?laAgo(r.w):'noch nie'}${r.last?' · '+r.last:''}</span>`);
    el.innerHTML=L.join('<br>')||'<span class="mut">Keine Antwort</span>'}catch(e){el.innerHTML=`<span class="bad">${e.code==='notfound'?'Server ist noch alt – worker.js (v1.5) in Cloudflare einspielen':e.message}</span>`}}}
 
@@ -2052,7 +2059,7 @@ function puItems(){const it=[],add=(id,y,cond,p,title,body,tf)=>{const s=BIN[y];
   p.tps.forEach((t,k)=>{if(!t.hit)add(`tp:${p.id}:${k}:${t.p}`,s.y,L?'above':'below',t.p,`🎯 ${nm}: Ziel ${k+1} bei ${fmt(t.p)}`,'wird beim Öffnen der App gebucht')})});
  AC.ord.filter(o=>!o.replay&&o.type!=='trail').forEach(o=>{const s=symOf(o.key);if(!s||!fin(o.price))return;const up=o.type==='stop'?o.dir>0:o.dir<0;
   add(`or:${o.id}:${o.price}`,s.y,up?'above':'below',o.price,`📥 ${o.label}: ${TYPN[o.type]} ${o.dir>0?'Long':'Short'} @ ${fmt(o.price)} ausgelöst`,'wird beim Öffnen der App ausgeführt')});
- LA.filter(e=>e.src==='binance').forEach(e=>{[['cur','Zählung'],['skc','SK-Setup']].forEach(([f,lab])=>{const c=e[f];if(!c||c.none)return;const nm=`🔴 ${e.sym.replace(/\/USDT?$/,'')} ${e.tf}`;
+ LA.filter(e=>e.src==='binance'&&!svAct()).forEach(e=>{[['cur','Zählung'],['skc','SK-Setup']].forEach(([f,lab])=>{const c=e[f];if(!c||c.none)return;const nm=`🔴 ${e.sym.replace(/\/USDT?$/,'')} ${e.tf}`;
   if(!c.dead&&c.inv!=null)add(`la:${e.id}:${f}:inv:${c.inv}`,e.sym,c.invUp?'above':'below',c.inv,`${nm}: ${lab} ungültig`,`${c.st} – Marke ${fmt(c.inv)} gebrochen`,e.tf);
   if(!c.hit&&!c.dead&&c.tgt!=null)add(`la:${e.id}:${f}:tgt:${c.tgt}`,e.sym,c.tgtUp?'above':'below',c.tgt,`${nm}: ${c.tl} erreicht`,c.st,e.tf)})});
  return it}
@@ -2097,7 +2104,7 @@ async function puDiag(){const el=$('#puMsg'),L=[],ok=(b,t,x)=>L.push(`<div class
 function puCard(){return `<div class="card"><h4><span>📲 Push vom Server</span>${PU.on?'<span class="ok" style="font-size:12px">an</span>':''}</h4>
  ${!lvTokOK()?'<div class="mut" style="font-size:12px">Erst oben am Server anmelden.</div>':`<div class="row" style="flex-wrap:wrap">${PU.on?'<button id="puTest">Test-Push senden</button><button id="puOff">Ausschalten</button>':'<button id="puOn" class="on">Einrichten</button>'}<button id="puDia">🔍 Diagnose</button><button id="puGen">VAPID_JWK erzeugen</button></div>`}
  <div id="puMsg" style="font-size:13px"></div><div id="puGenOut" style="font-size:11px;word-break:break-all"></div>
- <div class="mut" style="font-size:11px">Dein Server prüft jede Minute Preis-Alarme, Stops/Ziele, ausgelöste Orders und Live-Analyse-Marken und meldet sie – auch wenn die App zu ist. Gebucht wird beim Öffnen der App. Bots kommen mit Schritt 4.</div></div>`}
+ <div class="mut" style="font-size:11px">Dein Server prüft jede Minute Preis-Alarme, Stops/Ziele, ausgelöste Orders und Live-Analyse-Marken und meldet sie – auch wenn die App zu ist. Bot-Trades und Live-Analysen rechnet der Server selbst, Hand-Trades werden beim Öffnen der App gebucht.</div></div>`}
 function puBind(){const o=$('#puOn');if(o)o.onclick=puEnable;const dg=$('#puDia');if(dg)dg.onclick=puDiag;const t=$('#puTest');if(t)t.onclick=async()=>{try{const r=await lvApi('/push/test',{});$('#puMsg').innerHTML=(r.sent?'<span class="ok">Gesendet ✅ – App jetzt schließen, kommt in Sekunden</span>':'<span class="warn">Nicht zugestellt – „🔍 Diagnose“ antippen</span>')+(r.res&&r.res.length?'<br><span class="mut" style="font-size:11px">'+r.res.map(x=>`${x.name} (${x.host}): ${x.status||x.err||x.skip}${x.txt?' · '+x.txt:''}`).join('<br>')+'</span>':'')}catch(e){$('#puMsg').innerHTML='<span class="bad">'+e.message+'</span>'}};
  const f=$('#puOff');if(f)f.onclick=async()=>{try{await lvApi('/push/unsub',{dev:DEVID});const reg=await navigator.serviceWorker.ready;const s=await reg.pushManager.getSubscription();if(s)await s.unsubscribe()}catch(_){}PU.on=false;puSave();lvOpen()};
  const g=$('#puGen');if(g)g.onclick=async()=>{const kp=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);const j=await crypto.subtle.exportKey('jwk',kp.privateKey);const s=JSON.stringify({kty:j.kty,crv:j.crv,x:j.x,y:j.y,d:j.d});
