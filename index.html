@@ -136,7 +136,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <body>
 <div id="app">
   <header>
-    <button id="modeBtn" class="mode-app" title="Konto-Modus">DEMO</button><select id="sym" style="display:none"></select><button id="symBtn" style="min-width:104px;text-align:left">BTC/USD ▾</button>
+    <button id="modeBtn" class="mode-app" title="Konto-Modus">DEMO</button><select id="sym" style="display:none"></select><button id="symBtn" style="min-width:104px;text-align:left">BTC/USDT ▾</button>
     <select id="tf"><option>15m</option><option>1h</option><option selected>4h</option><option>1D</option></select>
     <button id="bWL" title="Watchlist">📋 Liste</button>
     <button id="bM2" title="Zweite Zeiteinheit">⧉ 2. ZE</button>
@@ -408,7 +408,14 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 </div></div>
 
 <script>
+
+/* Umbenennung X/USD → X/USDT (Krypto), läuft bei jedem Start, ändert nur alte Namen */
+(()=>{try{const B=['BTC','ETH','SOL','XRP','BNB','DOGE','ADA','TRX','AVAX','LINK','DOT','TON','LTC','BCH','NEAR','UNI','APT','ARB','OP','SUI','ATOM','FIL','INJ','ETC','XLM','HBAR','AAVE','FET','RENDER','TIA','SEI','WIF','ENA','POL','ALGO','ICP'],re=new RegExp('(^|[^A-Za-z0-9])('+B.join('|')+')\\/USD(?![A-Za-z0-9])','g');const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('wdesk_')&&!k.startsWith('wdesk_pc_'))ks.push(k)}
+ ks.forEach(k=>{const v=localStorage.getItem(k);re.lastIndex=0;const nk=k.replace(re,'$1$2/USDT');re.lastIndex=0;const nv=v!=null&&re.test(v)?(re.lastIndex=0,v.replace(re,'$1$2/USDT')):v;if(nk!==k){localStorage.removeItem(k);if(localStorage.getItem(nk)==null)localStorage.setItem(nk,nv)}else if(nv!==v)localStorage.setItem(k,nv)})}catch(_){}})();
 const SY={ro:false,on:false};
+/* ☁️ Bots auf dem Server: solange die App zu ist, rechnet dein Server die Bots weiter (gleicher Code) */
+const SV=Object.assign({on:true,wait:false},(()=>{try{return JSON.parse(localStorage.getItem('wdesk_srv'))}catch(_){return null}})()||{});SV.wait=false;
+const svSave=()=>{try{localStorage.setItem('wdesk_srv',JSON.stringify({on:SV.on}))}catch(_){}};
 (()=>{
 const $=s=>document.querySelector(s);
 const cv=$('#cv'),ctx=cv.getContext('2d');
@@ -430,7 +437,7 @@ function renderDesign(){const cur=document.documentElement.dataset.theme;$('#thG
  <div class="thprev" style="background:${t.grad||t.chart||t.bg};border:1px solid ${t.line}">${[30,46,38,58,50,64,44].map((h,i)=>`<i style="left:${8+i*13}px;height:${h*0.8}px;background:${i%3===2?t.dn:t.up}"></i>`).join('')}<span style="position:absolute;right:6px;top:6px;background:${t.acc};color:${t.solid};font-size:10px;padding:1px 6px;border-radius:6px">Aktiv</span></div>
  <b style="font-size:13px">${t.name}</b><br><span style="font-size:11px;color:${t.mut}">${t.d}</span></button>`).join('');
  $('#thGrid').querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{applyTheme(b.dataset.th);renderDesign()})}
-const SYMS={'BTC/USD':65000,'ETH/USD':3200,'SOL/USD':150,'XRP/USD':0.6,'BNB/USD':600,'DOGE/USD':0.15,'ADA/USD':0.5,'TRX/USD':0.2,'AVAX/USD':30,'LINK/USD':15,'DOT/USD':6,'TON/USD':5,'LTC/USD':80,'BCH/USD':400,'NEAR/USD':5,'UNI/USD':8,'APT/USD':8,'ARB/USD':0.8,'OP/USD':1.8,'SUI/USD':2,'ATOM/USD':7,'FIL/USD':5,'INJ/USD':20,'ETC/USD':25,'XLM/USD':0.12,'HBAR/USD':0.08,'AAVE/USD':150,'FET/USD':1.2,'RENDER/USD':6,'TIA/USD':6,'SEI/USD':0.4,'WIF/USD':2,'ENA/USD':0.6,'POL/USD':0.4,'ALGO/USD':0.2,'ICP/USD':8,'EUR/USD':1.08,'DAX':19000,'GOLD':2400,'NASDAQ':18000};
+const SYMS={'BTC/USDT':65000,'ETH/USDT':3200,'SOL/USDT':150,'XRP/USDT':0.6,'BNB/USDT':600,'DOGE/USDT':0.15,'ADA/USDT':0.5,'TRX/USDT':0.2,'AVAX/USDT':30,'LINK/USDT':15,'DOT/USDT':6,'TON/USDT':5,'LTC/USDT':80,'BCH/USDT':400,'NEAR/USDT':5,'UNI/USDT':8,'APT/USDT':8,'ARB/USDT':0.8,'OP/USDT':1.8,'SUI/USDT':2,'ATOM/USDT':7,'FIL/USDT':5,'INJ/USDT':20,'ETC/USDT':25,'XLM/USDT':0.12,'HBAR/USDT':0.08,'AAVE/USDT':150,'FET/USDT':1.2,'RENDER/USDT':6,'TIA/USDT':6,'SEI/USDT':0.4,'WIF/USDT':2,'ENA/USDT':0.6,'POL/USDT':0.4,'ALGO/USDT':0.2,'ICP/USDT':8,'EUR/USD':1.08,'DAX':19000,'GOLD':2400,'NASDAQ':18000};
 const TFMS={'15m':9e5,'1h':36e5,'4h':144e5,'1D':864e5};
 const VOL={'15m':.003,'1h':.006,'4h':.011,'1D':.022};
 const TOOLS={
@@ -446,7 +453,7 @@ const TOOLS={
  sk:{n:3,ic:'SK',name:'SK-System',color:'#58a6ff',steps:['Punkt 0 (Start Impuls)','Punkt A (Ende Impuls)','Punkt B (Reaktion in Golden Zone)']}
 };
 const NAMES={ew:['0','1','2','3','4','5'],diag:['0','1','2','3','4','5'],tri:['0','A','B','C','D','E'],abc:['•','A','B','C'],sk:['0','A','B'],ext:['1','2','3'],fib:['',''],trend:['',''],hline:['']};
-const S={tab:'chart',sym:'BTC/USD',tf:'4h',bars:[],bw:8,end:0,yShift:0,yZoom:1,tool:'cursor',cur:null,drawings:[],magnet:true,zz:null,showZZ:true,cross:null,live:null,custom:null,tfms:TFMS['4h'],dev:null,optEW:true,optSK:true};
+const S={tab:'chart',sym:'BTC/USDT',tf:'4h',bars:[],bw:8,end:0,yShift:0,yZoom:1,tool:'cursor',cur:null,drawings:[],magnet:true,zz:null,showZZ:true,cross:null,live:null,custom:null,tfms:TFMS['4h'],dev:null,optEW:true,optSK:true};
 
 /* ---------- helpers ---------- */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -932,10 +939,12 @@ function draw(){LB=[];
  if(S.cross)tag(PW+1,S.cross.y,fmt(pOf(S.cross.y)),'#6e7681','#fff');
  // legend
  ctx.font='11px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';
- const src=(S.full?'⏪ REPLAY':S.src==='binance'?'● LIVE':S.src==='demo'?'Demo':'CSV')+(laFind()?' · 🔴 Live-Analyse':'');const lg=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}   O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}`;
- ctx.fillStyle=hm?'rgba(0,0,0,.7)':TH.lbl;ctx.fillRect(4,S.tool!=='cursor'?44:4,Math.min(PW-8,ctx.measureText(lg).width+8),17);
- ctx.fillStyle=info.c>=info.o?TH.up:TH.dn;ctx.fillText(lg,8,(S.tool!=='cursor'?44:4)+3);
- if(S.tab!=='heat')indLegend((S.tool!=='cursor'?44:4)+20,S._ci);try{pcTile()}catch(_){}
+ const src=(S.full?'⏪ REPLAY':S.src==='binance'?'● LIVE'+(FEED[S.sym]?' · '+(FEED[S.sym]==='bybit'?'Bybit':'Binance'):''):S.src==='demo'?'Demo':'CSV')+(laFind()?' · 🔴 Live-Analyse':'');// Legende: passt sie nicht in eine Zeile, kommen die Kurse in eine zweite; bei kleinem Chart (Liste aufgezogen) nur eine kurze Zeile
+ const lgSmall=PH<120,l1=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}`,l2=`O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}`,mw=PW-8;
+ const lines=lgSmall?[`${S.custom||S.sym}${S.custom?'':' · '+S.tf} · ${fmt(info.c)}${S.src==='binance'&&!S.full?' ●':''}${laFind()?' 🔴':''}`]:ctx.measureText(l1+'   '+l2).width+8<=mw?[l1+'   '+l2]:[l1,l2];
+ {const ly0=lgSmall?2:(S.tool!=='cursor'?44:4),lw=Math.min(mw,Math.max(...lines.map(t=>ctx.measureText(t).width))+8),lh=lines.length*15+2;ctx.save();ctx.fillStyle=hm?'rgba(0,0,0,.7)':TH.lbl;ctx.fillRect(4,ly0,lw,lh);ctx.fillRect(4,ly0,lw,lh);
+  ctx.beginPath();ctx.rect(4,ly0,lw,lh);ctx.clip();ctx.fillStyle=info.c>=info.o?TH.up:TH.dn;lines.forEach((t,k)=>ctx.fillText(t,8,ly0+3+k*15));ctx.restore();
+  if(!lgSmall){if(S.tab!=='heat')indLegend(ly0+lh+3,S._ci);try{pcTile()}catch(_){}}}
 }
 function renderDrawing(d,isCur){
  const R=analyze(d),pts=d.pts,col=d.type==='trend'?TH.txt:TOOLS[d.type].color;if(!pts.length)return;if(d.alt||d.sub){R.lines=[];R.zones=[]}if(d.auto&&d.st&&!d.sub)R.pattern=(d.alt?'Alt.: ':'')+d.st+(d.q!=null?' · '+d.q+' %':'');ctx.save();if(d.alt)ctx.globalAlpha=.45;
@@ -1198,19 +1207,51 @@ function drawTrades(a,b){
 }
 
 /* ---------- live data (Binance) ---------- */
-const BIN={'EUR/USD':'EURUSDT','GOLD':'PAXGUSDT','BTC/USD':'BTCUSDT','ETH/USD':'ETHUSDT','SOL/USD':'SOLUSDT','XRP/USD':'XRPUSDT','BNB/USD':'BNBUSDT','DOGE/USD':'DOGEUSDT','ADA/USD':'ADAUSDT','TRX/USD':'TRXUSDT','AVAX/USD':'AVAXUSDT','LINK/USD':'LINKUSDT','DOT/USD':'DOTUSDT','TON/USD':'TONUSDT','LTC/USD':'LTCUSDT','BCH/USD':'BCHUSDT','NEAR/USD':'NEARUSDT','UNI/USD':'UNIUSDT','APT/USD':'APTUSDT','ARB/USD':'ARBUSDT','OP/USD':'OPUSDT','SUI/USD':'SUIUSDT','ATOM/USD':'ATOMUSDT','FIL/USD':'FILUSDT','INJ/USD':'INJUSDT','ETC/USD':'ETCUSDT','XLM/USD':'XLMUSDT','HBAR/USD':'HBARUSDT','AAVE/USD':'AAVEUSDT','FET/USD':'FETUSDT','RENDER/USD':'RENDERUSDT','TIA/USD':'TIAUSDT','SEI/USD':'SEIUSDT','WIF/USD':'WIFUSDT','ENA/USD':'ENAUSDT','POL/USD':'POLUSDT','ALGO/USD':'ALGOUSDT','ICP/USD':'ICPUSDT'};
+const BIN={'EUR/USD':'EURUSDUSDT','GOLD':'XAUUSDT','BTC/USDT':'BTCUSDT','ETH/USDT':'ETHUSDT','SOL/USDT':'SOLUSDT','XRP/USDT':'XRPUSDT','BNB/USDT':'BNBUSDT','DOGE/USDT':'DOGEUSDT','ADA/USDT':'ADAUSDT','TRX/USDT':'TRXUSDT','AVAX/USDT':'AVAXUSDT','LINK/USDT':'LINKUSDT','DOT/USDT':'DOTUSDT','TON/USDT':'TONUSDT','LTC/USDT':'LTCUSDT','BCH/USDT':'BCHUSDT','NEAR/USDT':'NEARUSDT','UNI/USDT':'UNIUSDT','APT/USDT':'APTUSDT','ARB/USDT':'ARBUSDT','OP/USDT':'OPUSDT','SUI/USDT':'SUIUSDT','ATOM/USDT':'ATOMUSDT','FIL/USDT':'FILUSDT','INJ/USDT':'INJUSDT','ETC/USDT':'ETCUSDT','XLM/USDT':'XLMUSDT','HBAR/USDT':'HBARUSDT','AAVE/USDT':'AAVEUSDT','FET/USDT':'FETUSDT','RENDER/USDT':'RENDERUSDT','TIA/USDT':'TIAUSDT','SEI/USDT':'SEIUSDT','WIF/USDT':'WIFUSDT','ENA/USDT':'ENAUSDT','POL/USDT':'POLUSDT','ALGO/USDT':'ALGOUSDT','ICP/USDT':'ICPUSDT'};
 const BINTF={'15m':'15m','1h':'1h','4h':'4h','1D':'1d'};
 let ws=null;
 function stopWS(){if(ws){try{ws.onclose=null;ws.close()}catch(_){}ws=null}}
-async function fetchBinance(sym,tf){const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),7000);
- try{const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${BIN[sym]}&interval=${BINTF[tf]}&limit=1000`,{signal:ctl.signal});if(!r.ok)throw new Error('http');
+/* ---------- Kursquelle: Bybit (USDT-Perpetual) mit Binance als Ersatz ---------- */
+const XS=Object.assign({src:'bybit'},store('wdesk_xsrc')||{});const xsSave=()=>store('wdesk_xsrc',XS);
+const BNC={'EUR/USD':'EURUSDT','GOLD':'PAXGUSDT'};                 // Binance-Ersatz, wo der Bybit-Code anders heißt
+const bnCode=y=>y in BNC?BNC[y]:BIN[y];                             // null = gibt es bei Binance nicht
+const BYTF={'15m':'15','1h':'60','4h':'240','1D':'D'};
+const useBy=y=>!!BIN[y]&&(XS.src==='bybit'||!bnCode(y));
+async function fetchBybit(y,tf,limit){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),7000);
+ try{const r=await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${BIN[y]}&interval=${BYTF[tf]}&limit=${limit||1000}`,{signal:ctl.signal});if(!r.ok)throw new Error('http '+r.status);
+  const j=await r.json();const L=j&&j.result&&j.result.list;if(!j||j.retCode!==0||!L||!L.length)throw new Error((j&&j.retMsg)||'leer');
+  return L.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]})).sort((a,b)=>a.t-b.t)}finally{clearTimeout(to)}}
+async function fetchBN(y,tf,limit){const code=bnCode(y);if(!code)throw new Error('nicht bei Binance');const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),7000);
+ try{const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${code}&interval=${BINTF[tf]}&limit=${limit||1000}`,{signal:ctl.signal});if(!r.ok)throw new Error('http');
   const j=await r.json();return j.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}))}finally{clearTimeout(to)}}
+const FEED={};// Symbol → 'bybit' | 'binance' (woher die Kerzen zuletzt kamen)
+async function fetchK(y,tf,limit){if(useBy(y)){try{const b=await fetchBybit(y,tf,limit);FEED[y]='bybit';return b}catch(e){if(!bnCode(y))throw e}}
+ const b=await fetchBN(y,tf,limit);FEED[y]='binance';return b}
+async function fetchBinance(sym,tf){return fetchK(sym,tf,1000)}
+// Live-Kerzen per WebSocket (gleiches Format für beide Börsen)
+function wsKline(y,tf,onBar){if(FEED[y]==='bybit'||(useBy(y)&&FEED[y]!=='binance')){const w=new WebSocket('wss://stream.bybit.com/v5/public/linear');let pi=null;
+  w.onopen=()=>{try{w.send(JSON.stringify({op:'subscribe',args:[`kline.${BYTF[tf]}.${BIN[y]}`]}))}catch(_){}pi=setInterval(()=>{try{w.send('{"op":"ping"}')}catch(_){}},20000)};
+  w.onmessage=ev=>{let j;try{j=JSON.parse(ev.data)}catch(_){return}if(!j||!j.topic||!Array.isArray(j.data))return;j.data.forEach(d=>onBar({t:+d.start,o:+d.open,h:+d.high,l:+d.low,c:+d.close,v:+d.volume,x:!!d.confirm}))};
+  w.addEventListener('close',()=>clearInterval(pi));return w}
+ const itv=tf==='bg'?'15m':BINTF[tf];const w=new WebSocket(`wss://stream.binance.com:9443/ws/${bnCode(y).toLowerCase()}@kline_${itv}`);
+ w.onmessage=ev=>{let m;try{m=JSON.parse(ev.data).k}catch(_){return}if(!m)return;onBar({t:m.t,o:+m.o,h:+m.h,l:+m.l,c:+m.c,v:+m.v,x:!!m.x})};return w}
+// TradFi-Perpetuals von Bybit (Rohstoffe, Aktien, ETFs, Devisen) – Liste kommt direkt von Bybit
+const TFG={};['GOLD'].forEach(k=>TFG[k]='rohstoff');TFG['EUR/USD']='forex';
+const TFN={XAU:'GOLD',XAG:'SILBER',CL:'WTI-ÖL',BZ:'BRENT-ÖL'};
+function tfiName(b,type){if(TFN[b])return TFN[b];if(type==='forex'&&/^[A-Z]{6}$/.test(b))return b.slice(0,3)+'/'+b.slice(3);return b}
+function tfApply(list){(list||[]).forEach(x=>{const n=tfiName(x.b,x.g);if(SYMS[n]&&!(n in TFG)&&BIN[n]&&BIN[n]!==x.s)return;if(!SYMS[n])SYMS[n]=x.p||100;BIN[n]=x.s;if(!(n in BNC))BNC[n]=n==='EUR/USD'?'EURUSDT':n==='GOLD'?'PAXGUSDT':null;TFG[n]=x.g==='commodity'?'rohstoff':x.g==='forex'?'forex':'aktie'})}
+tfApply((store('wdesk_xc_tradfi')||{}).list);
+async function tfLoad(force){const c=store('wdesk_xc_tradfi');if(!force&&c&&Date.now()-c.ts<24*36e5)return;const out=[];
+ for(const g of ['commodity','stock','ETF','forex']){try{const j=await getJ(`https://api.bybit.com/v5/market/instruments-info?category=linear&symbolType=${g}&limit=1000`);(j&&j.result&&j.result.list||[]).forEach(x=>{if(x.status==='Trading'&&/USDT$/.test(x.symbol))out.push({s:x.symbol,b:x.baseCoin||x.symbol.replace(/USDT$/,''),g})})}catch(_){}}
+ if(out.length){store('wdesk_xc_tradfi',{ts:Date.now(),list:out});tfApply(out);try{buildSym()}catch(_){}}}
+setTimeout(()=>tfLoad(),1500);
+
 function startWS(){stopWS();if(S.src!=='binance'||S.full)return;const sy=S.sym,tf=S.tf;
- try{ws=new WebSocket(`wss://stream.binance.com:9443/ws/${BIN[sy].toLowerCase()}@kline_${BINTF[tf]}`)}catch(e){ws=null;return}
- ws.onmessage=ev=>{if(S.sym!==sy||S.tf!==tf||S.src!=='binance'||S.full)return;let m;try{m=JSON.parse(ev.data).k}catch(_){return}if(!m)return;
-  const B=S.bars,l=B[B.length-1],nb={t:m.t,o:+m.o,h:+m.h,l:+m.l,c:+m.c,v:+m.v};
+ const onBar=m=>{if(S.sym!==sy||S.tf!==tf||S.src!=='binance'||S.full)return;
+  const B=S.bars,l=B[B.length-1],nb={t:m.t,o:m.o,h:m.h,l:m.l,c:m.c,v:m.v};
   if(nb.t===l.t)Object.assign(l,nb);else if(nb.t>l.t){const f=S.end>=B.length-2;B.push(nb);if(f)S.end+=1}
   onPrice(nb.c,nb.c,nb.c,!!m.x);updQuote();req()};
+ try{ws=wsKline(sy,tf,onBar)}catch(e){ws=null;return}
  ws.onclose=()=>{ws=null;setTimeout(()=>{if(S.src==='binance'&&S.sym===sy&&S.tf===tf&&!S.full)startWS()},3000)}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.src==='binance'&&!S.full){loadData()}});
 
@@ -1263,7 +1304,7 @@ function onPrice(h,l,c,closed){if(SY.ro)return;let ch=false;const fresh=new Set(
   if(fp!=null){AC.ord=AC.ord.filter(x=>x!==o);ch=true;const p=openPos(o,fp);
    if(p){fresh.add(p.id);toast(`${TYPN[o.type]} ${p.dir>0?'Long':'Short'} ausgeführt @ ${fmt(fp)}`);notify('trade',`📥 ${p.label}: ${TYPN[o.type]} ausgeführt`,`${p.dir>0?'Long':'Short'} @ ${fmt(fp)}`,{tab:pmode(p)});if(p.sl!=null&&!p.csl&&(p.dir>0?l<=p.sl:h>=p.sl))closePart(p,p.sl,p.qty,'Stop')}
    else toast(`${TYPN[o.type]} verworfen – Stop/Guthaben passt beim Auslösen nicht`)}});
- AC.pos.filter(mine).forEach(p=>{if(fresh.has(p.id))return;const d=p.dir;
+ AC.pos.filter(p=>mine(p)&&!svHold(p)).forEach(p=>{if(fresh.has(p.id))return;const d=p.dir;
   if(p.sl!=null){const hit=p.csl?(closed&&(d>0?c<=p.sl:c>=p.sl)):(d>0?l<=p.sl:h>=p.sl);if(hit){closePart(p,p.csl?c:p.sl,p.qty,whySL(p)+(p.csl?' (Kerzenschluss)':''));ch=true;return}}
   if(p.liq!=null&&(d>0?l<=p.liq:h>=p.liq)){closePart(p,p.liq,p.qty,'Liquidation');ch=true;return}
   if(p.ttOn){p.ttExt=d>0?Math.max(p.ttExt,h):Math.min(p.ttExt,l);const trg=p.ttExt*(1-d*p.ttp/100);if(d>0?l<=trg:h>=trg){closePart(p,trg,p.qty,'Trailing-TP');ch=true;return}}
@@ -1291,7 +1332,7 @@ function panic(mode){const f=x=>mine(x)&&(!mode||(x.mode||'fut')===mode);const p
 /* ---------- bots ---------- */
 function botSell(bt,px){const pnl=(px-bt.buyP)*bt.qty-px*bt.qty*AC.fee;AC.bal+=pnl;bt.pnl+=pnl;bt.qty=0}
 function botTick(h,l,c){if(SY.ro)return;let ch=false;
- AC.bots.filter(mine).forEach(bt=>{if(bt.state==='stopped'||bt.state==='done'||bt.type==='elliott')return;
+ AC.bots.filter(b=>mine(b)&&!svHold(b)).forEach(bt=>{if(bt.state==='stopped'||bt.state==='done'||bt.type==='elliott')return;
   if(bt.type==='channel'){
    if(bt.state==='wait'){if(l<=bt.low){bt.qty=bt.inv/bt.low;bt.buyP=bt.low;const f=bt.low*bt.qty*AC.fee;AC.bal-=f;bt.pnl-=f;bt.state='hold';bt.just=true;ch=true;notify('bot','📥 '+bt.label+' Channel-Bot',`Gekauft @ ${fmt(bt.low)}`)}}
    else if(bt.state==='hold'){if(bt.just)bt.just=false;
@@ -1329,10 +1370,11 @@ function botSuggest(){const B=S.bars,n=Math.min(48,B.length);let lo=Infinity,hi=
 function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,25,50,100].map(v=>`<button data-a="${v}" class="${v===BT.amt&&!(usd>0)?'on':''}">${v} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small></button>`).join('');$('#bAmt').style.opacity=usd>0?.4:1;
  $('#bAmt').querySelectorAll('button').forEach(b=>b.onclick=()=>{BT.amt=+b.dataset.a;$('#bUsd').value='';renderBots()});$('#bUsd').oninput=()=>{const u=num($('#bUsd').value);$('#bAmt').style.opacity=u>0?.4:1;$('#bAmt').querySelectorAll('button').forEach(b=>b.classList.toggle('on',!(u>0)&&+b.dataset.a===BT.amt));botUpd()};segSet('#bType',BT.type);botUpd();
  const isAct=b=>b.state!=='stopped'&&b.state!=='done',all=AC.bots.slice().reverse(),nA=all.filter(isAct).length,nE=all.length-nA,list=all.filter(b=>LV.bots==='old'?!isAct(b):isAct(b));
- let h=`<div class="card"><h4><span>Meine Bots</span></h4><div class="seg" style="margin:0 0 8px"><button data-lv="open" class="${LV.bots!=='old'?'on':''}">Aktiv (${nA})</button><button data-lv="old" class="${LV.bots==='old'?'on':''}">Beendet (${nE})</button></div>`;
+ const svHint=nA&&!svAct()&&SV.on&&all.some(b=>isAct(b)&&!b.replay&&bgSym(b.key))?`<div class="mut" style="font-size:12px;margin:0 0 8px">☁️ Bots laufen gerade nur, solange die App offen ist. <a href="#" id="svSet">Server-Bots einrichten</a></div>`:'';
+ let h=`<div class="card"><h4><span>Meine Bots</span></h4>${svHint}<div class="seg" style="margin:0 0 8px"><button data-lv="open" class="${LV.bots!=='old'?'on':''}">Aktiv (${nA})</button><button data-lv="old" class="${LV.bots==='old'?'on':''}">Beendet (${nE})</button></div>`;
  if(!list.length)h+=`<div class="mut" style="font-size:13px">${LV.bots==='old'?'Keine beendeten Bots':'Kein Bot aktiv'+(nE?' – beendete unter „Beendet“':'')}</div>`;
  if(LV.bots==='old'&&list.length){const tot=list.reduce((s,b)=>s+(b.type==='elliott'?eBotPnl(b):b.pnl),0);h+=`<div class="row" style="font-size:13px;margin:0 0 6px">Ergebnis gesamt <b class="${tot>=0?'ok':'bad'}">${money(tot)}</b><span style="flex:1"></span><button id="bClr" class="danger" style="font-size:12px">Liste leeren</button></div>`}
- list.slice(0,30).forEach(bt=>{const bc=!mine(bt)&&bgOf(bt),m=mine(bt)||!!bc,act=bt.state!=='stopped'&&bt.state!=='done',u=m&&act?(bc?inCtx(bc,()=>botUnreal(bt)):botUnreal(bt)):0;const bgN=bc?' <span class="mut" style="font-size:11px">· läuft im Hintergrund</span>':'';
+ list.slice(0,30).forEach(bt=>{const bc=!mine(bt)&&bgOf(bt),m=mine(bt)||!!bc,act=bt.state!=='stopped'&&bt.state!=='done',u=m&&act?(bc?inCtx(bc,()=>botUnreal(bt)):botUnreal(bt)):0;const bgN=(bc?' <span class="mut" style="font-size:11px">· läuft im Hintergrund</span>':'')+(act&&!bt.replay&&bgSym(bt.key)&&svAct()?' <span class="mut" style="font-size:11px">· ☁️ auch bei geschlossener App</span>':'');
   const st={wait:'wartet auf Kauf',hold:'hält Position',run:'läuft',stopped:'beendet',done:'fertig'}[bt.state];
   if(bt.type==='elliott'){eMig(bt);const pn=eBotPnl(bt),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(',');
    h+=`<div class="pos" data-bid="${bt.id}"><b>🌊 Elliott-Bot</b> ${bt.label} · ${bt.tfs.map(tfName).join(' + ')}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
@@ -1344,7 +1386,7 @@ function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,2
   <span class="mut">${fmt(bt.low)} – ${fmt(bt.high)}${bt.stop?' · Stop '+fmt(bt.stop):''}${bt.type==='grid'?` · ${bt.slots.length} Stufen · ${bt.slots.filter(s=>s.held).length} gekauft`:''} · ${money(bt.inv)}</span><br>
   Gewinn: <b class="${bt.pnl>=0?'ok':'bad'}">${money(bt.pnl)}</b> · ${bt.cyc} ${bt.type==='channel'?'Zyklen':'Verkäufe'}${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
   ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen & verkaufen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">'+(bt.replay?'Läuft nur im Replay':'Startet im Hintergrund … (braucht Live-Kurse)')+'</div>'):''}</div>`});
- h+='</div>';$('#bList').innerHTML=h;$('#bList').querySelectorAll('.pos[data-bid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id='b'+d.dataset.bid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.bots.find(x=>'b'+x.id===id))}else posTap={id,t:now}}));$('#bList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV.bots=b.dataset.lv;renderBots()});{const c=$('#bClr');if(c)c.onclick=()=>{if(Date.now()-(LV.clr||0)<2500){AC.bots=AC.bots.filter(isAct);saveAcct();LV.clr=0;renderBots();toast('Beendete Bots entfernt')}else{LV.clr=Date.now();toast('Nochmal tippen zum Leeren')}}}$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(!bt)return;const bc=!mine(bt)&&bgOf(bt);if(bc){inCtx(bc,()=>botStop(bt));after()}else botStop(bt)})}
+ h+='</div>';$('#bList').innerHTML=h;{const a=$('#svSet');if(a)a.onclick=e=>{e.preventDefault();lvOpen()}}$('#bList').querySelectorAll('.pos[data-bid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id='b'+d.dataset.bid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.bots.find(x=>'b'+x.id===id))}else posTap={id,t:now}}));$('#bList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV.bots=b.dataset.lv;renderBots()});{const c=$('#bClr');if(c)c.onclick=()=>{if(Date.now()-(LV.clr||0)<2500){AC.bots=AC.bots.filter(isAct);saveAcct();LV.clr=0;renderBots();toast('Beendete Bots entfernt')}else{LV.clr=Date.now();toast('Nochmal tippen zum Leeren')}}}$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(!bt)return;const bc=!mine(bt)&&bgOf(bt);if(bc){inCtx(bc,()=>botStop(bt));after()}else botStop(bt)})}
 
 /* ---------- Elliott-Bot (mehrere Zeiteinheiten) ---------- */
 const curTf=()=>S.custom?'csv':S.tf;
@@ -1379,7 +1421,7 @@ function tfAvail(tf){if(tf===curTf())return true;if(S.src==='binance'&&!S.full)r
 const devOf=B=>{const n=Math.min(150,B.length);let s=0;for(let i=B.length-n;i<B.length;i++)s+=(B[i].h-B[i].l)/B[i].c;return nearestDev(s/n*4)};
 function eMig(bt){if(!bt.tfs){bt.tfs=[bt.tf||curTf()];bt.st={}}bt.st=bt.st||{}}
 function eBotTick(onClose){let ch=false;
- AC.bots.filter(bt=>bt.type==='elliott'&&bt.state==='run'&&mine(bt)).forEach(bt=>{eMig(bt);
+ AC.bots.filter(bt=>bt.type==='elliott'&&bt.state==='run'&&mine(bt)&&!svHold(bt)).forEach(bt=>{eMig(bt);
   bt.tfs.forEach(tf=>{const live=S.src==='binance'&&!S.full&&tf!==curTf();if(!onClose&&!live)return;
    const B=tfBars(tf);if(!B||B.length<30)return;const st=bt.st[tf]||(bt.st[tf]={});const dev=bt.dev||st.dev||(st.dev=devOf(B));
    const z=zigzag(B,dev).filter(p=>!p.prov);if(z.length<3)return;const lp=z[z.length-1],lt=B[lp.i].t;if(st.lastT===lt)return;const first=st.lastT==null;st.lastT=lt;ch=true;
@@ -1412,10 +1454,10 @@ function bgNeeded(){const n=new Set(),add=(o,act)=>{if(o.replay||!act)return;con
  AC.bots.forEach(b=>add(b,b.state!=='stopped'&&b.state!=='done'));AC.pos.forEach(p=>add(p,true));AC.ord.forEach(o=>add(o,true));if(FEAT.alarm)AL.forEach(a=>add(a,true));return n}
 const bgOf=o=>{const y=bgSym(o.key);const c=y&&!o.replay&&BGX[y];return c&&c.bars&&c.bars.length?c:null};
 function bgStopWS(c){if(c.ws){try{c.ws.onclose=null;c.ws.close()}catch(_){}c.ws=null}}
-function bgWS(c){bgStopWS(c);try{c.ws=new WebSocket(`wss://stream.binance.com:9443/ws/${BIN[c.sym].toLowerCase()}@kline_15m`)}catch(e){c.ws=null;return}
- c.ws.onmessage=ev=>{if(BGX[c.sym]!==c||!c.bars)return;let m;try{m=JSON.parse(ev.data).k}catch(_){return}if(!m)return;
-  const B=c.bars,l=B[B.length-1],nb={t:m.t,o:+m.o,h:+m.h,l:+m.l,c:+m.c,v:+m.v};if(nb.t===l.t)Object.assign(l,nb);else if(nb.t>l.t)B.push(nb);if(B.length>1500)B.splice(0,B.length-1500);
+function bgWS(c){bgStopWS(c);const onBar=m=>{if(BGX[c.sym]!==c||!c.bars)return;
+  const B=c.bars,l=B[B.length-1],nb={t:m.t,o:m.o,h:m.h,l:m.l,c:m.c,v:m.v};if(nb.t===l.t)Object.assign(l,nb);else if(nb.t>l.t)B.push(nb);if(B.length>1500)B.splice(0,B.length-1500);
   c.px=nb.c;inCtx(c,()=>onPrice(nb.c,nb.c,nb.c,!!m.x));bgAfter()};
+ try{c.ws=wsKline(c.sym,'15m',onBar)}catch(e){c.ws=null;return}
  c.ws.onclose=()=>{c.ws=null;setTimeout(()=>{if(BGX[c.sym]===c)bgWS(c)},5000)}}
 let bgT=0;function bgAfter(){saveAcct();if(bgT)return;bgT=setTimeout(()=>{bgT=0;renderAcct();renderPanel();req()},400)}
 async function bgSync(){const need=bgNeeded();
@@ -1462,14 +1504,14 @@ function laUpsert(R,k){const key=laCurKey();if(!key)return false;let e=LA.find(x
 function laRemove(e){const i=LA.indexOf(e);if(i>=0)LA.splice(i,1);delete LAB[e.id];laSave()}
 async function laBars(e){if(laIsOpen(e))return S.bars;if(e.src!=='binance'||!BIN[e.sym])return null;let c=LAB[e.id];
  if(!c||Date.now()-c.full>6*36e5){try{c=LAB[e.id]={bars:await fetchBinance(e.sym,e.tf),full:Date.now()}}catch(_){return c?c.bars:null}return c.bars}
- try{const k=await getJ(`https://api.binance.com/api/v3/klines?symbol=${BIN[e.sym]}&interval=${BINTF[e.tf]}&limit=3`);const B=c.bars;
-  k.forEach(x=>{const nb={t:+x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],v:+x[5]},l=B[B.length-1];if(nb.t===l.t)Object.assign(l,nb);else if(nb.t>l.t)B.push(nb)});if(B.length>1200)B.splice(0,B.length-1200)}catch(_){}
+ try{const k=await fetchK(e.sym,e.tf,3);const B=c.bars;
+  k.forEach(nb=>{const l=B[B.length-1];if(nb.t===l.t)Object.assign(l,nb);else if(nb.t>l.t)B.push(nb)});if(B.length>1200)B.splice(0,B.length-1200)}catch(_){}
  return c.bars}
 function laApply(e,B,draws){draws.forEach(d=>d.pts.forEach(q=>{q.t=B[q.i]?B[q.i].t:null}));
  const merge=arr=>{const hid=new Set(arr.filter(d=>d.auto&&d.hidden).map(d=>d.type+(d.alt?'*':'')));draws.forEach(d=>{if(hid.has(d.type+(d.alt?'*':'')))d.hidden=true});return arr.filter(d=>!d.auto).concat(draws)};
  if(laIsOpen(e)){S.drawings=merge(S.drawings);save();req();if($('#sheet')&&$('#sheet').classList.contains('open'))renderSheet()}
  else{const k='wdesk_'+(e.src==='binance'?'live_':'')+e.sym+'_'+e.tf;store(k,merge(store(k)||[]))}}
-function laProc(e,B,msgs){const L=B.length-1;if(L<60)return;const nm=`${e.sym.replace('/USD','')} ${e.tf}`,add=(title,body)=>{msgs.push({e,title:`🔴 ${nm}: ${title}`,body,short:`${nm} – ${title}`});e.hist.unshift({t:Date.now(),m:title+(body?' · '+body:'')});if(e.hist.length>30)e.hist.length=30};
+function laProc(e,B,msgs){const L=B.length-1;if(L<60)return;const nm=`${e.sym.replace(/\/USDT?$/,'')} ${e.tf}`,add=(title,body)=>{msgs.push({e,title:`🔴 ${nm}: ${title}`,body,short:`${nm} – ${title}`});e.hist.unshift({t:Date.now(),m:title+(body?' · '+body:'')});if(e.hist.length>30)e.hist.length=30};
  let hi=-Infinity,lo=Infinity;for(let i=L;i>=0&&(i===L||B[i].t>=(e.chkT||B[L].t));i--){const b=B[i];if(b.t===e.chkT&&e.bH!=null){if(b.h>e.bH)hi=Math.max(hi,b.h);if(b.l<e.bL)lo=Math.min(lo,b.l)}else{hi=Math.max(hi,b.h);lo=Math.min(lo,b.l)}}e.chkT=B[L].t;e.bH=B[L].h;e.bL=B[L].l;
  const closedT=B[L-1].t;let rerun=e.lastT!==closedT;
  const chk=(c,lab)=>{if(!c||c.none)return;if(!c.dead&&c.inv!=null&&(c.invUp?hi>c.inv:lo<c.inv)){c.dead=true;rerun=true;add(`${lab} ungültig`,`${c.st} – Marke ${fmt(c.inv)} gebrochen`)}
@@ -1545,14 +1587,14 @@ function notify(kind,title,body,nav){if(SY.ro)return;try{inbAdd(kind,title,body,
 const NTSEEN=new Set(store('wdesk_ntseen')||[]);
 async function ntSetupScan(){if(!NT.setup)return;let rows;try{rows=await wlScan(NT.stf)}catch(e){return}
  rows.forEach(r=>{const x=r.set;if(!x||!x.valid||x.age>1)return;const k=r.sym+'|'+NT.stf+'|'+x.t+'|'+x.wave;if(NTSEEN.has(k))return;NTSEEN.add(k);
-  notify('setup',`🌊 ${r.sym.replace('/USD','')} ${NT.stf}: ${WNAME[x.wave]} ${x.side>0?'Long':'Short'}`,`Kurs ${fmt(r.px)} · Stop ${fmt(x.stop)} · Ziel ${fmt(x.tp)}`,{sym:r.sym,tf:NT.stf})});
+  notify('setup',`🌊 ${r.sym.replace(/\/USDT?$/,'')} ${NT.stf}: ${WNAME[x.wave]} ${x.side>0?'Long':'Short'}`,`Kurs ${fmt(r.px)} · Stop ${fmt(x.stop)} · Ziel ${fmt(x.tp)}`,{sym:r.sym,tf:NT.stf})});
  store('wdesk_ntseen',[...NTSEEN].slice(-200))}
 setInterval(ntSetupScan,15*60000);setTimeout(ntSetupScan,20000);
 
 /* ---------- Watchlist ---------- */
 const WL={rows:null,tf:null,busy:false};
 async function wlScan(tf){const syms=Object.keys(BIN),tk={};
- try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),8000);const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols='+encodeURIComponent(JSON.stringify(syms.map(y=>BIN[y]))),{signal:ctl.signal});clearTimeout(to);const j=await r.json();if(Array.isArray(j))j.forEach(x=>tk[x.symbol]=x)}catch(e){}
+ try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),8000);const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols='+encodeURIComponent(JSON.stringify(syms.map(y=>bnCode(y)).filter(Boolean))),{signal:ctl.signal});clearTimeout(to);const j=await r.json();if(Array.isArray(j))j.forEach(x=>{tk[x.symbol]=x;const y=syms.find(q=>bnCode(q)===x.symbol);if(y&&BIN[y]!==x.symbol)tk[BIN[y]]=x})}catch(e){}
  const rows=syms.map(y=>{const t=tk[BIN[y]];return{sym:y,px:t?+t.lastPrice:null,ch:t?+t.priceChangePercent/100:null,set:null}});
  await pool(rows,6,async row=>{const B=(await getBars(row.sym,tf)).slice(0,-1);if(row.px==null)row.px=B[B.length-1].c;const e=ewSetup(B);if(e)row.set=e});
  return rows}
@@ -1573,7 +1615,7 @@ function renderWL(){renderUD();{const f=$('#fgOut');if(f)f.innerHTML=fgHTML()}if
  const fr=r=>r.set&&r.set.valid&&r.set.age<=3?r.set.age:99,rows=WL.rows.slice().sort((a,b)=>fr(a)-fr(b)||(actMark(b.sym)?1:0)-(actMark(a.sym)?1:0));
  el.innerHTML='<table style="width:100%">'+rows.map(r=>{const x=r.set,fresh=x&&x.valid&&x.age<=3,cls=x?(x.side>0?'ok':'bad'):'mut';
   const su=!x?'<span class="mut">–</span>':`<span class="${fresh?cls:'mut'}">${fresh?'🌊 ':''}${WNAME[x.wave]} ${x.side>0?'Long':'Short'}</span><br><small class="mut">${x.age===0?'gerade eben':'vor '+x.age+' Kerze'+(x.age>1?'n':'')}</small>`;
-  return `<tr data-s="${r.sym}" style="cursor:pointer"><td style="padding:7px 0"><b>${r.sym.replace('/USD','')}</b><span style="font-size:12px">${actMark(r.sym)}</span></td><td style="text-align:right">${fmt(r.px)}<br><small class="${r.ch>=0?'ok':'bad'}">${r.ch==null?'':(r.ch>=0?'+':'')+pct(r.ch)}</small></td><td style="text-align:right;font-size:13px">${su}</td></tr>`}).join('')+'</table>'+
+  return `<tr data-s="${r.sym}" style="cursor:pointer"><td style="padding:7px 0"><b>${r.sym.replace(/\/USDT?$/,'')}</b><span style="font-size:12px">${actMark(r.sym)}</span></td><td style="text-align:right">${fmt(r.px)}<br><small class="${r.ch>=0?'ok':'bad'}">${r.ch==null?'':(r.ch>=0?'+':'')+pct(r.ch)}</small></td><td style="text-align:right;font-size:13px">${su}</td></tr>`}).join('')+'</table>'+
   `<div class="mut" style="font-size:11px;margin-top:6px">Setup = bestätigter Wellenpunkt auf ${WL.tf} nach denselben Regeln wie der Elliott-Bot. Farbig = frisch (max. 3 Kerzen alt). 🤖 Bots · 📈 offene Positionen. Antippen öffnet den Chart. Für alle Zeiteinheiten + SK: „🔍 Scanner“.</div>`;
  el.querySelectorAll('tr[data-s]').forEach(tr=>tr.onclick=()=>openSymTf(tr.dataset.s,WL.tf))}
 $('#bWL').onclick=()=>{$('#mWL').classList.add('open');if(FEAT.fng)fgLoad().then(()=>{const f=$('#fgOut');if(f)f.innerHTML=fgHTML()});if(!UD.last||Date.now()-UD.last.t>9e4)udLoad();renderWL();if(WLM==='list')wlLoad()};$('#wlR').onclick=wlLoad;
@@ -1771,8 +1813,13 @@ function fgHTML(){if(!FEAT.fng)return '';if(!FG.v)return `<div class="card" styl
 const FO={key:'',fund:null,oi:null,ts:0,busy:false};
 async function foLoad(force){if(!(IND.fund.on||IND.oi.on))return;if(S.src!=='binance'||S.custom||!BIN[S.sym])return;const key=S.sym+'|'+S.tf;if(!force&&FO.key===key&&Date.now()-FO.ts<5*6e4)return;if(FO.busy)return;FO.busy=true;
  const sym=BIN[S.sym],per={'15m':'15m','1h':'1h','4h':'4h','1D':'1d'}[S.tf]||'4h';
- try{const [f,o]=await Promise.all([IND.fund.on?getJ(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${sym}&limit=1000`).catch(()=>null):null,IND.oi.on?getJ(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${sym}&period=${per}&limit=500`).catch(()=>null):null]);
-  if(key!==S.sym+'|'+S.tf)return;FO.key=key;FO.ts=Date.now();FO.fund=Array.isArray(f)?f.map(x=>({t:+x.fundingTime,r:+x.fundingRate})).sort((a,b)=>a.t-b.t):null;FO.oi=Array.isArray(o)?o.map(x=>({t:+x.timestamp,v:+x.sumOpenInterestValue})).sort((a,b)=>a.t-b.t):null;ICACHE.k=''}
+ try{let fu=null,oi=null;
+  if(useBy(S.sym)){const pb={'15m':'15min','1h':'1h','4h':'4h','1D':'1d'}[S.tf]||'4h';const [f,o]=await Promise.all([IND.fund.on?getJ(`https://api.bybit.com/v5/market/funding/history?category=linear&symbol=${sym}&limit=200`).catch(()=>null):null,IND.oi.on?getJ(`https://api.bybit.com/v5/market/open-interest?category=linear&symbol=${sym}&intervalTime=${pb}&limit=200`).catch(()=>null):null]);
+   const fl=f&&f.result&&f.result.list,ol=o&&o.result&&o.result.list,B=S.bars,pxAt=t=>{let lo=0,hi=B.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(B[m].t<=t)lo=m;else hi=m-1}return B[lo]?B[lo].c:lastP()};
+   if(Array.isArray(fl)&&fl.length)fu=fl.map(x=>({t:+x.fundingRateTimestamp,r:+x.fundingRate}));if(Array.isArray(ol)&&ol.length)oi=ol.map(x=>({t:+x.timestamp,v:+x.openInterest*pxAt(+x.timestamp)}))}
+  const bn=bnCode(S.sym);if((IND.fund.on&&!fu||IND.oi.on&&!oi)&&bn){const [f,o]=await Promise.all([IND.fund.on&&!fu?getJ(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${bn}&limit=1000`).catch(()=>null):null,IND.oi.on&&!oi?getJ(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${bn}&period=${per}&limit=500`).catch(()=>null):null]);
+   if(Array.isArray(f))fu=f.map(x=>({t:+x.fundingTime,r:+x.fundingRate}));if(Array.isArray(o))oi=o.map(x=>({t:+x.timestamp,v:+x.sumOpenInterestValue}))}
+  if(key!==S.sym+'|'+S.tf)return;FO.key=key;FO.ts=Date.now();FO.fund=fu?fu.sort((a,b)=>a.t-b.t):null;FO.oi=oi?oi.sort((a,b)=>a.t-b.t):null;ICACHE.k=''}
  finally{FO.busy=false}req()}
 function foAlign(src,f,B){const o=new Array(B.length).fill(NaN);if(!src||!src.length)return o;let j=0;for(let i=0;i<B.length;i++){const t=B[i].t+(S.tfms||0)-1;if(t<src[0].t)continue;while(j+1<src.length&&src[j+1].t<=t)j++;o[i]=src[j][f]}return o}
 setInterval(()=>foLoad(),5*6e4);
@@ -1900,7 +1947,8 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  const seg=`<div class="seg" style="margin:0 0 8px"><button data-md="app" class="${mode==='app'?'on':''}">Demo (App)</button><button data-md="bdemo" class="${mode==='bdemo'?'on':''}">Bybit-Demo</button><button data-md="blive" class="${mode==='blive'?'on':''}" style="${mode==='blive'?'color:#ff5c7a':''}">Bybit Live</button></div>`;
  const kd=e=>{const l=lvKeyLeft(e),t=LIVE.kd[e];return `<label class="row" style="font-size:13px">${e==='live'?'Live':'Demo'}-Schlüssel erstellt am <input type="date" data-kd="${e}" class="inp" value="${t?new Date(t).toISOString().slice(0,10):''}" style="flex:none;width:150px;margin-left:auto"></label>${l!=null?`<div class="${l<=10?'warn':'mut'}" style="font-size:12px;margin:-2px 0 4px">${l>0?'noch '+l+' Tage gültig':'abgelaufen – neuen erstellen'}</div>`:''}`};
  el.innerHTML=`<div class="card"><h4><span>Konto-Modus</span></h4>${seg}
-  <div class="mut" style="font-size:12px">Demo (App) = dein Übungskonto wie bisher · Bybit-Demo = Test mit Bybit ohne echtes Geld · Bybit Live = echtes Geld (rot markiert, nur mit Face ID).</div></div>
+  <div class="mut" style="font-size:12px">Demo (App) = dein Übungskonto wie bisher · Bybit-Demo = Test mit Bybit ohne echtes Geld · Bybit Live = echtes Geld (rot markiert, nur mit Face ID).</div>
+  <div class="row" style="margin-top:8px;font-size:13px">Kursquelle <span class="seg" style="margin:0 0 0 auto"><button data-xs="bybit" class="${XS.src==='bybit'?'on':''}">Bybit</button><button data-xs="binance" class="${XS.src==='binance'?'on':''}">Binance</button></span></div></div>
  <div class="card"><h4><span>🔗 Server</span>${ok?'<span class="ok" style="font-size:12px">angemeldet</span>':''}</h4>
   <div class="fld"><label>Adresse</label><input id="lvUrl" class="inp" placeholder="https://….workers.dev" value="${LIVE.url||''}" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
   ${ok?`<div style="font-size:13px">Schlüssel auf dem Server: Demo ${LVT.demo?'✅':'❌'} · Live ${LVT.live?'✅':'❌'} · gültig bis ${new Date(LVT.exp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</div>
@@ -1909,6 +1957,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
   <div id="lvMsg" style="font-size:13px;margin-top:4px"></div></div>
  ${syCard()}
  ${puCard()}
+ ${svCard()}
  <div class="card"><h4><span>🔐 Face ID</span>${LIVE.pk?'<span class="ok" style="font-size:12px">eingerichtet</span>':''}</h4>
   ${faceAvail()?`<div class="row"><button id="lvFace">${LIVE.pk?'Neu einrichten':'Face ID einrichten'}</button>${LIVE.pk?'<button id="lvFaceT">Testen</button>':''}</div>
   <label class="row" style="font-size:13px"><input type="checkbox" id="lvFO" ${LIVE.faceOrder?'checked':''}> Vor jeder Live-Order Face ID abfragen (ab Schritt 3)</label>`:'<div class="warn" style="font-size:13px">Face ID geht nur in der installierten App auf dem iPhone.</div>'}
@@ -1917,6 +1966,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  <div class="card"><h4><span>🧰 Einrichtungs-Hilfe</span></h4><div class="row"><button id="lvGen">TOKEN_SECRET erzeugen</button></div><div id="lvGenOut" style="font-size:12px;word-break:break-all"></div></div>`;
  const msg=(t,c)=>{$('#lvMsg').innerHTML=`<span class="${c||''}">${t}</span>`};
  el.querySelectorAll('[data-md]').forEach(b=>b.onclick=()=>setMode(b.dataset.md));
+ el.querySelectorAll('[data-xs]').forEach(b=>b.onclick=()=>{XS.src=b.dataset.xs;xsSave();Object.keys(FEED).forEach(k=>delete FEED[k]);Object.keys(KC).forEach(k=>delete KC[k]);Object.values(BGX).forEach(c=>{try{bgWS(c)}catch(_){}});loadData();lvOpen();toast('Kursquelle: '+(XS.src==='bybit'?'Bybit Perpetual':'Binance'))});
  $('#lvUrl').onchange=()=>{let u=$('#lvUrl').value.trim();if(u&&!/^https?:\/\//.test(u))u='https://'+u;LIVE.url=u.replace(/\/+$/,'');liveSave();LVT=null;store('wdesk_lvtok',null);lvOpen()};
  const li=$('#lvIn');if(li)li.onclick=async()=>{const pw=$('#lvPw').value;if(!LIVE.url){msg('Bitte zuerst die Server-Adresse eintragen','warn');return}if(!pw){msg('Passwort eingeben','warn');return}msg('Melde an …');
   try{const p=await lvApi('/ping');if(!p||p.app!=='wellen-desk')throw new Error('Das ist nicht dein Wellen-Desk-Server');await lvLogin(pw);toast('Angemeldet ✅');lvOpen()}catch(e){msg(e.message,'bad')}};
@@ -1929,17 +1979,20 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  const fo=$('#lvFO');if(fo)fo.onchange=()=>{LIVE.faceOrder=fo.checked;liveSave()};
  el.querySelectorAll('[data-kd]').forEach(i=>i.onchange=()=>{const v=i.value?Date.parse(i.value+'T12:00:00'):null;if(v)LIVE.kd[i.dataset.kd]=v;else delete LIVE.kd[i.dataset.kd];liveSave();lvOpen()});
  $('#lvGen').onclick=()=>{const s=b64u(crypto.getRandomValues(new Uint8Array(32)));$('#lvGenOut').innerHTML=`<code>${s}</code><br><button id="lvCp" style="margin-top:4px">Kopieren</button>`;$('#lvCp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(s).then(()=>toast('Kopiert ✅'),()=>toast('Bitte markieren und kopieren'))}};
- syBind();puBind();$('#mLive').classList.add('open')}
+ syBind();puBind();svBind();$('#mLive').classList.add('open')}
 
 /* ---------- Geräte-Abgleich über den eigenen Server (Cloudflare KV) ---------- */
-Object.assign(SY,{on:false,v:0,h:null,pushT:0,last:null,err:null},store('wdesk_sync')||{});SY.ro=false;SY.lead=null;SY.busy=false;
+function svAct(){try{return !!(SV.on&&SY.on&&lvTokOK())}catch(_){return false}}
+function svHold(o){return (document.hidden||SV.wait)&&!o.replay&&(o.bot!=null||AC.bots.includes(o))&&svAct()}
+Object.assign(SY,{on:false,v:0,h:null,pushT:0,last:null,err:null},store('wdesk_sync')||{});SY.ro=false;SY.lead=null;SY.busy=false;SV.wait=svAct();
 const syMeta=()=>store('wdesk_sync',{on:SY.on,v:SY.v,h:SY.h,pushT:SY.pushT,last:SY.last});
 const DEVID=store('wdesk_devid')||(()=>{const d=Math.random().toString(36).slice(2,10);store('wdesk_devid',d);return d})();
 const DEVN=/iPhone/.test(navigator.userAgent)?'iPhone':/iPad/.test(navigator.userAgent)?'iPad':/Android/.test(navigator.userAgent)?'Android':'PC';
 const SYEX=new Set(['wdesk_sync','wdesk_devid','wdesk_lvtok','wdesk_live','wdesk_seen']);
-const syKeys=()=>Object.keys(localStorage).filter(k=>k.startsWith('wdesk_')&&!SYEX.has(k)&&!k.startsWith('wdesk_lvrem')&&!k.startsWith('wdesk_pc_'));
+const syKeys=()=>Object.keys(localStorage).filter(k=>k.startsWith('wdesk_')&&!SYEX.has(k)&&!k.startsWith('wdesk_lvrem')&&!k.startsWith('wdesk_pc_')&&!k.startsWith('wdesk_xc_'));
 function syHash(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(i);return(h>>>0).toString(36)+s.length}
-function sySnap(){const d={};syKeys().forEach(k=>{let v=localStorage.getItem(k);if(k==='wdesk_acct'){try{const a=JSON.parse(v);(a.pos||[]).forEach(p=>delete p.lpx);v=JSON.stringify(a)}catch(_){}}d[k]=v});return d}
+function svMap(){const m={},add=k=>{const y=bgSym(k);if(y&&BIN[y])m[y]=BIN[y]};AC.bots.forEach(b=>{if(!b.replay&&b.state!=='stopped'&&b.state!=='done')add(b.key)});AC.pos.forEach(p=>{if(!p.replay&&p.bot!=null)add(p.key)});return m}
+function sySnap(){const d={};syKeys().forEach(k=>{let v=localStorage.getItem(k);if(k==='wdesk_acct'){try{const a=JSON.parse(v);(a.pos||[]).forEach(p=>delete p.lpx);v=JSON.stringify(a)}catch(_){}}d[k]=v});d.wdesk_srvmap=JSON.stringify(svMap());return d}
 function syApply(r){const keep=new Set(Object.keys(r.data||{}));syKeys().forEach(k=>{if(!keep.has(k))localStorage.removeItem(k)});Object.entries(r.data||{}).forEach(([k,v])=>{if(v!=null)localStorage.setItem(k,v)});
  SY.v=r.v;SY.h=syHash(JSON.stringify(r.data||{}));SY.last=Date.now();syMeta();try{sessionStorage.setItem('wdesk_synced',(r.head&&r.head.name)||'Server')}catch(_){}location.reload()}
 async function syPush(force){if(!SY.on||SY.ro||!lvTokOK()||SY.busy)return;const d=sySnap(),h=syHash(JSON.stringify(d));if(!force&&h===SY.h)return;SY.busy=true;
@@ -1968,9 +2021,25 @@ function syBind(){const on=$('#syOn');if(on)on.onclick=async()=>{const a=$('#syA
  const nw=$('#syNow');if(nw)nw.onclick=async()=>{await syCheck(true);await syPush();syBadge();toast('Abgeglichen ✅')};
  const of=$('#syOff');if(of)of.onclick=()=>{SY.on=false;SY.ro=false;syMeta();syBadge();lvOpen()}}
 setInterval(()=>{if(!SY.on||!lvTokOK())return;syCheck(false).then(()=>{if(!SY.ro&&Date.now()-SY.pushT>90000)syPush()})},20000);
-document.addEventListener('visibilitychange',()=>{if(!SY.on)return;if(document.hidden)syPush();else syCheck(true)});
-setTimeout(()=>{let n=null;try{n=sessionStorage.getItem('wdesk_synced');if(n){sessionStorage.removeItem('wdesk_synced');toast('🔄 Stand von '+n+' geladen')}}catch(_){}if(SY.on)syCheck(!n)},1200);
+document.addEventListener('visibilitychange',()=>{if(!SY.on)return;if(document.hidden)syPush();else{SV.wait=svAct();syCheck(true).finally(()=>{SV.wait=false})}});
+setTimeout(()=>{let n=null;try{n=sessionStorage.getItem('wdesk_synced');if(n){sessionStorage.removeItem('wdesk_synced');toast('🔄 Stand von '+n+' geladen')}}catch(_){}if(SY.on){SV.wait=svAct();syCheck(!n).finally(()=>{SV.wait=false})}},1200);
 
+
+
+/* ---------- ☁️ Bots auf dem Server: Karte im Live-Konto ---------- */
+function svReq(){const c=(b,t,x)=>`<div class="chk ${b?'ok':b===null?'warn':'bad'}" style="font-size:12px">${b?'✅':b===null?'⚠️':'❌'} ${t}${x?` <span class="mut">· ${x}</span>`:''}</div>`;
+ return c(lvTokOK(),'Am Server angemeldet',lvTokOK()?'':'oben anmelden')+c(SY.on,'Geräte-Abgleich an',SY.on?'':'oben einschalten – darüber holt sich der Server deine Bots')+c(PU.on?true:null,'Push an',PU.on?'':'ohne Push rechnet der Server trotzdem, meldet aber nichts')}
+function svCard(){return `<div class="card"><h4><span>☁️ Bots auf dem Server</span>${SV.on?(svAct()?'<span class="ok" style="font-size:12px">aktiv</span>':'<span class="warn" style="font-size:12px">wartet</span>'):'<span class="mut" style="font-size:12px">aus</span>'}</h4>
+ <div class="mut" style="font-size:12px">Ist die App zu, rechnet dein Server deine Bots jede Minute weiter – mit demselben Code wie die App: Einstiege, Stops, Ziele, Break-even und Trailing. Jede Aktion kommt per Push. Öffnest du die App, holt sie den Stand vom Server und übernimmt wieder.</div>
+ ${SV.on?`<div style="margin-top:6px">${svReq()}</div>`:''}<div id="svMsg" style="font-size:12px;margin-top:4px"></div>
+ <div class="row"><button id="svTog" class="${SV.on?'':'on'}">${SV.on?'Ausschalten':'Einschalten'}</button>${svAct()?'<button id="svChk">🔍 Server-Bots prüfen</button>':''}</div></div>`}
+function svBind(){const t=$('#svTog');if(t)t.onclick=async()=>{SV.on=!SV.on;svSave();try{await syPush()}catch(_){}toast(SV.on?'☁️ Server-Bots an':'Server-Bots aus – Bots laufen nur bei offener App');lvOpen()};
+ const c=$('#svChk');if(c)c.onclick=async()=>{const el=$('#svMsg');el.innerHTML='<span class="mut">Server rechnet Probelauf …</span>';
+  try{await syPush();const r=await lvApi('/eng/run',{dry:true});const L=[];
+   if(r.skip)L.push(`<span class="warn">${({nosync:'Noch kein Stand auf dem Server – Geräte-Abgleich einschalten',aus:'Auf dem Server ausgeschaltet',nobots:'Keine laufenden Live-Bots',nokv:'Speicher (KV) fehlt'})[r.skip]||r.skip}</span>`);
+   (r.syms||[]).forEach(x=>L.push(x.err?`<span class="bad">❌ ${x.sym}: ${x.err}</span>`:`✅ ${x.sym}: Kurs ${fmt(x.px)} von ${x.src} · ${x.bots} Bot(s)${x.pos?' · '+x.pos+' Position(en)':''}`));
+   if(r.ms!=null)L.push(`<span class="mut">Rechenzeit ${r.ms} ms · zuletzt gespeichert ${r.w?laAgo(r.w):'noch nie'}${r.last?' · '+r.last:''}</span>`);
+   el.innerHTML=L.join('<br>')||'<span class="mut">Keine Antwort</span>'}catch(e){el.innerHTML=`<span class="bad">${e.code==='notfound'?'Server ist noch alt – worker.js (v1.5) in Cloudflare einspielen':e.message}</span>`}}}
 
 /* ---------- 📲 Push vom Server (Meldungen auch bei geschlossener App) ---------- */
 const PU=Object.assign({on:false,wh:null,wt:0},store('wdesk_push')||{});const puSave=()=>store('wdesk_push',{on:PU.on,wh:PU.wh,wt:PU.wt});
@@ -1978,12 +2047,12 @@ const puOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notificat
 const symOf=key=>{const m=/^binance:(.+)$/.exec(key||'');return m&&BIN[m[1]]?{y:m[1],b:BIN[m[1]]}:null};
 function puItems(){const it=[],add=(id,y,cond,p,title,body,tf)=>{const s=BIN[y];if(!s||!fin(p))return;it.push({id,sym:s,cond,p:+p,title,body:body||'',nav:{sym:y,tf:tf||null}})};
  AL.forEach(a=>{const s=symOf(a.key);if(!s)return;add('al:'+a.id,s.y,a.last!=null&&a.last>a.p?'below':'above',a.p,`🔔 ${a.label} hat ${fmt(a.p)} erreicht`,a.note)});
- AC.pos.filter(p=>!p.replay).forEach(p=>{const s=symOf(p.key);if(!s)return;const L=p.dir>0,nm=`${p.label} ${pmode(p)==='spot'?'Spot':L?'Long':'Short'}`;
+ AC.pos.filter(p=>!p.replay&&!(p.bot!=null&&svAct())).forEach(p=>{const s=symOf(p.key);if(!s)return;const L=p.dir>0,nm=`${p.label} ${pmode(p)==='spot'?'Spot':L?'Long':'Short'}`;
   if(fin(p.sl))add(`sl:${p.id}:${p.sl}`,s.y,L?'below':'above',p.sl,`🛑 ${nm}: ${whySL(p)} bei ${fmt(p.sl)}`,'wird beim Öffnen der App gebucht');
   p.tps.forEach((t,k)=>{if(!t.hit)add(`tp:${p.id}:${k}:${t.p}`,s.y,L?'above':'below',t.p,`🎯 ${nm}: Ziel ${k+1} bei ${fmt(t.p)}`,'wird beim Öffnen der App gebucht')})});
  AC.ord.filter(o=>!o.replay&&o.type!=='trail').forEach(o=>{const s=symOf(o.key);if(!s||!fin(o.price))return;const up=o.type==='stop'?o.dir>0:o.dir<0;
   add(`or:${o.id}:${o.price}`,s.y,up?'above':'below',o.price,`📥 ${o.label}: ${TYPN[o.type]} ${o.dir>0?'Long':'Short'} @ ${fmt(o.price)} ausgelöst`,'wird beim Öffnen der App ausgeführt')});
- LA.filter(e=>e.src==='binance').forEach(e=>{[['cur','Zählung'],['skc','SK-Setup']].forEach(([f,lab])=>{const c=e[f];if(!c||c.none)return;const nm=`🔴 ${e.sym.replace('/USD','')} ${e.tf}`;
+ LA.filter(e=>e.src==='binance').forEach(e=>{[['cur','Zählung'],['skc','SK-Setup']].forEach(([f,lab])=>{const c=e[f];if(!c||c.none)return;const nm=`🔴 ${e.sym.replace(/\/USDT?$/,'')} ${e.tf}`;
   if(!c.dead&&c.inv!=null)add(`la:${e.id}:${f}:inv:${c.inv}`,e.sym,c.invUp?'above':'below',c.inv,`${nm}: ${lab} ungültig`,`${c.st} – Marke ${fmt(c.inv)} gebrochen`,e.tf);
   if(!c.hit&&!c.dead&&c.tgt!=null)add(`la:${e.id}:${f}:tgt:${c.tgt}`,e.sym,c.tgtUp?'above':'below',c.tgt,`${nm}: ${c.tl} erreicht`,c.st,e.tf)})});
  return it}
@@ -1995,10 +2064,10 @@ async function puCatchUp(){if(!PU.on||!lvTokOK()||SY.ro)return;try{const r=await
   AL.slice().forEach(a=>{if(sent['al:'+a.id]){inbAdd('alarm',`🔔 ${a.label} hat ${fmt(a.p)} erreicht`,(a.note?a.note+' · ':'')+'per Push gemeldet');AL.splice(AL.indexOf(a),1);ch=true}});if(ch)alSave();
   LA.forEach(e=>[['cur'],['skc']].forEach(([f])=>{const c=e[f];if(!c||c.none)return;if(!c.dead&&sent[`la:${e.id}:${f}:inv:${c.inv}`]){c.dead=true;e.lastT=null;ch=true}if(!c.hit&&sent[`la:${e.id}:${f}:tgt:${c.tgt}`]){c.hit=true;ch=true}}));
   if(ch){laSave();req()}}catch(_){}}
-async function puAlive(on){if(!PU.on||!lvTokOK())return;try{await lvApi('/push/alive',{dev:DEVID,on})}catch(_){}}
-setInterval(()=>{if(PU.on&&!document.hidden){puAlive(true);puSched()}},3*6e4);
-document.addEventListener('visibilitychange',()=>{if(!PU.on)return;if(document.hidden){puSync();puAlive(false)}else{puAlive(true);puCatchUp()}});
-setTimeout(()=>{if(PU.on){puAlive(true);puCatchUp().then(puSched)}},3000);
+async function puAlive(on){if(!(PU.on||svAct())||!lvTokOK())return;try{await lvApi('/push/alive',{dev:DEVID,on})}catch(_){}}
+setInterval(()=>{if(!document.hidden){puAlive(true);if(PU.on)puSched()}},3*6e4);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){puSync();puAlive(false)}else{puAlive(true);puCatchUp()}});
+setTimeout(()=>{puAlive(true);if(PU.on){puCatchUp().then(puSched)}},3000);
 async function puEnable(){const msg=t=>{$('#puMsg').innerHTML=t};if(!puOK()){msg('<span class="bad">Push geht nur in der installierten App (iPhone: Safari › Teilen › Zum Home-Bildschirm, iOS 16.4+).</span>');return}
  try{msg('Prüfe Server …');let k;try{k=await lvApi('/push/key')}catch(e){if(e.code==='novapid'){msg('<span class="warn">Auf dem Server fehlt noch der Push-Schlüssel. Unten „VAPID_JWK erzeugen“ und in Cloudflare eintragen.</span>');return}throw e}
   const perm=await Notification.requestPermission();if(perm!=='granted'){msg('<span class="bad">Mitteilungen wurden nicht erlaubt (iPhone: Einstellungen › Mitteilungen › Wellen-Desk).</span>');return}
@@ -2052,7 +2121,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
   ${FEAT.report?R('rep','📈','Wochen-Bericht',''):''}
   ${FEAT.train?R('train','🎯','Replay-Training',TR.rounds?TR.pts+' Punkte':''):''}
   ${R('bt','🧪','SK-Backtest','')}</div>
-  <div class="mgt">Konto</div><div class="mgrp">${R('la','🔴',`Live-Analysen${LA.length?' ('+LA.length+')':''}`,LA.length?LA.map(e=>e.sym.replace('/USD','')+' '+e.tf).slice(0,3).join(', '):'keine aktiv')}${R('live','🔗','Börse & Live-Konto',LIVE.mode==='app'?'Demo (App)':LIVE.mode==='bdemo'?'Bybit-Demo':'BYBIT LIVE')}</div>
+  <div class="mgt">Konto</div><div class="mgrp">${R('la','🔴',`Live-Analysen${LA.length?' ('+LA.length+')':''}`,LA.length?LA.map(e=>e.sym.replace(/\/USDT?$/,'')+' '+e.tf).slice(0,3).join(', '):'keine aktiv')}${R('live','🔗','Börse & Live-Konto',LIVE.mode==='app'?'Demo (App)':LIVE.mode==='bdemo'?'Bybit-Demo':'BYBIT LIVE')}</div>
   <div class="mgt">Funktionen</div><div class="mgrp">
   ${R('feat','🧩','Funktionen ein/aus',Object.keys(FTXT).filter(k=>FEAT[k]).length+' von '+Object.keys(FTXT).length+' an')}
   ${R('guard','🛡️','Schutz-Regeln',FEAT.guard?(guardMsg()?'gesperrt':'Limit '+ff(String(GD.max))+' %'):'aus')}</div>
@@ -2116,10 +2185,12 @@ $('#bMenu').onclick=()=>{renderMenu();$('#mMenu').classList.add('open')};
 /* ---------- Coin-Auswahl mit Suche ---------- */
 const actMark=y=>{const k='binance:'+y,b=AC.bots.filter(x=>x.key===k&&!x.replay&&x.state!=='stopped'&&x.state!=='done').length,p=AC.pos.filter(x=>x.key===k&&!x.replay).length;return (b?' 🤖'+b:'')+(p?' 📈'+p:'')};
 function renderSymList(){const q=($('#symQ').value||'').trim().toUpperCase(),c=S.csvMem||store('wdesk_csvdata');
- const ks=Object.keys(SYMS).filter(k=>!q||k.toUpperCase().includes(q));
- let h=ks.map(k=>`<button data-s="${k}" class="${!S.custom&&k===S.sym?'on':''}" style="text-align:left;padding:9px 8px">${k.replace('/USD','')}${BIN[k]?'':' <small class="mut">Demo</small>'}<small>${actMark(k)}</small></button>`).join('');
- if(c&&(!q||c.name.toUpperCase().includes(q)))h+=`<button data-s="__csv" class="${S.custom?'on':''}" style="text-align:left;padding:9px 8px">📄 ${c.name}</button>`;
- $('#symList').innerHTML=h?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${h}</div>`:'<div class="mut" style="padding:8px 0">Nichts gefunden</div>';
+ const ks=Object.keys(SYMS).filter(k=>!q||k.toUpperCase().includes(q)),btn=k=>`<button data-s="${k}" class="${!S.custom&&k===S.sym?'on':''}" style="text-align:left;padding:9px 8px">${TFG[k]==='forex'?k:k.replace(/\/USDT?$/,'')}${BIN[k]?'':' <small class="mut">Demo</small>'}<small>${actMark(k)}</small></button>`;
+ const G=[['Krypto (USDT)',k=>BIN[k]&&!TFG[k]],['🛢 Rohstoffe',k=>TFG[k]==='rohstoff'],['📈 Aktien & ETFs',k=>TFG[k]==='aktie'],['💱 Devisen',k=>TFG[k]==='forex'],['Demo',k=>!BIN[k]]];
+ let h='';G.forEach(([t,f])=>{const a=ks.filter(f);if(a.length)h+=`<div class="mut" style="font-size:12px;margin:10px 0 4px">${t}${t.startsWith('Krypto')?' · '+(XS.src==='bybit'?'Bybit Perpetual':'Binance'):''}</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${a.map(btn).join('')}</div>`});
+ if(ks.some(k=>TFG[k]))h+='<div class="mut" style="font-size:11px;margin-top:6px">Rohstoffe, Aktien & Devisen = Bybit TradFi-Perpetuals: handelbar rund um die Uhr, außerhalb der Börsenzeiten aber oft größere Sprünge. Echter Handel braucht einmalig die Zustimmung zu den TradFi-Bedingungen bei Bybit.</div>';
+ if(c&&(!q||c.name.toUpperCase().includes(q)))h+=`<div style="margin-top:8px"><button data-s="__csv" class="${S.custom?'on':''}" style="text-align:left;padding:9px 8px">📄 ${c.name}</button></div>`;
+ $('#symList').innerHTML=h||'<div class="mut" style="padding:8px 0">Nichts gefunden</div>';
  $('#symList').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{$('#mSym').classList.remove('open');const s=$('#sym');buildSym();s.value=b.dataset.s;s.onchange({target:s})})}
 $('#symBtn').onclick=()=>{$('#symQ').value='';renderSymList();$('#mSym').classList.add('open')};$('#symQ').oninput=renderSymList;
 
@@ -2151,7 +2222,7 @@ function scHTML(){const tc=t=>`<button data-sct="${t}" class="${SC.tfs.includes(
  if(!R.length)return h+(SC.busy?'':'<div class="mut" style="padding:8px 0">Gerade kein passendes Setup gefunden.'+(SC.done&&SC.tot&&!SC.res.length&&!Object.keys(KC).length?' (Keine Live-Daten?)':'')+'</div>');
  h+='<table style="width:100%">'+R.slice(0,40).map(x=>{const L=x.side>0,c=L?'ok':'bad',nm=x.kind==='EW'?`🌊 ${WNAME[x.wave]} ${L?'Long':'Short'}`:`SK ${L?'Long':'Short'} · ${x.status==='in'?'in Golden Zone':'kurz davor'}`;
   const sub=x.kind==='EW'?(x.age===0?'gerade eben':'vor '+x.age+' Kerze'+(x.age>1?'n':'')):'Rücklauf '+ff((x.r*100).toFixed(0))+' %';
-  return `<tr data-s="${x.y}" data-t="${x.tf}" style="cursor:pointer"><td style="padding:6px 0"><b>${x.y.replace('/USD','')}</b> <span class="mut">${x.tf}</span><small>${actMark(x.y)}</small><br><small class="mut">${fmt(x.px)}</small></td><td style="text-align:right;font-size:13px"><span class="${c}">${nm}</span><br><small class="mut">${sub} · CRV ${ff(x.crv.toFixed(1))} · Stop ${fmt(x.stop)}</small></td></tr>`}).join('')+'</table>';
+  return `<tr data-s="${x.y}" data-t="${x.tf}" style="cursor:pointer"><td style="padding:6px 0"><b>${x.y.replace(/\/USDT?$/,'')}</b> <span class="mut">${x.tf}</span><small>${actMark(x.y)}</small><br><small class="mut">${fmt(x.px)}</small></td><td style="text-align:right;font-size:13px"><span class="${c}">${nm}</span><br><small class="mut">${sub} · CRV ${ff(x.crv.toFixed(1))} · Stop ${fmt(x.stop)}</small></td></tr>`}).join('')+'</table>';
  return h+`<div class="mut" style="font-size:11px;margin-top:6px">Sortiert nach Frische und Chance-Risiko (CRV). Kein Kaufsignal – immer selbst im Chart prüfen. Antippen öffnet Coin + Zeiteinheit.</div>`}
 function openSymTf(y,tf){$('#mWL').classList.remove('open');if(S.full)rpExit(true);if(S.live)toggleLive();S.custom=null;S.sym=y;$('#sym').value=y;if(tf&&tf!==S.tf){S.tf=tf;$('#tf').value=tf}loadData()}
 
@@ -2684,7 +2755,7 @@ function renderHeat(){$('#hLev').innerHTML=[5,10,25,50,100].map(v=>`<button data
 
 /* ---------- Smart Money (Hyperliquid) ---------- */
 const HL='https://api.hyperliquid.xyz/info',HLLB='https://stats-data.hyperliquid.xyz/Mainnet/leaderboard';
-const HLSYM={BTC:'BTC/USD',ETH:'ETH/USD',SOL:'SOL/USD',XRP:'XRP/USD',BNB:'BNB/USD',DOGE:'DOGE/USD'};
+const HLSYM={BTC:'BTC/USDT',ETH:'ETH/USDT',SOL:'SOL/USDT',XRP:'XRP/USDT',BNB:'BNB/USDT',DOGE:'DOGE/USDT'};
 const SM=Object.assign({top:[],topT:0,sort:'score',watch:[],auto:false,risk:1,slp:3,alerts:[],snap:{}},store('wdesk_sm')||{});
 let SMV={det:null,stat:'',busy:false};
 const smSave=()=>{try{store('wdesk_sm',SM)}catch(_){}};
