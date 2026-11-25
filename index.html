@@ -1964,7 +1964,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
   <div class="row" style="margin-top:8px;font-size:13px">Kursquelle <span class="seg" style="margin:0 0 0 auto"><button data-xs="bybit" class="${XS.src==='bybit'?'on':''}">Bybit</button><button data-xs="binance" class="${XS.src==='binance'?'on':''}">Binance</button></span></div></div>
  <div class="card"><h4><span>🔗 Server</span>${ok?'<span class="ok" style="font-size:12px">angemeldet</span>':''}</h4>
   <div class="fld"><label>Adresse</label><input id="lvUrl" class="inp" placeholder="https://….workers.dev" value="${LIVE.url||''}" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-  ${ok?`<div style="font-size:13px">Schlüssel auf dem Server: Demo ${LVT.demo?'✅':'❌'} · Live ${LVT.live?'✅':'❌'} · gültig bis ${new Date(LVT.exp).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</div>
+  ${ok?`<div style="font-size:13px">Schlüssel auf dem Server: Demo ${LVT.demo?'✅':'❌'} · Live ${LVT.live?'✅':'❌'} · gültig bis ${new Date(LVT.exp).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
    <div class="row"><button id="lvTest">Verbindung testen</button><button id="lvOut2">Abmelden</button></div>`:
    `<div class="fld"><label>Passwort</label><input id="lvPw" type="password" class="inp" placeholder="dein APP_PASSWORD" autocomplete="current-password"></div><div class="row"><button id="lvIn" class="on">Anmelden</button></div>`}
   <div id="lvMsg" style="font-size:13px;margin-top:4px"></div></div>
