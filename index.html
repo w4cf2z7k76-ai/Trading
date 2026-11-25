@@ -2060,18 +2060,26 @@ function aiCtx(){const B=S.bars,L=B.length-1,iso=t=>new Date(t).toISOString().sl
 function aiImg(){try{draw();const tw=Math.min(900,Math.round(W)),th=Math.round(tw*H/W),c=document.createElement('canvas');c.width=tw;c.height=th;c.getContext('2d').drawImage(cv,0,0,tw,th);return c.toDataURL('image/jpeg',.7)}catch(_){return null}}
 async function aiState(){try{AIS=await lvApi('/ai/state',{})}catch(e){AIS={err:e.code==='notfound'?'Server ist noch alt – worker.js (v1.8) einspielen':e.message}}}
 function aiOpen(){$('#aiTitle').textContent='🧠 Claude-Analyse · '+(S.custom||S.sym)+' '+S.tf;$('#mAI').classList.add('open');aiRender();if(lvTokOK())aiState().then(aiRender)}
-function aiScen(s,k){const n=v=>v==null?'–':fmt(v),dir=s.richtung==='long'?1:s.richtung==='short'?-1:0;let crv='';
+function aiScen(s,k){s=s||{};const n=v=>v==null?'–':fmt(v),dir=s.richtung==='long'?1:s.richtung==='short'?-1:0;let crv='';
  if(dir&&s.einstieg!=null&&s.stop!=null&&s.ziele&&s.ziele.length){const r=Math.abs(s.einstieg-s.stop);if(r>0)crv=` · CRV ${ff((Math.abs(s.ziele[0]-s.einstieg)/r).toFixed(1))}`}
  return `<div class="card" style="margin:6px 0;padding:8px"><b>${dir>0?'🟢':dir<0?'🔴':'⏸'} ${s.name||'Szenario'}</b>${s.wahrscheinlichkeit!=null?` <span class="mut">· ${s.wahrscheinlichkeit} %</span>`:''}<br>
  ${dir?`<span style="font-size:13px">Einstieg <b>${n(s.einstieg)}</b> · Stop <b class="bad">${n(s.stop)}</b> · Ziel ${(s.ziele||[]).map(z=>'<b class="ok">'+n(z)+'</b>').join(' / ')||'–'}${s.ungueltig!=null?' · ungültig '+n(s.ungueltig):''}${crv}</span><br>`:''}
  <span class="mut" style="font-size:12px">${s.begruendung||''}</span>
  ${dir?`<div class="row"><button data-aid="${k}">📈 Zeichnen</button><button data-aio="${k}">📝 In Order übernehmen</button></div>`:''}</div>`}
-function aiResHTML(R){if(!R)return '';const r=R.res||{};
+// ältere/abgeschnittene Antworten lesbar machen (roher JSON-Text → Felder)
+function aiNorm(r){r=Object.assign({szenarien:[],risiken:[]},r||{});const raw=typeof r.kurz==='string'?r.kurz:'';
+ if(!r.szenarien.length&&/^\s*(```|\{)/.test(raw)){const x=raw.replace(/```(?:json)?/gi,'').trim();let o=null;
+  try{const a=x.indexOf('{'),b=x.lastIndexOf('}');if(a>=0&&b>a)o=JSON.parse(x.slice(a,b+1))}catch(_){}
+  if(!o){const f=k=>{const m=x.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)'));if(!m)return null;try{return JSON.parse('"'+m[1]+'"')}catch(_){return m[1]}};o={kurz:f('kurz'),welle:f('welle'),alternative:f('alternative'),fazit:f('fazit'),cut:true}}
+  r=Object.assign({szenarien:[],risiken:[]},o,{cut:o.cut||r.cut})}
+ if(!Array.isArray(r.szenarien))r.szenarien=[];if(!Array.isArray(r.risiken))r.risiken=[];
+ if(!r.kurz&&!r.welle&&!r.szenarien.length)r.kurz='⚠️ Diese Antwort war nicht lesbar (vor der Korrektur) – bitte neu analysieren.';return r}
+function aiResHTML(R){if(!R)return '';const r=aiNorm(R.res);
  return `<div style="font-size:14px;line-height:1.45"><b>${r.kurz||''}</b></div>
  ${r.welle?`<div style="margin-top:6px;font-size:13px">🌊 <b>Welle:</b> ${r.welle}</div>`:''}${r.alternative?`<div style="font-size:13px">↔️ <b>Alternative:</b> ${r.alternative}</div>`:''}
  ${(r.szenarien||[]).map(aiScen).join('')}
  ${(r.risiken||[]).length?`<div style="font-size:13px"><b>⚠️ Risiken</b><br>${r.risiken.map(x=>'· '+x).join('<br>')}</div>`:''}
- ${r.fazit?`<div style="margin-top:6px;font-size:13px">👉 <b>${r.fazit}</b></div>`:''}
+ ${r.fazit?`<div style="margin-top:6px;font-size:13px">👉 <b>${r.fazit}</b></div>`:''}${r.cut?'<div class="warn" style="font-size:12px;margin-top:4px">⚠️ Antwort war abgeschnitten – Szenarien fehlen evtl., bitte neu analysieren.</div>':''}
  <div class="mut" style="font-size:11px;margin-top:6px">${R.sym||''} ${R.tf||''} · ${new Date(R.t||Date.now()).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${({fast:'Schnell',std:'Standard',deep:'Gründlich'})[R.mk]||R.model||''}${R.usage?` · ${R.usage.in+R.usage.out} Token`:''} · keine Anlageberatung</div>`}
 function aiRender(){const el=$('#aiOut');if(!el)return;
  if(!lvTokOK()){el.innerHTML='<div class="warn">Erst im Live-Konto (☰ › Live-Konto) am Server anmelden – die Analyse läuft über deinen Server.</div>';return}
@@ -2083,7 +2091,7 @@ function aiRender(){const el=$('#aiOut');if(!el)return;
  <div class="row"><button id="aiGo" class="on" ${aiBusy?'disabled':''}>${aiBusy?'Claude denkt nach …':'🧠 Chart analysieren'}</button></div>
  <div id="aiRes" style="margin-top:6px">${AIR?aiResHTML(AIR):'<span class="mut" style="font-size:12px">Claude bekommt die letzten 200 Kerzen, deine Auto-Analyse (Zählung, Alternative, SK, Ungültig-Marken), RSI, Trend, Funding/OI und deine offenen Positionen auf diesem Paar.</span>'}</div>
  ${AIR?`<div class="fld"><label>Frage an Claude</label><input id="aiQ" placeholder="z. B. Was spricht gegen den Long?"></div><div class="row"><button id="aiAsk" ${aiBusy?'disabled':''}>Fragen</button>${AIV?'<button id="aiClr">Zeichnung entfernen</button>':''}</div>`:''}
- ${AIS&&AIS.hist&&AIS.hist.length?`<div style="margin-top:8px;font-size:13px"><b>Verlauf</b>${AIS.hist.slice(0,10).map((h,k)=>`<div class="pos" data-aih="${k}" style="padding:6px;margin:4px 0;font-size:12px">${new Date(h.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · <b>${h.sym} ${h.tf}</b>${h.q?' · ❓ '+h.q.slice(0,40):''}<br><span class="mut">${String((h.res&&h.res.kurz)||'').slice(0,110)}…</span></div>`).join('')}</div>`:''}
+ ${AIS&&AIS.hist&&AIS.hist.length?`<div style="margin-top:8px;font-size:13px"><b>Verlauf</b>${AIS.hist.slice(0,10).map((h,k)=>`<div class="pos" data-aih="${k}" style="padding:6px;margin:4px 0;font-size:12px">${new Date(h.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · <b>${h.sym} ${h.tf}</b>${h.q?' · ❓ '+h.q.slice(0,40):''}<br><span class="mut">${String(aiNorm(h.res).kurz||'').slice(0,110)}…</span></div>`).join('')}</div>`:''}
  ${AIS&&AIS.key?`<div class="row" style="flex-wrap:wrap;font-size:12px">Tageslimit ${chip('aiL',[5,10,20,50],AIS.limit,v=>v)}</div>`:''}`;
  el.querySelectorAll('#aiM button').forEach(b=>b.onclick=()=>{AI.model=b.dataset.c;aiSave();aiRender()});
  const ci=$('#aiImg');if(ci)ci.onchange=()=>{AI.img=ci.checked;aiSave()};
@@ -2097,11 +2105,11 @@ async function aiAsk(q){if(aiBusy)return;if(!lvTokOK()){toast('Erst am Server an
   const r=await lvApi('/ai/run',body,120000);AIR={res:r.res,sym:body.sym,tf:body.tf,t:r.t,mk:AI.model,usage:r.usage};if(AIS&&!AIS.err){AIS.n=r.n;AIS.limit=r.limit}aiState().then(()=>{if($('#mAI').classList.contains('open'))aiRender()})}
  catch(e){toast('Claude: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v1.8) einspielen':e.message))}
  finally{aiBusy=false;aiRender()}}
-function aiShow(k){const s=AIR&&AIR.res&&AIR.res.szenarien&&AIR.res.szenarien[k];if(!s)return;AIV={sym:AIR.sym,tf:AIR.tf,s};$('#mAI').classList.remove('open');req();toast('🧠 Szenario im Chart · in der Claude-Analyse wieder entfernen')}
+function aiShow(k){const s=AIR&&aiNorm(AIR.res).szenarien[k];if(!s)return;AIV={sym:AIR.sym,tf:AIR.tf,s};$('#mAI').classList.remove('open');req();toast('🧠 Szenario im Chart · in der Claude-Analyse wieder entfernen')}
 function aiDraw(a,b){if(!AIV||AIV.sym!==(S.custom||S.sym))return;const s=AIV.s;ctx.save();ctx.beginPath();ctx.rect(0,0,PW,PH);ctx.clip();
  const ln=(p,col,lab,dash)=>{if(p==null||!isFinite(p))return;const y=Math.round(yOf(p))+.5;if(y<-5||y>PH+5)return;ctx.strokeStyle=col;ctx.lineWidth=1.4;ctx.setLineDash(dash||[]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(PW,y);ctx.stroke();ctx.setLineDash([]);tag(PW-4-ctx.measureText(lab+'  '+fmt(p)).width-10,clamp(y,9,PH-9),lab+'  '+fmt(p),col,'#0d1117')};
  ln(s.einstieg,'#58a6ff','🧠 Einstieg');ln(s.stop,'#f85149','🧠 Stop');(s.ziele||[]).forEach((z,i)=>ln(z,'#3fb950','🧠 Ziel '+(i+1)));ln(s.ungueltig,'#ffa657','🧠 ungültig',[5,4]);ctx.restore()}
-function aiOrder(k){const s=AIR&&AIR.res&&AIR.res.szenarien&&AIR.res.szenarien[k];if(!s||s.einstieg==null||s.stop==null){toast('Szenario hat keinen Einstieg/Stop');return}
+function aiOrder(k){const s=AIR&&aiNorm(AIR.res).szenarien[k];if(!s||s.einstieg==null||s.stop==null){toast('Szenario hat keinen Einstieg/Stop');return}
  if(AIR.sym!==(S.custom||S.sym)){toast('Erst wieder '+AIR.sym+' öffnen');return}
  const dir=s.richtung==='short'?-1:1;$('#mAI').classList.remove('open');TK.mode='fut';TK.dir=dir;TK.strat=null;TK.type=dir*(s.einstieg-lastP())<0?'limit':'market';
  if(Math.abs(s.einstieg-lastP())/lastP()<.0015)TK.type='market';
