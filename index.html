@@ -32,6 +32,7 @@ html.sync-ro #pnList button,html.sync-ro #bList button,html.sync-ro #tkSend{opac
 html.is-live #wrap{border-color:#ff5c7a!important;box-shadow:0 0 0 1px #ff5c7a inset}html.is-live #tabbar{border-color:#ff5c7a!important}html.is-bdemo #wrap{border-color:#ffb347!important}
 #trBar{position:absolute;left:6px;right:6px;bottom:26px;z-index:4;display:none;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;padding:10px;border-radius:20px;background:rgba(24,27,58,.88);border:1px solid var(--acc);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}#trBar button{min-height:40px;flex:1;min-width:0;padding:6px 4px;font-size:14px}
 #indBtn{position:absolute;left:6px;top:44px;opacity:.9;z-index:3;min-width:40px;height:32px;padding:0 10px;border-radius:16px;font:600 13px system-ui,sans-serif;background:var(--btn);border:1px solid var(--line);color:var(--txt);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}#indBtn.on{color:var(--acc);border-color:var(--acc)}
+#aiBtn{position:absolute;left:54px;top:44px;opacity:.9;z-index:3;min-width:40px;height:32px;padding:0 10px;border-radius:16px;font:600 13px system-ui,sans-serif;background:var(--btn);border:1px solid var(--line);color:var(--txt);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 #wrap canvas{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #calWarn{position:absolute;left:50%;top:30px;transform:translateX(-50%);z-index:3;font-size:12px;padding:5px 11px;border-radius:16px;background:rgba(255,122,60,.18);border:1px solid rgba(255,140,80,.6);color:var(--txt);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 #bMenu{position:sticky;right:-8px;margin-right:-8px;font-size:18px;padding:5px 12px;background:var(--panel);border:none;border-left:1px solid var(--line);border-radius:0;align-self:stretch;z-index:2}
@@ -141,6 +142,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
     <button id="bWL" title="Watchlist">📋 Liste</button>
     <button id="bM2" title="Zweite Zeiteinheit">⧉ 2. ZE</button>
     <button id="bAuto" title="Automatische Analyse">⚡ Auto</button>
+    <button id="bAI" title="Claude-Analyse">🧠 Claude</button>
     <button id="bRP" title="Chart-Replay">⏪ Replay</button>
     <button id="bBT" title="Backtest">📊 Test</button>
     <button id="bLive" title="Live-Simulation">▶ Live</button>
@@ -156,6 +158,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <div id="wrap">
     <button id="calWarn" style="display:none"></button>
     <button id="indBtn" aria-label="Indikatoren">ƒx</button>
+    <button id="aiBtn" aria-label="Claude-Analyse">🧠</button>
     <div id="trBar" style="display:none"></div>
     <canvas id="cv"></canvas>
     <div id="hint"><span id="hintT"></span><button id="hUndo">↶</button><button id="hCancel">✕</button></div>
@@ -188,6 +191,8 @@ button.danger{border-color:var(--dn);color:var(--dn)}
         <div class="row">Risiko <span class="chips" id="eRisk" style="margin:0"></span></div>
         <div class="fld"><label>Risiko $</label><input id="eRiskUsd" inputmode="decimal" placeholder="optional, z. B. 150 (statt %)"></div>
         <div class="row">Max. Hebel <span class="chips" id="eLev" style="margin:0"></span></div>
+        <div class="row" style="flex-wrap:wrap">Ausführung <span class="chips" id="eEx" style="margin:0"></span></div>
+        <div class="mut" id="eExNote" style="font-size:11px"></div>
         <label class="row"><input type="checkbox" id="eTP"> 50 % am Fibonacci-Ziel verkaufen, Rest läuft mit Nachzieh-Stop</label>
         <label class="row"><input type="checkbox" id="eHTF"> Nur mit dem Trend der höheren Zeiteinheit (4× größer)</label>
         <div class="card" id="ePrev"></div>
@@ -321,6 +326,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mNB"><div class="box" style="width:min(96%,520px)"><h3>📊 Backtest der Noten</h3><div id="nbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="nbGo" class="on">Test starten</button><button data-close>Schließen</button></div></div></div>
+<div class="modal" id="mAI"><div class="box" style="width:min(96%,560px)"><h3 id="aiTitle">🧠 Claude-Analyse</h3><div id="aiOut" style="max-height:66vh;overflow:auto"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mLA"><div class="box" style="width:min(96%,520px)"><h3>🔴 Live-Analysen</h3><div id="laOut" style="max-height:64vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mPC"><div class="box" style="width:min(96%,560px)"><h3>⛏ Bitcoin-Produktionskosten</h3><div id="pcOut" style="max-height:66vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mInbox"><div class="box" style="width:min(96%,520px)"><h3>🔔 Mitteilungen</h3><div id="inbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="inbRead">✓ Alle gelesen</button><button id="inbClr">Löschen</button><button data-close class="on">Schließen</button></div></div></div>
@@ -923,7 +929,7 @@ function draw(){LB=[];
  if(S.zz&&S.showZZ&&!S.zzHid&&!(S.tab==='heat'&&!HM.over)){ctx.strokeStyle='rgba(240,185,11,.55)';ctx.lineWidth=1.2;ctx.setLineDash([]);ctx.beginPath();S.zz.forEach((q,k)=>{const x=xOf(q.i),y=yOf(q.p);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
  const clean=S.tab==='heat'&&!HM.over;
  if(!clean){if(VIS.draw)S.drawings.forEach(d=>{if(!d.hidden)renderDrawing(d,false)});if(S.cur)renderDrawing(S.cur,true);
- if(S.btShow)drawTrades(a,b);stratDraw(a,b);
+ if(S.btShow)drawTrades(a,b);stratDraw(a,b);aiDraw(a,b);
  drawDiv(a,b);drawPos();drawAlerts()}
  // last price
  const last=B[B.length-1];const ly=yOf(last.c);const lc=last.c>=last.o?TH.up:TH.dn;
@@ -1346,7 +1352,7 @@ function botTick(h,l,c){if(SY.ro)return;let ch=false;
     if(!s.held&&s.armed&&l<=L){s.held=true;s.just=true;s.qty=bt.inv/bt.slots.length/L;s.buyP=L;const f=L*s.qty*AC.fee;AC.bal-=f;bt.pnl-=f;ch=true}})}});
  return ch}
 function botUnreal(bt){const px=lastP();if(bt.type==='elliott')return AC.pos.filter(p=>p.bot===bt.id).reduce((s,p)=>s+upnl(p),0);if(bt.type==='channel')return bt.state==='hold'?(px-bt.buyP)*bt.qty:0;return bt.slots.reduce((s,x)=>s+(x.held?(px-x.buyP)*x.qty:0),0)}
-function botStop(bt){if(syRO())return;const px=lastP();if(bt.type==='elliott')AC.pos.filter(p=>p.bot===bt.id).forEach(p=>closePart(p,px,p.qty,'Bot gestoppt'));if(bt.type==='channel'&&bt.state==='hold')botSell(bt,px);
+function botStop(bt){if(syRO())return;if(bt.ex==='bybit'){bt.state='stopped';after();toast('Bybit-Bot gestoppt – offene Position wird bei Bybit geschlossen');lvApi('/bx/stop',{id:bt.id}).then(r=>{BXS=r;BXS.t=Date.now();renderBots()}).catch(e=>toast('Bybit: '+e.message));bxCfg();return}const px=lastP();if(bt.type==='elliott')AC.pos.filter(p=>p.bot===bt.id).forEach(p=>closePart(p,px,p.qty,'Bot gestoppt'));if(bt.type==='channel'&&bt.state==='hold')botSell(bt,px);
  if(bt.type==='grid')bt.slots.forEach(s=>{if(s.held){const pnl=(px-s.buyP)*s.qty-px*s.qty*AC.fee;AC.bal+=pnl;bt.pnl+=pnl;s.held=false}});bt.state='stopped';after()}
 const BT={type:'channel',amt:25};
 function botRead(){return{type:BT.type,low:num($('#bLow').value),high:num($('#bHigh').value),stop:num($('#bStop').value),n:Math.round(num($('#bN').value)||10),inv:(()=>{const u=num($('#bUsd').value);return u>0?u:AC.bal*BT.amt/100})(),auto:$("#bAutoR").checked}}
@@ -1376,6 +1382,7 @@ function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,2
  if(LV.bots==='old'&&list.length){const tot=list.reduce((s,b)=>s+(b.type==='elliott'?eBotPnl(b):b.pnl),0);h+=`<div class="row" style="font-size:13px;margin:0 0 6px">Ergebnis gesamt <b class="${tot>=0?'ok':'bad'}">${money(tot)}</b><span style="flex:1"></span><button id="bClr" class="danger" style="font-size:12px">Liste leeren</button></div>`}
  list.slice(0,30).forEach(bt=>{const bc=!mine(bt)&&bgOf(bt),m=mine(bt)||!!bc,act=bt.state!=='stopped'&&bt.state!=='done',u=m&&act?(bc?inCtx(bc,()=>botUnreal(bt)):botUnreal(bt)):0;const bgN=(bc?' <span class="mut" style="font-size:11px">· läuft im Hintergrund</span>':'')+(act&&!bt.replay&&bgSym(bt.key)&&svAct()?' <span class="mut" style="font-size:11px">· ☁️ auch bei geschlossener App</span>':'');
   const st={wait:'wartet auf Kauf',hold:'hält Position',run:'läuft',stopped:'beendet',done:'fertig'}[bt.state];
+  if(bt.type==='elliott'&&bt.ex==='bybit'){h+=bxBotCard(bt,act,st);return}
   if(bt.type==='elliott'){eMig(bt);const pn=eBotPnl(bt),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(',');
    h+=`<div class="pos" data-bid="${bt.id}"><b>🌊 Elliott-Bot</b> ${bt.label} · ${bt.tfs.map(tfName).join(' + ')}${bt.replay?' <span class="mut">(Replay)</span>':''} · <span class="${act?'ok':'mut'}">${st}</span>${bgN}<br>
    <span class="mut">Wellen ${w} · ${({both:'Long+Short',long:'nur Long',short:'nur Short'})[bt.dir]} · Größe ${bt.dev?ff(bt.dev*100)+' %':'auto'} · Risiko ${bt.riskUsd>0?money(bt.riskUsd):ff(bt.risk)+' %'}${bt.htf?' · Trend-Filter':''}</span><br>
@@ -1386,14 +1393,14 @@ function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,2
   <span class="mut">${fmt(bt.low)} – ${fmt(bt.high)}${bt.stop?' · Stop '+fmt(bt.stop):''}${bt.type==='grid'?` · ${bt.slots.length} Stufen · ${bt.slots.filter(s=>s.held).length} gekauft`:''} · ${money(bt.inv)}</span><br>
   Gewinn: <b class="${bt.pnl>=0?'ok':'bad'}">${money(bt.pnl)}</b> · ${bt.cyc} ${bt.type==='channel'?'Zyklen':'Verkäufe'}${act&&m?` · offen <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}
   ${act?(m?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen & verkaufen</button><button data-bv="${bt.id}">👁 ${bt.vis===false?'aus':'an'}</button></div>`:'<div class="mut" style="font-size:11px">'+(bt.replay?'Läuft nur im Replay':'Startet im Hintergrund … (braucht Live-Kurse)')+'</div>'):''}</div>`});
- h+='</div>';$('#bList').innerHTML=h;{const a=$('#svSet');if(a)a.onclick=e=>{e.preventDefault();lvOpen()}}$('#bList').querySelectorAll('.pos[data-bid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id='b'+d.dataset.bid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.bots.find(x=>'b'+x.id===id))}else posTap={id,t:now}}));$('#bList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV.bots=b.dataset.lv;renderBots()});{const c=$('#bClr');if(c)c.onclick=()=>{if(Date.now()-(LV.clr||0)<2500){AC.bots=AC.bots.filter(isAct);saveAcct();LV.clr=0;renderBots();toast('Beendete Bots entfernt')}else{LV.clr=Date.now();toast('Nochmal tippen zum Leeren')}}}$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(!bt)return;const bc=!mine(bt)&&bgOf(bt);if(bc){inCtx(bc,()=>botStop(bt));after()}else botStop(bt)})}
+ h+='</div>';$('#bList').innerHTML=h;{const a=$('#svSet');if(a)a.onclick=e=>{e.preventDefault();lvOpen()}}$('#bList').querySelectorAll('.pos[data-bid]').forEach(d=>d.addEventListener('click',e=>{if(e.target.closest('button'))return;const id='b'+d.dataset.bid,now=Date.now();if(posTap.id===id&&now-posTap.t<400){posTap={id:null,t:0};posOpenChart(AC.bots.find(x=>'b'+x.id===id))}else posTap={id,t:now}}));$('#bList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV.bots=b.dataset.lv;renderBots()});{const c=$('#bClr');if(c)c.onclick=()=>{if(Date.now()-(LV.clr||0)<2500){AC.bots=AC.bots.filter(isAct);saveAcct();LV.clr=0;renderBots();bxCfg();toast('Beendete Bots entfernt')}else{LV.clr=Date.now();toast('Nochmal tippen zum Leeren')}}}$('#bList').querySelectorAll('[data-bv]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bv);if(!bt)return;bt.vis=bt.vis===false;saveAcct();renderBots();req();toast(bt.vis===false?'Bot im Chart ausgeblendet':'Bot im Chart eingeblendet')});$('#bList').querySelectorAll('[data-bxr]').forEach(b=>b.onclick=async()=>{try{BXS=await lvApi('/bx/resume',{id:+b.dataset.bxr});BXS.t=Date.now();toast('▶ Bot läuft wieder');renderBots()}catch(e){toast('Bybit: '+e.message)}});bxAuto();$('#bList').querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{const bt=AC.bots.find(x=>x.id==b.dataset.bs);if(!bt)return;const bc=!mine(bt)&&bgOf(bt);if(bc){inCtx(bc,()=>botStop(bt));after()}else botStop(bt)})}
 
 /* ---------- Elliott-Bot (mehrere Zeiteinheiten) ---------- */
 const curTf=()=>S.custom?'csv':S.tf;
 const TFL=['15m','1h','4h','1D'];
 const tfMs=tf=>tf==='csv'?S.tfms:TFMS[tf];
 const tfName=tf=>tf==='csv'?'CSV':tf;
-const EB={dev:0,tfs:null,waves:{'1':true,'3':true,'5':true,A:true,C:true},dir:'both',risk:1,riskUsd:0,lev:10,tp:true,htf:false};
+const EB={dev:0,tfs:null,waves:{'1':true,'3':true,'5':true,A:true,C:true},dir:'both',risk:1,riskUsd:0,lev:10,tp:true,htf:false,ex:'app'};
 const WNAME={'1':'Welle 1','3':'Welle 3','5':'Welle 5',A:'Welle A',C:'Welle C'};
 S.tfData={};
 function impOK(q){const w1=q[1]-q[0],w3=q[3]-q[2],w5=q[5]-q[4];return q[1]>q[0]&&q[2]<q[1]&&q[2]>q[0]&&q[3]>q[1]&&q[4]<q[3]&&q[4]>q[1]&&q[5]>q[4]&&q[5]>q[3]&&!(w3<w1&&w3<w5)}
@@ -1896,7 +1903,7 @@ let LVT=(()=>{const t=store('wdesk_lvtok');return t&&t.exp>Date.now()?t:null})()
 let LVU=false;const LVD={w:null,pos:null,ts:0,err:null,busy:false,env:null};
 const lvEnv=()=>LIVE.mode==='blive'?'live':'demo';
 const lvTokOK=()=>!!(LVT&&LVT.exp>Date.now());
-async function lvApi(path,body){if(!LIVE.url)throw new Error('Keine Server-Adresse eingetragen');const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),15000);let r;
+async function lvApi(path,body,ms){if(!LIVE.url)throw new Error('Keine Server-Adresse eingetragen');const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);let r;
  try{r=await fetch(LIVE.url.replace(/\/+$/,'')+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(LVT&&path!=='/login'?{Authorization:'Bearer '+LVT.tok}:{})},body:body?JSON.stringify(body):undefined,signal:ctl.signal})}
  catch(e){throw new Error(e.name==='AbortError'?'Server antwortet nicht (Zeitüberschreitung)':'Server nicht erreichbar – Adresse prüfen')}finally{clearTimeout(to)}
  const j=await r.json().catch(()=>({error:'http',msg:'HTTP '+r.status}));
@@ -1964,6 +1971,7 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  ${syCard()}
  ${puCard()}
  ${svCard()}
+ ${bxCard()}
  <div class="card"><h4><span>🔐 Face ID</span>${LIVE.pk?'<span class="ok" style="font-size:12px">eingerichtet</span>':''}</h4>
   ${faceAvail()?`<div class="row"><button id="lvFace">${LIVE.pk?'Neu einrichten':'Face ID einrichten'}</button>${LIVE.pk?'<button id="lvFaceT">Testen</button>':''}</div>
   <label class="row" style="font-size:13px"><input type="checkbox" id="lvFO" ${LIVE.faceOrder?'checked':''}> Vor jeder Live-Order Face ID abfragen (ab Schritt 3)</label>`:'<div class="warn" style="font-size:13px">Face ID geht nur in der installierten App auf dem iPhone.</div>'}
@@ -1985,11 +1993,11 @@ function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  const fo=$('#lvFO');if(fo)fo.onchange=()=>{LIVE.faceOrder=fo.checked;liveSave()};
  el.querySelectorAll('[data-kd]').forEach(i=>i.onchange=()=>{const v=i.value?Date.parse(i.value+'T12:00:00'):null;if(v)LIVE.kd[i.dataset.kd]=v;else delete LIVE.kd[i.dataset.kd];liveSave();lvOpen()});
  $('#lvGen').onclick=()=>{const s=b64u(crypto.getRandomValues(new Uint8Array(32)));$('#lvGenOut').innerHTML=`<code>${s}</code><br><button id="lvCp" style="margin-top:4px">Kopieren</button>`;$('#lvCp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(s).then(()=>toast('Kopiert ✅'),()=>toast('Bitte markieren und kopieren'))}};
- syBind();puBind();svBind();$('#mLive').classList.add('open')}
+ syBind();puBind();svBind();bxBind();$('#mLive').classList.add('open')}
 
 /* ---------- Geräte-Abgleich über den eigenen Server (Cloudflare KV) ---------- */
 function svAct(){try{return !!(SV.on&&SY.on&&lvTokOK())}catch(_){return false}}
-function svHold(o){return (document.hidden||SV.wait)&&!o.replay&&(o.bot!=null||AC.bots.includes(o))&&svAct()}
+function svHold(o){if(o.ex==='bybit')return true;return (document.hidden||SV.wait)&&!o.replay&&(o.bot!=null||AC.bots.includes(o))&&svAct()}
 Object.assign(SY,{on:false,v:0,h:null,pushT:0,last:null,err:null},store('wdesk_sync')||{});SY.ro=false;SY.lead=null;SY.busy=false;SV.wait=svAct();
 const syMeta=()=>store('wdesk_sync',{on:SY.on,v:SY.v,h:SY.h,pushT:SY.pushT,last:SY.last});
 const DEVID=store('wdesk_devid')||(()=>{const d=Math.random().toString(36).slice(2,10);store('wdesk_devid',d);return d})();
@@ -2031,6 +2039,113 @@ document.addEventListener('visibilitychange',()=>{if(!SY.on)return;if(document.h
 setTimeout(()=>{let n=null;try{n=sessionStorage.getItem('wdesk_synced');if(n){sessionStorage.removeItem('wdesk_synced');toast('🔄 Stand von '+n+' geladen')}}catch(_){}if(SY.on){SV.wait=svAct();syCheck(!n).finally(()=>{SV.wait=false})}},1200);
 
 
+
+
+
+/* ---------- 🧠 Claude-Analyse (über deinen Server, Claude handelt nie selbst) ---------- */
+const AI=Object.assign({img:true,model:'std'},store('wdesk_ai')||{});let AIS=null,AIR=null,AIV=null,aiBusy=false;
+const aiSave=()=>store('wdesk_ai',{img:AI.img,model:AI.model});
+const aiR=v=>v==null||!isFinite(v)?null:+(+v).toPrecision(7);
+function aiCtx(){const B=S.bars,L=B.length-1,iso=t=>new Date(t).toISOString().slice(0,16).replace('T',' ');
+ const c={kurs:aiR(lastP()),zeit:iso(Date.now()),quelle:S.src==='binance'?'live':'demo',kerzen_format:'[zeit,o,h,l,c,v]',kerzen:B.slice(-200).map(b=>[iso(b.t),aiR(b.o),aiR(b.h),aiR(b.l),aiR(b.c),aiR(b.v)])};
+ try{const A=autoCompute(B,{ew:true,sk:true}),R=A.R,pt=q=>({zeit:iso(B[Math.min(q.i,L)].t),preis:aiR(q.p)});
+  const cnt=(x,k)=>{if(!x)return null;let i={};try{i=laInfo(x,B,k)}catch(_){}return{status:x.status||'SK-Setup',qualitaet:x.score,punkte:x.pts.map(pt),kriterien:(x.g||[]).map(g=>(g.ok?'✓ ':'✗ ')+g.t),ziel:aiR(i.tgt),ungueltig_bei:aiR(i.inv),wellen_groesse_prozent:x.dev?+(x.dev*100).toFixed(2):null}};
+  c.auto={beste_zaehlung:cnt(R&&R.best,'ew'),alternative:cnt(R&&R.alt,'ew'),sk_setup:cnt(A.k,'sk'),trend_hoehere_ze:R?(R.htf>0?'aufwärts':R.htf<0?'abwärts':'seitwärts'):null}}catch(_){}
+ try{const r=rsiA(B.map(b=>b.c),14);c.rsi14=aiR(r[r.length-1])}catch(_){}
+ if(FO.key===S.sym+'|'+S.tf){const f=FO.fund&&FO.fund[FO.fund.length-1],o=FO.oi;if(f)c.funding_prozent=+(f.r*100).toFixed(4);if(o&&o.length>1)c.open_interest={jetzt:o[o.length-1],vorher:o[Math.max(0,o.length-25)]}}
+ c.positionen=AC.pos.filter(mine).map(p=>({richtung:p.dir>0?'long':'short',einstieg:aiR(p.entry),stop:aiR(p.sl),ziele:p.tps.filter(t=>!t.hit).map(t=>aiR(t.p)),hebel:p.lev}));
+ c.orders=AC.ord.filter(mine).map(o=>({richtung:o.dir>0?'long':'short',preis:aiR(o.price),stop:aiR(o.sl)}));
+ try{const e=laFind();if(e&&e.cur&&!e.cur.none)c.live_analyse={zaehlung:e.cur.st,qualitaet:e.cur.q,ziel:aiR(e.cur.tgt),ungueltig_bei:aiR(e.cur.inv)}}catch(_){}
+ return c}
+function aiImg(){try{draw();const tw=Math.min(900,Math.round(W)),th=Math.round(tw*H/W),c=document.createElement('canvas');c.width=tw;c.height=th;c.getContext('2d').drawImage(cv,0,0,tw,th);return c.toDataURL('image/jpeg',.7)}catch(_){return null}}
+async function aiState(){try{AIS=await lvApi('/ai/state',{})}catch(e){AIS={err:e.code==='notfound'?'Server ist noch alt – worker.js (v1.8) einspielen':e.message}}}
+function aiOpen(){$('#aiTitle').textContent='🧠 Claude-Analyse · '+(S.custom||S.sym)+' '+S.tf;$('#mAI').classList.add('open');aiRender();if(lvTokOK())aiState().then(aiRender)}
+function aiScen(s,k){const n=v=>v==null?'–':fmt(v),dir=s.richtung==='long'?1:s.richtung==='short'?-1:0;let crv='';
+ if(dir&&s.einstieg!=null&&s.stop!=null&&s.ziele&&s.ziele.length){const r=Math.abs(s.einstieg-s.stop);if(r>0)crv=` · CRV ${ff((Math.abs(s.ziele[0]-s.einstieg)/r).toFixed(1))}`}
+ return `<div class="card" style="margin:6px 0;padding:8px"><b>${dir>0?'🟢':dir<0?'🔴':'⏸'} ${s.name||'Szenario'}</b>${s.wahrscheinlichkeit!=null?` <span class="mut">· ${s.wahrscheinlichkeit} %</span>`:''}<br>
+ ${dir?`<span style="font-size:13px">Einstieg <b>${n(s.einstieg)}</b> · Stop <b class="bad">${n(s.stop)}</b> · Ziel ${(s.ziele||[]).map(z=>'<b class="ok">'+n(z)+'</b>').join(' / ')||'–'}${s.ungueltig!=null?' · ungültig '+n(s.ungueltig):''}${crv}</span><br>`:''}
+ <span class="mut" style="font-size:12px">${s.begruendung||''}</span>
+ ${dir?`<div class="row"><button data-aid="${k}">📈 Zeichnen</button><button data-aio="${k}">📝 In Order übernehmen</button></div>`:''}</div>`}
+function aiResHTML(R){if(!R)return '';const r=R.res||{};
+ return `<div style="font-size:14px;line-height:1.45"><b>${r.kurz||''}</b></div>
+ ${r.welle?`<div style="margin-top:6px;font-size:13px">🌊 <b>Welle:</b> ${r.welle}</div>`:''}${r.alternative?`<div style="font-size:13px">↔️ <b>Alternative:</b> ${r.alternative}</div>`:''}
+ ${(r.szenarien||[]).map(aiScen).join('')}
+ ${(r.risiken||[]).length?`<div style="font-size:13px"><b>⚠️ Risiken</b><br>${r.risiken.map(x=>'· '+x).join('<br>')}</div>`:''}
+ ${r.fazit?`<div style="margin-top:6px;font-size:13px">👉 <b>${r.fazit}</b></div>`:''}
+ <div class="mut" style="font-size:11px;margin-top:6px">${R.sym||''} ${R.tf||''} · ${new Date(R.t||Date.now()).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${({fast:'Schnell',std:'Standard',deep:'Gründlich'})[R.mk]||R.model||''}${R.usage?` · ${R.usage.in+R.usage.out} Token`:''} · keine Anlageberatung</div>`}
+function aiRender(){const el=$('#aiOut');if(!el)return;
+ if(!lvTokOK()){el.innerHTML='<div class="warn">Erst im Live-Konto (☰ › Live-Konto) am Server anmelden – die Analyse läuft über deinen Server.</div>';return}
+ const st=AIS?(AIS.err?`<span class="bad">${AIS.err}</span>`:!AIS.key?'<span class="warn">Auf dem Server fehlt noch der Schlüssel <b>ANTHROPIC_API_KEY</b> (console.anthropic.com → API Keys, dann in Cloudflare als Secret eintragen).</span>':`heute ${AIS.n}/${AIS.limit} Analysen`):'<span class="mut">lädt …</span>';
+ const chip=(id,vals,cur,lab)=>`<span class="chips" id="${id}" style="margin:0">${vals.map(v=>`<button data-c="${v}" class="${String(v)===String(cur)?'on':''}">${lab(v)}</button>`).join('')}</span>`;
+ el.innerHTML=`<div style="font-size:12px">${st}</div>
+ <div class="row" style="flex-wrap:wrap;font-size:13px">Modell ${chip('aiM',['fast','std','deep'],AI.model,v=>({fast:'Schnell',std:'Standard',deep:'Gründlich'})[v])}</div>
+ <label class="row" style="font-size:13px"><input type="checkbox" id="aiImg" ${AI.img?'checked':''}> Chart-Bild mitschicken (Claude sieht deine Zeichnungen)</label>
+ <div class="row"><button id="aiGo" class="on" ${aiBusy?'disabled':''}>${aiBusy?'Claude denkt nach …':'🧠 Chart analysieren'}</button></div>
+ <div id="aiRes" style="margin-top:6px">${AIR?aiResHTML(AIR):'<span class="mut" style="font-size:12px">Claude bekommt die letzten 200 Kerzen, deine Auto-Analyse (Zählung, Alternative, SK, Ungültig-Marken), RSI, Trend, Funding/OI und deine offenen Positionen auf diesem Paar.</span>'}</div>
+ ${AIR?`<div class="fld"><label>Frage an Claude</label><input id="aiQ" placeholder="z. B. Was spricht gegen den Long?"></div><div class="row"><button id="aiAsk" ${aiBusy?'disabled':''}>Fragen</button>${AIV?'<button id="aiClr">Zeichnung entfernen</button>':''}</div>`:''}
+ ${AIS&&AIS.hist&&AIS.hist.length?`<div style="margin-top:8px;font-size:13px"><b>Verlauf</b>${AIS.hist.slice(0,10).map((h,k)=>`<div class="pos" data-aih="${k}" style="padding:6px;margin:4px 0;font-size:12px">${new Date(h.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · <b>${h.sym} ${h.tf}</b>${h.q?' · ❓ '+h.q.slice(0,40):''}<br><span class="mut">${String((h.res&&h.res.kurz)||'').slice(0,110)}…</span></div>`).join('')}</div>`:''}
+ ${AIS&&AIS.key?`<div class="row" style="flex-wrap:wrap;font-size:12px">Tageslimit ${chip('aiL',[5,10,20,50],AIS.limit,v=>v)}</div>`:''}`;
+ el.querySelectorAll('#aiM button').forEach(b=>b.onclick=()=>{AI.model=b.dataset.c;aiSave();aiRender()});
+ const ci=$('#aiImg');if(ci)ci.onchange=()=>{AI.img=ci.checked;aiSave()};
+ el.querySelectorAll('#aiL button').forEach(b=>b.onclick=async()=>{try{AIS=await lvApi('/ai/state',{limit:+b.dataset.c});toast('Tageslimit: '+AIS.limit)}catch(e){toast(e.message)}aiRender()});
+ const go=$('#aiGo');if(go)go.onclick=()=>aiAsk(null);const ak=$('#aiAsk');if(ak)ak.onclick=()=>{const q=$('#aiQ').value.trim();if(!q){toast('Frage eingeben');return}aiAsk(q)};
+ const cl=$('#aiClr');if(cl)cl.onclick=()=>{AIV=null;req();aiRender()};
+ el.querySelectorAll('[data-aid]').forEach(b=>b.onclick=()=>aiShow(+b.dataset.aid));el.querySelectorAll('[data-aio]').forEach(b=>b.onclick=()=>aiOrder(+b.dataset.aio));
+ el.querySelectorAll('[data-aih]').forEach(d=>d.onclick=()=>{const h=AIS.hist[+d.dataset.aih];AIR={res:h.res,sym:h.sym,tf:h.tf,t:h.t,mk:h.model,usage:h.usage};aiRender();$('#aiOut').scrollTop=0})}
+async function aiAsk(q){if(aiBusy)return;if(!lvTokOK()){toast('Erst am Server anmelden');return}aiBusy=true;aiRender();
+ try{const body={sym:S.custom||S.sym,tf:S.tf,model:AI.model,ctx:aiCtx(),q:q||null,prev:q&&AIR?AIR.res:null};if(AI.img&&!q)body.img=aiImg();
+  const r=await lvApi('/ai/run',body,120000);AIR={res:r.res,sym:body.sym,tf:body.tf,t:r.t,mk:AI.model,usage:r.usage};if(AIS&&!AIS.err){AIS.n=r.n;AIS.limit=r.limit}aiState().then(()=>{if($('#mAI').classList.contains('open'))aiRender()})}
+ catch(e){toast('Claude: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v1.8) einspielen':e.message))}
+ finally{aiBusy=false;aiRender()}}
+function aiShow(k){const s=AIR&&AIR.res&&AIR.res.szenarien&&AIR.res.szenarien[k];if(!s)return;AIV={sym:AIR.sym,tf:AIR.tf,s};$('#mAI').classList.remove('open');req();toast('🧠 Szenario im Chart · in der Claude-Analyse wieder entfernen')}
+function aiDraw(a,b){if(!AIV||AIV.sym!==(S.custom||S.sym))return;const s=AIV.s;ctx.save();ctx.beginPath();ctx.rect(0,0,PW,PH);ctx.clip();
+ const ln=(p,col,lab,dash)=>{if(p==null||!isFinite(p))return;const y=Math.round(yOf(p))+.5;if(y<-5||y>PH+5)return;ctx.strokeStyle=col;ctx.lineWidth=1.4;ctx.setLineDash(dash||[]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(PW,y);ctx.stroke();ctx.setLineDash([]);tag(PW-4-ctx.measureText(lab+'  '+fmt(p)).width-10,clamp(y,9,PH-9),lab+'  '+fmt(p),col,'#0d1117')};
+ ln(s.einstieg,'#58a6ff','🧠 Einstieg');ln(s.stop,'#f85149','🧠 Stop');(s.ziele||[]).forEach((z,i)=>ln(z,'#3fb950','🧠 Ziel '+(i+1)));ln(s.ungueltig,'#ffa657','🧠 ungültig',[5,4]);ctx.restore()}
+function aiOrder(k){const s=AIR&&AIR.res&&AIR.res.szenarien&&AIR.res.szenarien[k];if(!s||s.einstieg==null||s.stop==null){toast('Szenario hat keinen Einstieg/Stop');return}
+ if(AIR.sym!==(S.custom||S.sym)){toast('Erst wieder '+AIR.sym+' öffnen');return}
+ const dir=s.richtung==='short'?-1:1;$('#mAI').classList.remove('open');TK.mode='fut';TK.dir=dir;TK.strat=null;TK.type=dir*(s.einstieg-lastP())<0?'limit':'market';
+ if(Math.abs(s.einstieg-lastP())/lastP()<.0015)TK.type='market';
+ $('#tkPrice').value=nstr(s.einstieg);$('#tkSL').value=nstr(s.stop);const Z=(s.ziele||[]).slice(0,3),pc=Z.length===1?[100]:Z.length===2?[50,50]:[50,30,20];
+ [0,1,2].forEach(i=>{$('#tkTP'+(i+1)).value=Z[i]!=null?nstr(Z[i]):'';$('#tkTP'+(i+1)+'p').value=Z[i]!=null?pc[i]:''});
+ try{setTab('fut')}catch(_){}tkOpen(true);AIV={sym:AIR.sym,tf:AIR.tf,s};req();toast('🧠 Claude-Szenario ins Order-Formular übernommen – bitte prüfen und selbst absenden')}
+
+/* ---------- 🟠 Bots über Bybit Demo (der Server handelt, Bybit ist maßgeblich) ---------- */
+const BX={levMax:20,posMax:3};let BXS=null;
+function bxCan(){return !!(lvTokOK()&&LVT&&LVT.demo&&S.src==='binance'&&!S.custom&&!isRp()&&BIN[S.sym])}
+function bxWhy(){return !lvTokOK()?'erst im Live-Konto am Server anmelden':!(LVT&&LVT.demo)?'auf dem Server ist noch kein Bybit-Demo-Schlüssel eingetragen':S.custom||S.src!=='binance'||!BIN[S.sym]?'dieses Paar gibt es nicht bei Bybit':isRp()?'nicht im Replay':'nicht verfügbar'}
+function bxCfg(){if(!lvTokOK())return Promise.resolve();const L=AC.bots.filter(b=>b.ex==='bybit'),map={};L.forEach(b=>{const y=bgSym(b.key);if(y&&BIN[y])map[y]=BIN[y]});
+ return lvApi('/bx/cfg',{bots:L.map(b=>{const{st,...r}=b;return r}),map}).then(r=>{BXS=r;BXS.t=Date.now();if(S.tab==='bots')renderBots()}).catch(e=>toast('Bybit: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v1.7) einspielen':e.message)))}
+let bxBusy=false;
+async function bxRefresh(force){if(bxBusy||!lvTokOK()||!AC.bots.some(b=>b.ex==='bybit'))return;if(!force&&BXS&&Date.now()-BXS.t<20000)return;bxBusy=true;
+ try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();if(S.tab==='bots'&&!document.hidden)renderBots();if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false}}
+function bxAuto(){if(!BXS||Date.now()-BXS.t>20000)setTimeout(()=>bxRefresh(),50)}
+setInterval(()=>{if(!document.hidden&&S.tab==='bots')bxRefresh()},20000);
+function bxBotCard(bt,act,st){const bs=(BXS&&BXS.bots&&BXS.bots[bt.id])||{},ps=((BXS&&BXS.pos)||[]).filter(p=>p.bot==bt.id),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(','),bst=bs.st||{};
+ const posH=ps.map(p=>`<div style="font-size:12px;margin:3px 0">${p.dir>0?'<b class="ok">Long</b>':'<b class="bad">Short</b>'} ${ff(p.size)} @ ${fmt(p.entry)} · ${p.lev}× · Stop ${p.sl?fmt(p.sl):'–'}${p.tps.length?' · Ziel '+p.tps.map(fmt).join(' / '):''}${p.hits?' · '+p.hits+' Ziel(e) erreicht':''} · <span class="${p.upnl>=0?'ok':'bad'}">${money(p.upnl)}</span></div>`).join('');
+ return `<div class="pos" data-bid="${bt.id}"><b>🌊 Elliott-Bot</b> ${bt.label} · ${bt.tfs.map(tfName).join(' + ')} · <b style="color:#f7a600">🟠 Bybit Demo</b> · <span class="${act?'ok':'mut'}">${st}</span>${act?' <span class="mut" style="font-size:11px">· ☁️ Server handelt</span>':''}<br>
+ <span class="mut">Wellen ${w} · ${({both:'Long+Short',long:'nur Long',short:'nur Short'})[bt.dir]} · Größe ${bt.dev?ff(bt.dev*100)+' %':'auto'} · Risiko ${bt.riskUsd>0?money(bt.riskUsd):ff(bt.risk)+' %'} vom Bybit-Guthaben${bt.htf?' · Trend-Filter':''}</span><br>
+ ${bt.tfs.map(tf=>`<span style="font-size:12px"><b>${tfName(tf)}</b>: ${bst[tf]&&bst[tf].last?bst[tf].last.replace(tfName(tf)+': ',''):'wartet auf Wellenpunkt'}</span>`).join('<br>')}
+ ${posH}<br>Ergebnis bei Bybit: <b class="${(bs.pnl||0)>=0?'ok':'bad'}">${money(bs.pnl||0)}</b> · ${bs.trades||0} Trades${!BXS?' <span class="mut">· lädt …</span>':''}
+ ${bs.paused&&act?`<div class="row" style="font-size:12px"><span class="warn">⏸ Pausiert: ${bs.paused}</span><button data-bxr="${bt.id}">▶ Weiter</button></div>`:''}
+ ${act?`<div class="row"><button data-bs="${bt.id}" class="danger">Bot stoppen</button></div>`:''}</div>`}
+function bxOutHTML(){if(!BXS)return '<span class="mut">Noch nicht geladen</span>';if(!BXS.key)return '<span class="warn">Auf dem Server ist kein Bybit-Demo-Schlüssel eingetragen (BYBIT_DEMO_KEY / BYBIT_DEMO_SECRET).</span>';
+ const L=[];if(BXS.bybitErr)L.push(`<span class="bad">❌ Bybit: ${BXS.bybitErr}</span>`);
+ if(BXS.equity!=null)L.push(`Guthaben <b>${money(BXS.equity)}</b>${BXS.avail!=null?' · frei '+money(BXS.avail):''}`);
+ (BXS.pos||[]).forEach(p=>L.push(`${p.dir>0?'<b class="ok">Long</b>':'<b class="bad">Short</b>'} ${p.label} ${ff(p.size)} @ ${fmt(p.entry)} · Stop ${p.sl?fmt(p.sl):'–'} · <span class="${p.upnl>=0?'ok':'bad'}">${money(p.upnl)}</span>`));
+ if(!(BXS.pos||[]).length)L.push('<span class="mut">Keine offene Position bei Bybit</span>');
+ (BXS.hist||[]).slice(0,5).forEach(t=>L.push(`<span class="mut" style="font-size:12px">${new Date(t.t1).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${t.label} ${t.dir>0?'Long':'Short'} · ${t.why} · <span class="${t.pnl>=0?'ok':'bad'}">${money(t.pnl)}</span></span>`));
+ (BXS.err||[]).slice(0,3).forEach(e=>L.push(`<span class="warn" style="font-size:12px">⚠️ ${laAgo(e.t)}: ${e.m}</span>`));
+ if(BXS.kill&&AC.bots.some(b=>b.ex==='bybit'&&b.state==='run'))L.push(`<span class="warn" style="font-size:12px">⛔ Not-Aus war aktiv – Bybit-Bots sind pausiert. <a href="#" id="bxUnkill">Wieder freigeben</a></span>`);
+ return L.join('<br>')}
+function bxCard(){return `<div class="card"><h4><span>🟠 Bybit Demo · Bots</span></h4>
+ <div class="mut" style="font-size:12px">Bots mit Ausführung „Bybit Demo“ handeln über deinen Server im Bybit-Demo-Konto – auch bei geschlossener App. Stop und Ziele liegen direkt bei Bybit.</div>
+ <div id="bxOut" style="font-size:13px;margin-top:6px">${bxOutHTML()}</div>
+ <div class="row"><button id="bxRef">🔄 Aktualisieren</button><button id="bxKill" class="danger">⛔ Not-Aus</button></div></div>`}
+function bxBind(){const r=$('#bxRef');if(!r)return;const out=()=>{$('#bxOut').innerHTML=bxOutHTML();const u=$('#bxUnkill');if(u)u.onclick=async e=>{e.preventDefault();try{BXS=await lvApi('/bx/unkill',{});BXS.t=Date.now();out();toast('Bybit-Bots freigegeben')}catch(er){toast(er.message)}}};
+ r.onclick=async()=>{$('#bxOut').innerHTML='<span class="mut">Lädt …</span>';try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now()}catch(e){$('#bxOut').innerHTML=`<span class="bad">${e.code==='notfound'?'Server ist noch alt – worker.js (v1.7) einspielen':e.message}</span>`;return}out()};
+ $('#bxKill').onclick=async()=>{if(Date.now()-(BX.kT||0)>2500){BX.kT=Date.now();toast('Nochmal tippen: ALLE Bybit-Bot-Positionen schließen und Bots pausieren');return}BX.kT=0;
+  $('#bxOut').innerHTML='<span class="mut">Schließe alles …</span>';try{BXS=await lvApi('/bx/kill',{});BXS.t=Date.now();toast('⛔ Not-Aus: Bybit-Bot-Positionen geschlossen, Bots pausiert')}catch(e){toast('Bybit: '+e.message)}out()};
+ out();if(lvTokOK()&&(!BXS||Date.now()-BXS.t>20000))r.onclick()}
 
 /* ---------- ☁️ Bots auf dem Server: Karte im Live-Konto ---------- */
 function svReq(){const c=(b,t,x)=>`<div class="chk ${b?'ok':b===null?'warn':'bad'}" style="font-size:12px">${b?'✅':b===null?'⚠️':'❌'} ${t}${x?` <span class="mut">· ${x}</span>`:''}</div>`;
@@ -2118,6 +2233,7 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
  const hid=[!VIS.pos&&'Positionen',!VIS.bots&&'Bots',!VIS.draw&&'Zeichnungen'].filter(Boolean);
  const R=(id,ic,t,sub)=>`<button class="mrow" data-m="${id}"><span style="width:24px;text-align:center">${ic}</span>${t}<small>${sub||''} ›</small></button>`;
  $('#menuOut').innerHTML=`<div class="mgt">Trading</div><div class="mgrp">
+  ${R('ai','🧠','Claude-Analyse',AIS&&AIS.limit?`heute ${AIS.n}/${AIS.limit}`:'Chart einschätzen lassen')}
   ${R('jr','📓','Trade-Tagebuch & Konto',AC.hist.length+' Trades')}
   ${R('stat','📊','Statistik pro Strategie','')}
   ${R('wl','📋','Watchlist & Scanner','')}
@@ -2149,7 +2265,8 @@ function renderMenu(){const ok=ntOK()&&NT.on,lb=store('wdesk_lastbk'),days=lb?Ma
  $('#menuOut').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=b.dataset.m;
   if(m==='ntq'||m==='bk'){close();renderSet();$('#mSet').classList.add('open');return}
   close();
-  if(m==='jr')acOpen();
+  if(m==='ai')aiOpen();
+  else if(m==='jr')acOpen();
   else if(m==='stat'){acOpen();setTimeout(()=>{const c=$('#sgC');if(c)c.scrollIntoView({block:'start'})},60)}
   else if(m==='wl'||m==='ud')$('#bWL').click();else if(m==='cal')calOpen();else if(m==='live')lvOpen();else if(m==='la')laOpen();else if(m==='inbox')inbOpen();else if(m==='al')alOpen();else if(m==='rep')repOpen();else if(m==='train')trStart();else if(m==='feat')featOpen();else if(m==='guard')guardOpen();else if(m==='ind')indOpen();else if(m==='bt')btOpen();else if(m==='vis')visOpen();
   else if(m==='design')$('#bDesign').click();else if(m==='m2')$('#bM2').click();else if(m==='csv')$('#file').click();
@@ -2340,9 +2457,10 @@ function statHTML(){const m={};AC.hist.forEach(t=>{const k=statKey(t,SG);(m[k]||
   rows.map(r=>`<tr><td><b>${r.k}</b></td><td style="text-align:right">${r.n}</td><td style="text-align:right">${pct(r.wr)}</td><td style="text-align:right" class="${r.aR>=0?'ok':'bad'}">${fR(r.aR)}</td><td style="text-align:right" class="${r.sP>=0?'ok':'bad'}">${fR(r.sR)}<br><small>${money(r.sP)}</small></td></tr>`).join('')+'</table>';
  const best=rows.filter(r=>r.n>=5)[0];h+=`<div class="mut" style="font-size:11px;margin-top:4px">${best?`Am besten bisher: <b>${best.k}</b> (${best.n} Trades, ${fR(best.aR)} je Trade).`:'Ab 5 Trades pro Gruppe wird es aussagekräftig.'} Manuelle Trades bekommen ihre Strategie im Order-Fenster oder im Tagebuch (Trade antippen).</div></div>`;return h}
 const eDev=()=>EB.dev||nearestDev(defaultDev());
-function eCfg(){return{dev:EB.dev,tfs:(EB.tfs||[curTf()]).filter(tfAvail),waves:{...EB.waves},dir:EB.dir,risk:EB.risk,riskUsd:EB.riskUsd||0,lev:EB.lev,tp:EB.tp,htf:EB.htf}}
+function eCfg(){return{dev:EB.dev,tfs:(EB.tfs||[curTf()]).filter(t=>EB.ex==='bybit'?t!=='csv':tfAvail(t)),waves:{...EB.waves},dir:EB.dir,risk:EB.risk,riskUsd:EB.riskUsd||0,lev:EB.lev,tp:EB.tp,htf:EB.htf,ex:EB.ex==='bybit'&&bxCan()?'bybit':'app'}}
 function eStart(){const c=eCfg();if(!c.tfs.length){toast('Mindestens eine verfügbare Zeiteinheit wählen');return}if(!Object.values(c.waves).some(Boolean)){toast('Mindestens eine Welle auswählen');return}
  const bt={id:++uid,type:'elliott',key:pkey(),label:S.custom||S.sym,replay:isRp(),...c,st:{},skipFirst:true,state:'run',trades:0,pnl:0,inv:0,cyc:0,t0:nowT()};
+ if(bt.ex==='bybit'){if(c.lev>BX.levMax)bt.lev=BX.levMax;AC.bots.push(bt);after();bxCfg();toast('🟠 Bybit-Demo-Bot gestartet: '+c.tfs.map(tfName).join(' + ')+' – dein Server handelt ab dem nächsten bestätigten Wellenpunkt, auch bei geschlossener App');return}
  AC.bots.push(bt);refreshTfData().then(()=>{eBotTick(true);after()});after();setTimeout(bgSync,500);
  toast('Elliott-Bot gestartet: '+c.tfs.map(tfName).join(' + ')+' – handelt ab dem nächsten bestätigten Wellenpunkt')}
 function eBotPnl(bt){return AC.hist.filter(t=>t.bot===bt.id).reduce((s,t)=>s+t.pnl,0)}
@@ -2379,6 +2497,8 @@ function eForm(){const chip=(id,vals,cur,lab,set)=>{$(id).innerHTML=vals.map(v=>
  $('#eWaves').innerHTML=Object.keys(WNAME).map(k=>`<button data-w="${k}" class="${EB.waves[k]?'on':''}">${k}</button>`).join('');$('#eWaves').querySelectorAll('button').forEach(b=>b.onclick=()=>{EB.waves[b.dataset.w]=!EB.waves[b.dataset.w];eForm()});
  chip('#eDir',['both','long','short'],EB.dir,v=>({both:'Beide',long:'Nur Long',short:'Nur Short'})[v],v=>EB.dir=v);
  chip('#eRisk',[.5,1,2],EB.riskUsd>0?null:EB.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{EB.risk=+v;EB.riskUsd=0;$('#eRiskUsd').value=''});{const ri=$('#eRiskUsd');if(document.activeElement!==ri)ri.value=EB.riskUsd>0?ff(String(EB.riskUsd)):'';$('#eRisk').style.opacity=EB.riskUsd>0?.4:1;ri.oninput=()=>{const u=num(ri.value);EB.riskUsd=u>0?u:0;$('#eRisk').style.opacity=EB.riskUsd>0?.4:1;$('#eRisk').querySelectorAll('button').forEach(b=>b.classList.toggle('on',!(EB.riskUsd>0)&&+b.dataset.c===EB.risk))}}chip('#eLev',[3,5,10,20],EB.lev,v=>v+'×',v=>EB.lev=+v);
+ chip('#eEx',['app','bybit'],EB.ex||'app',v=>v==='app'?'App-Demo':'🟠 Bybit Demo',v=>{if(v==='bybit'&&!bxCan()){toast(bxWhy());return}EB.ex=v});
+ $('#eExNote').innerHTML=EB.ex==='bybit'?`Echte Orders im <b>Bybit-Demo-Konto</b> über deinen Server – läuft auch bei geschlossener App. Risiko vom Bybit-Guthaben, Stop und Ziele liegen bei Bybit. Pro Paar eine Bot-Position gleichzeitig · Hebel max. ${BX.levMax}× · max. ${BX.posMax} Positionen.`:(bxCan()?'':'<span class="mut">🟠 Bybit Demo: '+bxWhy()+'</span>');
  $('#eTP').checked=EB.tp;$('#eHTF').checked=EB.htf;
  const z=zigzag(S.bars,eDev()).filter(p=>!p.prov),m=eMatch(z,{waves:{'1':1,'3':1,'5':1,A:1,C:1},dir:'both'});
  $('#ePrev').innerHTML=`<div class="mut" style="font-size:12px;line-height:1.5">Aufwärts: <b class="ok">Long</b> in Welle 1, 3, 5 · <b class="bad">Short</b> in A und C. Abwärts genau umgekehrt. Jede Zeiteinheit zählt und handelt für sich (eigene Position, eigener Stop).<br>
@@ -2922,6 +3042,7 @@ $('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new File
   const name=f.name.replace(/\.(csv|txt)$/i,'');S.custom=name;S.csvMem={name,bars};store('wdesk_csvdata',{name,bars});S.bars=bars;buildSym();$('#sym').value='__csv';loadData();toast(bars.length+' Kerzen geladen: '+name)}
  catch(err){toast('Import fehlgeschlagen: '+err)}e.target.value=''};rd.readAsText(f)};
 $('#bHelp').onclick=()=>$('#mHelp').classList.add('open');$('#bDesign').onclick=()=>{renderDesign();$('#mDesign').classList.add('open')};
+$('#bAI').onclick=aiOpen;$('#aiBtn').onclick=aiOpen;
 $('#bAuto').onclick=()=>{const c=$('#devChips');const inf=()=>{$('#devInfo').textContent=S.devAuto?'Auto = '+ewaLevels(S.bars).map(v=>ff((v*100).toFixed(1))).join(' / ')+' %':'nur '+ff(S.dev*100)+' %'};
  c.innerHTML=`<button data-dev="auto" class="${S.devAuto?'on':''}">✨ Auto</button>`+DEVS.map(v=>`<button data-dev="${v}" class="${!S.devAuto&&v===S.dev?'on':''}">${ff(v*100)} %</button>`).join('');inf();
  c.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{if(b.dataset.dev==='auto')S.devAuto=true;else{S.devAuto=false;S.dev=+b.dataset.dev}store('wdesk_devauto',S.devAuto);c.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));inf()});
