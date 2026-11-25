@@ -326,6 +326,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mNB"><div class="box" style="width:min(96%,520px)"><h3>📊 Backtest der Noten</h3><div id="nbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="nbGo" class="on">Test starten</button><button data-close>Schließen</button></div></div></div>
+<div class="modal" id="mBxc"><div class="box" style="width:min(94%,440px)"><h3>🟠 An Bybit Demo senden?</h3><div id="bxcOut"></div><div class="row"><button id="bxcGo" class="on">🟠 An Bybit senden</button><button data-close>Abbrechen</button></div></div></div>
 <div class="modal" id="mAI"><div class="box" style="width:min(96%,560px)"><h3 id="aiTitle">🧠 Claude-Analyse</h3><div id="aiOut" style="max-height:66vh;overflow:auto"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mLA"><div class="box" style="width:min(96%,520px)"><h3>🔴 Live-Analysen</h3><div id="laOut" style="max-height:64vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
 <div class="modal" id="mPC"><div class="box" style="width:min(96%,560px)"><h3>⛏ Bitcoin-Produktionskosten</h3><div id="pcOut" style="max-height:66vh;overflow:auto"></div><div class="row"><button data-close class="on">Schließen</button></div></div></div>
@@ -1935,7 +1936,7 @@ function updMode(){const b=$('#modeBtn');if(!b)return;const m=LIVE.mode;b.classN
 // --- Daten von Bybit (Anzeige) ---
 async function lvRefresh(force){if(LIVE.mode==='app'||!lvTokOK()||LVD.busy)return;if(LIVE.mode==='blive'&&!LVU)return;if(!force&&Date.now()-LVD.ts<8000)return;LVD.busy=true;const env=lvEnv();
  try{const [w,p]=await Promise.all([bb('GET','/v5/account/wallet-balance',{accountType:'UNIFIED'},env),bb('GET','/v5/position/list',{category:'linear',settleCoin:'USDT'},env)]);
-  if(env!==lvEnv())return;LVD.w=w&&w.list&&w.list[0]||null;LVD.pos=(p&&p.list||[]).filter(x=>+x.size>0);LVD.err=null;LVD.ts=Date.now();LVD.env=env}
+  if(env!==lvEnv())return;if(LIVE.mode==='bdemo')bxRefresh(true);LVD.w=w&&w.list&&w.list[0]||null;LVD.pos=(p&&p.list||[]).filter(x=>+x.size>0);LVD.err=null;LVD.ts=Date.now();LVD.env=env}
  catch(e){LVD.err=e.message}finally{LVD.busy=false}if(S.tab==='spot'||S.tab==='fut')renderPanel()}
 setInterval(()=>{if(S.tab==='spot'||S.tab==='fut')lvRefresh()},10000);
 function lvCard(m){if(LIVE.mode==='app')return '';const live=LIVE.mode==='blive',nm=live?'<b style="color:#ff5c7a">● BYBIT LIVE</b>':'<b style="color:#ffb347">● BYBIT-DEMO</b>';
@@ -1945,10 +1946,11 @@ function lvCard(m){if(LIVE.mode==='app')return '';const live=LIVE.mode==='blive'
  if(LVD.err)h+=`<div class="bad" style="font-size:13px">${LVD.err}</div>`;
  if(!LVD.w&&!LVD.err)return h+'<div class="mut" style="font-size:13px">Lade Konto von Bybit …</div></div>';
  if(LVD.w){const W=LVD.w,u=n=>money(+n||0);h+=`<div style="font-size:13px">Guthaben <b>${u(W.totalEquity)}</b> · frei <b>${u(W.totalAvailableBalance)}</b> · offen <b class="${+W.totalPerpUPL>=0?'ok':'bad'}">${+W.totalPerpUPL>=0?'+':''}${u(W.totalPerpUPL)}</b></div>`;
+  if(!live)h+=bxHandHTML(m);
   if(m==='spot'){const cs=(W.coin||[]).filter(c=>+c.walletBalance>0);h+=cs.length?'<table style="width:100%;font-size:13px;margin-top:6px">'+cs.map(c=>`<tr><td><b>${c.coin}</b></td><td style="text-align:right">${ff(String(+(+c.walletBalance).toFixed(6)))}</td><td style="text-align:right" class="mut">${u(c.usdValue||c.equity)}</td></tr>`).join('')+'</table>':'<div class="mut" style="font-size:13px">Keine Coins im Konto</div>'}
-  else{const P=LVD.pos||[];h+=P.length?P.map(p=>{const L=p.side==='Buy',pn=+p.unrealisedPnl;return `<div class="pos"><b class="${L?'ok':'bad'}">${L?'Long':'Short'}</b> ${p.symbol} ${p.leverage}× · ${ff(p.size)} @ ${fmt(+p.avgPrice)} · <b class="${pn>=0?'ok':'bad'}">${pn>=0?'+':''}${money(pn)}</b><br><span class="mut" style="font-size:12px">Mark ${fmt(+p.markPrice)}${+p.stopLoss?' · SL '+fmt(+p.stopLoss):' · <span class="warn">kein SL</span>'}${+p.takeProfit?' · TP '+fmt(+p.takeProfit):''}${+p.liqPrice?' · Liq '+fmt(+p.liqPrice):''}</span></div>`}).join(''):'<div class="mut" style="font-size:13px;margin-top:4px">Keine offenen Futures-Positionen bei Bybit</div>'}}
- return h+`<div class="mut" style="font-size:11px;margin-top:6px">Stand ${LVD.ts?new Date(LVD.ts).toLocaleTimeString('de-DE'):'–'} · Orders aus der App gehen ab Schritt 3 direkt an Bybit – bis dahin nur Anzeige.</div></div>`}
-function lvBind(el){const g=el.querySelector('#lvGo');if(g)g.onclick=lvOpen;const u=el.querySelector('#lvUn');if(u)u.onclick=()=>lvUnlock();const r=el.querySelector('#lvR');if(r)r.onclick=()=>{LVD.ts=0;lvRefresh(true)}}
+  else{const P=(LVD.pos||[]).filter(p=>live||!bxHandOf(p.symbol));h+=P.length?P.map(p=>{const L=p.side==='Buy',pn=+p.unrealisedPnl;return `<div class="pos"><b class="${L?'ok':'bad'}">${L?'Long':'Short'}</b> ${p.symbol} ${p.leverage}× · ${ff(p.size)} @ ${fmt(+p.avgPrice)} · <b class="${pn>=0?'ok':'bad'}">${pn>=0?'+':''}${money(pn)}</b><br><span class="mut" style="font-size:12px">Mark ${fmt(+p.markPrice)}${+p.stopLoss?' · SL '+fmt(+p.stopLoss):' · <span class="warn">kein SL</span>'}${+p.takeProfit?' · TP '+fmt(+p.takeProfit):''}${+p.liqPrice?' · Liq '+fmt(+p.liqPrice):''}</span></div>`}).join(''):(live||!(BXS&&(BXS.hand||[]).some(x=>x.mode==='fut'))?'<div class="mut" style="font-size:13px;margin-top:4px">Keine offenen Futures-Positionen bei Bybit</div>':'')}}
+ return h+`<div class="mut" style="font-size:11px;margin-top:6px">Stand ${LVD.ts?new Date(LVD.ts).toLocaleTimeString('de-DE'):'–'}${live?' · Live: Orders kommen in einem eigenen Schritt – jetzt nur Anzeige.':' · Orders aus dem Formular gehen direkt an Bybit Demo.'}</div></div>`}
+function lvBind(el){bxHandBind(el);const g=el.querySelector('#lvGo');if(g)g.onclick=lvOpen;const u=el.querySelector('#lvUn');if(u)u.onclick=()=>lvUnlock();const r=el.querySelector('#lvR');if(r)r.onclick=()=>{LVD.ts=0;lvRefresh(true)}}
 // --- 90-Tage-Erinnerung ---
 function lvKeyLeft(e){const t=LIVE.kd[e];return t?90-Math.floor((Date.now()-t)/864e5):null}
 function lvKeyCheck(){['demo','live'].forEach(e=>{const l=lvKeyLeft(e);if(l==null||l>10)return;const k='wdesk_lvrem_'+e,d=new Date().toDateString();if(store(k)===d)return;store(k,d);
@@ -2117,6 +2119,62 @@ function aiOrder(k){const s=AIR&&aiNorm(AIR.res).szenarien[k];if(!s||s.einstieg=
  [0,1,2].forEach(i=>{$('#tkTP'+(i+1)).value=Z[i]!=null?nstr(Z[i]):'';$('#tkTP'+(i+1)+'p').value=Z[i]!=null?pc[i]:''});
  try{setTab('fut')}catch(_){}tkOpen(true);AIV={sym:AIR.sym,tf:AIR.tf,s};req();toast('🧠 Claude-Szenario ins Order-Formular übernommen – bitte prüfen und selbst absenden')}
 
+
+/* ---------- ✋ Hand-Orders an Bybit Demo (Futures + Spot) ---------- */
+let BXE=null;
+function bxWith(fn){const b=AC.bal,p=AC.pos,o=AC.ord;AC.bal=BXS.equity;AC.pos=[];AC.ord=[];try{return fn()}finally{AC.bal=b;AC.pos=p;AC.ord=o}}
+function bxHandOf(code){return BXS&&(BXS.hand||[]).find(x=>x.mode==='fut'&&x.code===code)}
+async function bxTicket(){if(!lvTokOK()){toast('Erst im Live-Konto am Server anmelden');return}if(!(LVT&&LVT.demo)){toast('Auf dem Server ist kein Bybit-Demo-Schlüssel – neu anmelden');return}
+ if(S.custom||S.src!=='binance'||!BIN[S.sym]){toast('Dieses Paar gibt es nicht bei Bybit');return}if(isRp()){toast('Nicht im Replay');return}
+ let o=tkRead();if(!['market','limit','stop'].includes(o.type)){toast('Bei Bybit gehen Market, Limit und Stop-Order – Trailing-Einstieg (noch) nicht');return}
+ if(!BXS||BXS.equity==null||Date.now()-BXS.t>10000){toast('Lade Bybit-Konto …');await bxRefresh(true)}if(!BXS||BXS.equity==null){toast('Bybit-Konto nicht erreichbar');return}
+ const err=bxWith(()=>tkCheck(o));if(err){toast(err);return}const ref=bxWith(()=>tkRef(o)),z=bxWith(()=>sizeOf(o,ref));
+ if(z.margin>(BXS.avail!=null?BXS.avail:BXS.equity)+1e-6){toast(o.mode==='spot'?'Nicht genug freies USDT bei Bybit':'Nicht genug freie Margin bei Bybit – Hebel erhöhen oder Risiko senken');return}
+ const sp=o.mode==='spot',dirT=sp?'Spot-Kauf':(o.dir>0?'Long':'Short'),coin=S.sym.replace(/\/USDT?$/,''),typT=({market:'Market',limit:'Limit @ '+fmt(o.price),stop:'Stop-Order @ '+fmt(o.price)})[o.type];
+ const miss=[o.ttp>0?'Trailing-Take-Profit':null,o.csl?'Kerzen-Stop':null].filter(Boolean);
+ $('#bxcOut').innerHTML=`<div style="font-size:15px"><b>${dirT} ${S.sym}</b> · ${typT}</div>
+  <table style="width:100%;font-size:13px;margin-top:6px"><tr><td>Menge</td><td style="text-align:right"><b>${ff(+z.qty.toPrecision(6))} ${sp?coin:'Stk.'}</b> (≈ ${money(z.notional)})</td></tr>
+  ${sp?'':`<tr><td>Hebel · Margin</td><td style="text-align:right">${Math.min(o.lev,BX.levMax)}× · ${money(z.margin)}</td></tr>`}
+  <tr><td>Stop</td><td style="text-align:right">${fin(o.sl)?fmt(o.sl)+(sp?' (überwacht dein Server)':' (bei Bybit)'):'–'}</td></tr>
+  <tr><td>Ziele</td><td style="text-align:right">${o.tps.length?o.tps.map(t=>fmt(t.p)+' ('+t.pct+' %)').join(' · '):'–'}</td></tr>
+  <tr><td>Risiko bis Stop</td><td style="text-align:right" class="bad">${fin(o.sl)?money(z.risk$):'–'}</td></tr>
+  ${o.be||o.trail>0?`<tr><td>Verwaltung</td><td style="text-align:right">${[o.be?'Einstand nach Ziel 1':'',o.trail>0?'Nachzieh-Stop '+ff(o.trail)+' %':''].filter(Boolean).join(' · ')} (Server)</td></tr>`:''}
+  <tr><td>Bybit-Guthaben</td><td style="text-align:right">${money(BXS.equity)} · frei ${money(BXS.avail!=null?BXS.avail:BXS.equity)}</td></tr></table>
+  ${miss.length?`<div class="warn" style="font-size:12px">Bei Bybit nicht dabei: ${miss.join(', ')}</div>`:''}
+  <div class="mut" style="font-size:12px;margin-top:4px">🟠 Bybit-Demo-Konto – kein echtes Geld, aber echte Börse, Füllpreise und Gebühren. Menge wird nach Bybit-Regeln gerundet.</div>`;
+ $('#bxcGo').onclick=async()=>{const bt=$('#bxcGo');bt.disabled=true;bt.textContent='Sende …';
+  try{const r=await lvApi('/bx/hand',{op:'open',mode:o.mode,sym:S.sym,code:BIN[S.sym],dir:o.dir,type:o.type,price:o.price,ref:lastP(),sl:fin(o.sl)?o.sl:null,tps:o.tps,qty:z.qty,lev:Math.min(o.lev,BX.levMax),be:o.be,trail:o.trail,risk:z.risk$,strat:o.strat||null},30000);
+   $('#mBxc').classList.remove('open');$('#mTrade').classList.remove('open');TKV=null;(r.events||[]).forEach(e=>{const[t,...b]=e.split(' · ');notify('trade',t,b.join(' · '),{tab:sp?'spot':'fut'})});toast(r.events&&r.events[0]?r.events[0]:'An Bybit gesendet');
+   if(r.warn&&r.warn.length)setTimeout(()=>toast('⚠️ '+r.warn.join(' · ')),2500);BXS=Object.assign(BXS||{},{t:0});LVD.ts=0;lvRefresh(true);bxRefresh(true);req()}
+  catch(e){toast('Bybit: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v2.0) einspielen':e.message))}finally{bt.disabled=false;bt.textContent='🟠 An Bybit senden'}};
+ $('#mBxc').classList.add('open')}
+function bxHandHTML(m){if(!BXS||!BXS.hand)return '';const L=BXS.hand.filter(x=>m==='spot'?x.mode==='spot':x.mode==='fut');if(!L.length)return '';
+ const bt=(op,x,t,c)=>`<button data-bxa="${op}" data-bxi="${x.id}" ${c?`class="${c}"`:''} style="font-size:12px;padding:4px 8px">${t}</button>`;
+ return L.map(x=>{const pos=x.mode==='fut'&&(LVD.pos||[]).find(p=>p.symbol===x.code),sp=x.mode==='spot',cur=pos?+pos.markPrice:(x.lastPx||lastPOf(x.sym)),
+  up=pos?+pos.unrealisedPnl:(x.filled&&cur?(cur-x.entry)*x.qty:null),sl=pos&&+pos.stopLoss?+pos.stopLoss:x.sl;
+  const head=x.filled?`${sp?'<b class="ok">Spot</b> '+(x.base||x.sym)+' '+ff(+(+x.qty).toPrecision(6)):`<b class="${x.dir>0?'ok':'bad'}">${x.dir>0?'Long':'Short'}</b> ${x.sym} ${pos?pos.leverage+'× · '+ff(pos.size):''}`} @ ${fmt(x.entry)}${up!=null?` · <b class="${up>=0?'ok':'bad'}">${up>=0?'+':''}${money(up)}</b>`:''}`
+   :`⏳ <b>${sp?'Spot-Kauf':x.dir>0?'Long':'Short'}</b> ${x.sym} · ${x.type==='stop'?'Stop-Order':'Limit'} @ ${fmt(x.entry)} · wartet`;
+  const det=`Stop ${sl?fmt(sl):'–'}${sp&&sl?' (Server)':''}${x.tps.length?' · Ziel '+x.tps.map(t=>(t.hit?'✅':'')+fmt(t.p)).join(' / '):''}${x.be?' · Einstand':''}${x.trail>0?' · Nachzieh '+ff(x.trail)+' %':''}`;
+  const ed=BXE&&BXE.id===x.id?`<div class="row" style="margin-top:4px"><input id="bxeIn" class="inp" inputmode="decimal" placeholder="${BXE.op==='sl'?'neuer Stop':'Ziele, z. B. 72000; 75000'}" value="${BXE.op==='sl'&&sl?nstr(sl):BXE.op==='tp'?x.tps.filter(t=>!t.hit).map(t=>nstr(t.p)).join('; '):''}" style="flex:1"><button id="bxeOk" class="on" style="font-size:12px">OK</button><button id="bxeNo" style="font-size:12px">✕</button></div>`:'';
+  const btns=x.filled?[bt('close',x,sp?'Verkaufen':'Schließen','danger'),bt('part',x,'½'),bt('be',x,'Stop → Einstand'),bt('sl',x,'Stop ändern'),bt('tp',x,'Ziele ändern')].join(''):bt('cancel',x,'Stornieren','danger');
+  return `<div class="pos" style="border-color:#ffb347">🟠 ${head}<br><span class="mut" style="font-size:12px">${det}</span><div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">${btns}</div>${ed}</div>`}).join('')}
+function lastPOf(sym){return sym===S.sym?lastP():null}
+function bxHandBind(el){el.querySelectorAll('[data-bxa]').forEach(b=>b.onclick=()=>{const op=b.dataset.bxa,id=+b.dataset.bxi;
+  if(op==='sl'||op==='tp'){BXE={id,op};renderPanel();setTimeout(()=>{const i=$('#bxeIn');if(i)i.focus()},50);return}
+  if(op==='close'||op==='cancel'){if(Date.now()-(BX.cT||0)>2500||BX.cI!==id){BX.cT=Date.now();BX.cI=id;toast(op==='cancel'?'Nochmal tippen: Order bei Bybit stornieren':'Nochmal tippen: bei Bybit schließen/verkaufen');return}BX.cT=0}
+  bxAct({op,id,pct:op==='part'?.5:undefined})});
+ const ok=el.querySelector('#bxeOk');if(ok)ok.onclick=()=>{const v=$('#bxeIn').value,e=BXE;BXE=null;
+  if(e.op==='sl'){const p=num(v);if(!fin(p)){toast('Preis eingeben');return}bxAct({op:'sl',id:e.id,price:p})}
+  else{const Z=v.split(/[;\s]+/).map(num).filter(fin).slice(0,3);if(!Z.length){toast('Mind. ein Ziel eingeben');return}const pc=Z.length===1?[100]:Z.length===2?[50,50]:[50,30,20];bxAct({op:'tp',id:e.id,tps:Z.map((p,i)=>({p,pct:pc[i]}))})}};
+ const no=el.querySelector('#bxeNo');if(no)no.onclick=()=>{BXE=null;renderPanel()}}
+async function bxAct(b){toast('Sende an Bybit …');try{const r=await lvApi('/bx/hand',b,30000);toast((r.events&&r.events[0])||({be:'Stop auf Einstand gesetzt',sl:'Stop geändert',tp:'Ziele neu gelegt',part:'Teil geschlossen'})[b.op]||'Erledigt');
+  (r.events||[]).forEach(e=>{const[t,...x]=e.split(' · ');notify('trade',t,x.join(' · '),{tab:S.tab})});if(r.warn&&r.warn.length)setTimeout(()=>toast('⚠️ '+r.warn.join(' · ')),2500);if(r.hist){BXS=Object.assign(BXS||{},{hist:r.hist});bxMerge()}}
+ catch(e){toast('Bybit: '+e.message)}LVD.ts=0;lvRefresh(true);bxRefresh(true)}
+// Bybit-Trades (Bots + Hand) ins Trade-Tagebuch, mit 🟠 markiert
+function bxMerge(){if(!BXS||!Array.isArray(BXS.hist))return;let n=0;BXS.hist.forEach(h=>{const id='bx'+h.id;if(AC.hist.some(x=>x.id===id))return;
+  AC.hist.push({key:'binance:'+h.sym,label:(h.label||h.sym)+' 🟠',mode:h.mode||'fut',lev:h.lev||1,dir:h.dir,entry:h.entry,exit:h.exit,pnl:h.pnl,R:h.R!=null?h.R:0,t0:h.t0,t1:h.t1,why:h.why+' · Bybit Demo',replay:false,bot:h.bot||null,wave:h.wave||null,id,tf:h.tf||null,strat:h.bot?'Elliott-Bot':(h.strat||'Bybit Demo'),note:'',ex:'bybit'});n++});
+ if(n){AC.hist.sort((a,b)=>(a.t1||0)-(b.t1||0));saveAcct()}}
+
 /* ---------- 🟠 Bots über Bybit Demo (der Server handelt, Bybit ist maßgeblich) ---------- */
 const BX={levMax:20,posMax:3};let BXS=null;
 function bxCan(){return !!(lvTokOK()&&LVT&&LVT.demo&&S.src==='binance'&&!S.custom&&!isRp()&&BIN[S.sym])}
@@ -2124,8 +2182,8 @@ function bxWhy(){return !lvTokOK()?'erst im Live-Konto am Server anmelden':!(LVT
 function bxCfg(){if(!lvTokOK())return Promise.resolve();const L=AC.bots.filter(b=>b.ex==='bybit'),map={};L.forEach(b=>{const y=bgSym(b.key);if(y&&BIN[y])map[y]=BIN[y]});
  return lvApi('/bx/cfg',{bots:L.map(b=>{const{st,...r}=b;return r}),map}).then(r=>{BXS=r;BXS.t=Date.now();if(S.tab==='bots')renderBots()}).catch(e=>toast('Bybit: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v1.7) einspielen':e.message)))}
 let bxBusy=false;
-async function bxRefresh(force){if(bxBusy||!lvTokOK()||!AC.bots.some(b=>b.ex==='bybit'))return;if(!force&&BXS&&Date.now()-BXS.t<20000)return;bxBusy=true;
- try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();if(S.tab==='bots'&&!document.hidden)renderBots();if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false}}
+async function bxRefresh(force){if(bxBusy||!lvTokOK()||!(AC.bots.some(b=>b.ex==='bybit')||LIVE.mode==='bdemo'))return;if(!force&&BXS&&Date.now()-BXS.t<20000)return;bxBusy=true;
+ try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();bxMerge();if(S.tab==='bots'&&!document.hidden)renderBots();if(S.tab==='spot'||S.tab==='fut')renderPanel();if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false}}
 function bxAuto(){if(!BXS||Date.now()-BXS.t>20000)setTimeout(()=>bxRefresh(),50)}
 setInterval(()=>{if(!document.hidden&&S.tab==='bots')bxRefresh()},20000);
 function bxBotCard(bt,act,st){const bs=(BXS&&BXS.bots&&BXS.bots[bt.id])||{},ps=((BXS&&BXS.pos)||[]).filter(p=>p.bot==bt.id),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(','),bst=bs.st||{};
@@ -2556,7 +2614,8 @@ function tkCheck(o){{const gm=guardMsg();if(gm)return gm}const L=o.dir>0;
  if(o.type==='trail'&&fin(o.price)&&o.dir*(o.price-lastP())>0)return L?'Aktivierung muss unter dem Kurs liegen':'Aktivierung muss über dem Kurs liegen';
  if(o.mode==='fut'){const lq=liqPrice(o.dir,ref,o.lev);if(o.dir*(o.sl-lq)<=0)return`Stop liegt hinter dem Liquidationspreis (${fmt(lq)}) – Hebel senken`}
  const z=sizeOf(o,ref);if(!(z.qty>0))return'Kein freies Guthaben';if(z.margin>avail()+1e-6)return o.mode==='spot'?'Nicht genug Guthaben':'Nicht genug Margin – Hebel erhöhen oder Risiko senken';return''}
-function tkUpd(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode==='spot';try{tkConfUpd();tkKellyUpd()}catch(_){}
+function tkUpd(){return LIVE.mode==='bdemo'&&BXS&&BXS.equity!=null?bxWith(tkUpd0):tkUpd0()}
+function tkUpd0(){const inP=S.tab==='spot'||S.tab==='fut',o=tkRead(),sp=o.mode==='spot';try{tkConfUpd();tkKellyUpd()}catch(_){}
  $('#tkMode').style.display=inP?'none':'flex';$('#tkDir').style.display=sp?'none':'flex';$('#rRisk').style.display=sp?'none':'flex';$('#rAmt').style.display=sp?'flex':'none';$('#rLev').style.display=sp?'none':'flex';$('#fStake').style.display='flex';{const lb=$('#fStake label'),inp=$('#tkStake');if(lb)lb.textContent=sp?'Betrag $':'Einsatz $';inp.placeholder=sp?'optional, z. B. 500 (statt %)':'optional, z. B. 200 (statt Risiko %)'}$('#tkRisk').style.opacity=(!sp&&fin(o.stake)&&o.stake>0)?.4:1;$('#tkAmt').style.opacity=(sp&&fin(o.stake)&&o.stake>0)?.4:1;
  $('#fLimit').style.display=o.type==='market'?'none':'flex';$('#lLimit').textContent={limit:'Limit-Preis',stop:'Auslöser',trail:'Aktivierung'}[o.type]||'';$('#tkPrice').placeholder=o.type==='trail'?'leer = sofort':'';
  $('#fTpct').style.display=o.type==='trail'?'flex':'none';$('#lSL').textContent=sp?'Stop (opt.)':'Stop-Loss';
@@ -3033,7 +3092,7 @@ $('#tkMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;TK.mode
 $('#tkBox').addEventListener('input',()=>{tkUpd();if(TKV)req()});$('#tkBox').addEventListener('change',tkUpd);
 document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{S.pick={field:b.dataset.pick};$('#mTrade').classList.remove('open');updHint()});
 $('#tkSK').onclick=tkFromSK;
-$('#tkSend').onclick=()=>{if(LIVE.mode!=='app'){toast('Hand-Orders an Bybit kommen in einem eigenen Schritt – jetzt nur Anzeige. Zum Üben oben auf „DEMO“ umschalten. Bots: Ausführung „🟠 Bybit Demo“.');return}const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}const go=()=>{$('#mTrade').classList.remove('open');TKV=null;placeOrder(o);req()};if(FEAT.check&&!isRp())ckOpen(o,go);else go()};
+$('#tkSend').onclick=()=>{if(LIVE.mode==='bdemo'){bxTicket();return}if(LIVE.mode!=='app'){toast('Bybit Live mit echtem Geld kommt in einem eigenen Schritt – zum Üben „Bybit-Demo“ oder „DEMO“ wählen.');return}const o=tkRead();const err=tkCheck(o);if(err){toast(err);return}const go=()=>{$('#mTrade').classList.remove('open');TKV=null;placeOrder(o);req()};if(FEAT.check&&!isRp())ckOpen(o,go);else go()};
 $('#bType').onclick=e=>{const b=e.target.closest('button');if(!b)return;BT.type=b.dataset.v;renderBots()};
 $('#pBots').addEventListener('input',e=>{if(BT.type!=='elliott')botUpd()});$('#eTestB').onclick=()=>{$('#eRes').innerHTML='<div class="mut">Rechne …</div>';setTimeout(()=>eTest(),30)};$('#eTP').onchange=e=>{EB.tp=e.target.checked};$('#eHTF').onchange=e=>{EB.htf=e.target.checked};$('#bStart').onclick=botStart;$('#bSug').onclick=botSuggest;
 $('#hPin').onchange=e=>{HM.pin=e.target.checked;store('wdesk_hm',HM);req()};$('#hCan').onchange=e=>{HM.candles=e.target.checked;store('wdesk_hm',HM);req()};$('#hOver').onchange=e=>{HM.over=e.target.checked;store('wdesk_hm',HM);req()};$('#hLiqOn').onchange=e=>{VIS.liq=e.target.checked;saveVis();req()};
