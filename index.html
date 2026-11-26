@@ -1401,7 +1401,7 @@ function renderBots(){const usd=num($('#bUsd').value);$('#bAmt').innerHTML=[10,2
 /* ---------- Elliott-Bot (mehrere Zeiteinheiten) ---------- */
 const curTf=()=>S.custom?'csv':S.tf;
 const TFL=['15m','1h','4h','1D'];
-const tfMs=tf=>tf==='csv'?S.tfms:TFMS[tf];
+
 const tfName=tf=>tf==='csv'?'CSV':tf;
 const EB={dev:0,tfs:null,waves:{'1':true,'3':true,'5':true,A:true,C:true},dir:'both',risk:1,riskUsd:0,lev:10,tp:true,htf:false,ex:'app'};
 const WNAME={'1':'Welle 1','3':'Welle 3','5':'Welle 5',A:'Welle A',C:'Welle C'};
@@ -1701,7 +1701,6 @@ async function calFetch(){const FF='https://nfs.faireconomy.media/ff_calendar_th
  try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),10000);const r=await fetch('./calendar.json?t='+Date.now(),{cache:'no-store',signal:ctl.signal});clearTimeout(to);
   if(r.ok){const j=await r.json();if(j&&Array.isArray(j.events)&&j.events.length){CAL.src='GitHub·'+(j.source||'');CAL.upd=Date.parse(j.updated)||0;return j.events}}CAL.log.push('GitHub-Datei: '+(r.ok?'leer':'fehlt (HTTP '+r.status+')'))}catch(e){CAL.log.push('GitHub-Datei: fehlt')}
  const d0=new Date();d0.setHours(0,0,0,0);const from=new Date(d0.getTime()-2*864e5).toISOString(),to=new Date(d0.getTime()+8*864e5).toISOString();
- const TV=`https://economic-calendar.tradingview.com/events?from=${from}&to=${to}&countries=US,EU,GB,JP,CN,DE`;
  const ISO={US:'USD',EU:'EUR',DE:'EUR',GB:'GBP',JP:'JPY',CN:'CNY',CA:'CAD',AU:'AUD',CH:'CHF'};
  const srcs=[];[...CALSRC,...CALSRC2].forEach(([n,f])=>{srcs.push(['FF·'+n,FF,n,f])});
  const pref=store('wdesk_calsrc');srcs.sort((a,b)=>(b[0]===pref)-(a[0]===pref));
@@ -1856,10 +1855,11 @@ setInterval(()=>foLoad(),5*6e4);
 /* ---- 6. Wochen-Bericht ---- */
 const weekStart=(off)=>{const d=new Date();d.setHours(0,0,0,0);const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd-7*(off||0));return d.getTime()};
 let RPW=0;
-function repCalc(off){const a=weekStart(off),b=a+7*864e5,L=AC.hist.filter(t=>!t.replay&&t.t1>=a&&t.t1<b);const n=L.length,w=L.filter(t=>t.R>0).length,pnl=L.reduce((s,t)=>s+t.pnl,0),sR=L.reduce((s,t)=>s+t.R,0);return{a,b,L,n,w,wr:n?w/n:0,pnl,sR,aR:n?sR/n:0}}
+let RPX=null;const repOf=t=>(RPX||(LIVE.mode==='bdemo'?'bybit':'app'))==='bybit'?t.ex==='bybit':t.ex!=='bybit';
+function repCalc(off){const a=weekStart(off),b=a+7*864e5,L=AC.hist.filter(t=>!t.replay&&t.t1>=a&&t.t1<b&&repOf(t));const n=L.length,w=L.filter(t=>t.R>0).length,pnl=L.reduce((s,t)=>s+t.pnl,0),sR=L.reduce((s,t)=>s+t.R,0);return{a,b,L,n,w,wr:n?w/n:0,pnl,sR,aR:n?sR/n:0}}
 function repOpen(){renderRep();$('#mRep').classList.add('open');store('wdesk_repseen',weekStart(0))}
 function renderRep(){const R=repCalc(RPW),P=repCalc(RPW+1),d=x=>new Date(x).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
- let h=`<div class="seg" style="margin:0 0 8px"><button data-rw="1" class="${RPW===1?'on':''}">Letzte Woche</button><button data-rw="0" class="${RPW===0?'on':''}">Diese Woche</button></div><div class="mut" style="font-size:12px;margin-bottom:6px">${d(R.a)} – ${d(R.b-1)} · ohne Replay</div>`;
+ const rx=RPX||(LIVE.mode==='bdemo'?'bybit':'app');let h=`<div class="seg" style="margin:0 0 6px"><button data-rx="app" class="${rx==='app'?'on':''}">Spielgeld</button><button data-rx="bybit" class="${rx==='bybit'?'on':''}">🟠 Bybit Demo</button></div><div class="seg" style="margin:0 0 8px"><button data-rw="1" class="${RPW===1?'on':''}">Letzte Woche</button><button data-rw="0" class="${RPW===0?'on':''}">Diese Woche</button></div><div class="mut" style="font-size:12px;margin-bottom:6px">${d(R.a)} – ${d(R.b-1)} · ohne Replay</div>`;
  if(!R.n)h+='<div class="mut" style="padding:8px 0">Keine abgeschlossenen Trades in dieser Woche.</div>';
  else{const cmp=(x,y,f)=>y==null?'':`<small class="mut"> (Vorwoche ${f(y)})</small>`;
   h+=`<div class="card"><table style="width:100%;font-size:14px"><tr><td>Trades</td><td style="text-align:right"><b>${R.n}</b>${cmp(R.n,P.n?P.n:null,x=>x)}</td></tr>
@@ -1881,12 +1881,12 @@ function renderRep(){const R=repCalc(RPW),P=repCalc(RPW+1),d=x=>new Date(x).toLo
   if(R.n>=15)tips.push(`${R.n} Trades in einer Woche ist viel – weniger, dafür bessere Setups?`);
   if(!tips.length)tips.push('Keine Auffälligkeiten – weiter so und Notizen im Tagebuch pflegen.');
   h+=`<div class="card" style="font-size:13px"><h4><span>💡 Hinweise</span></h4>${tips.map(t=>`<div style="margin:4px 0">• ${t}</div>`).join('')}</div>`}
- {const L=AC.hist.filter(t=>!t.replay&&t.t1>=Date.now()-30*864e5);if(L.length>=3){const g=f=>{const m={};L.forEach(t=>{const k=f(t);(m[k]||(m[k]=[])).push(t)});return Object.entries(m).map(([k,a])=>({k,n:a.length,w:a.filter(t=>t.R>0).length,s:a.reduce((x,t)=>x+t.R,0),p:a.reduce((x,t)=>x+t.pnl,0)})).sort((x,y)=>y.s-x.s)};
+ {const L=AC.hist.filter(t=>!t.replay&&t.t1>=Date.now()-30*864e5&&repOf(t));if(L.length>=3){const g=f=>{const m={};L.forEach(t=>{const k=f(t);(m[k]||(m[k]=[])).push(t)});return Object.entries(m).map(([k,a])=>({k,n:a.length,w:a.filter(t=>t.R>0).length,s:a.reduce((x,t)=>x+t.R,0),p:a.reduce((x,t)=>x+t.pnl,0)})).sort((x,y)=>y.s-x.s)};
   const row=x=>`<tr><td>${x.s>0?'✅':x.s<0?'❌':'➖'} ${x.k}</td><td style="text-align:right">${x.n}</td><td style="text-align:right">${pct(x.w/x.n)}</td><td style="text-align:right" class="${x.s>=0?'ok':'bad'}">${fR(x.s)}</td></tr>`;
   const tab=(t,a)=>`<div style="margin-top:6px"><b>${t}</b><table style="width:100%;font-size:12px"><tr class="mut"><td></td><td style="text-align:right">Trades</td><td style="text-align:right">Treffer</td><td style="text-align:right">Summe R</td></tr>${a.map(row).join('')}</table></div>`;
   h+=`<div class="card" style="font-size:13px"><h4><span>🧪 Welche Setups funktionieren? (30 Tage)</span></h4>${tab('Strategie + Welle',g(t=>statKey(t,'strat')+(t.wave?' · '+statKey(t,'wave'):'')))}${tab('Zeiteinheit',g(t=>statKey(t,'tf')))}${tab('Richtung',g(t=>statKey(t,'dir')))}<div class="mut" style="font-size:11px">${L.length} Trades · R = Gewinn im Verhältnis zum Risiko</div></div>`}}
- h+=`<div class="mut" style="font-size:11px">Konto jetzt ${money(AC.bal)} · Start ${money(AC.start)}</div>`;
- $('#repOut').innerHTML=h;$('#repOut').querySelectorAll('[data-rw]').forEach(b=>b.onclick=()=>{RPW=+b.dataset.rw;renderRep()})}
+ h+=rx==='bybit'?`<div class="mut" style="font-size:11px">${BXS&&BXS.equity!=null?'Bybit-Guthaben jetzt '+money(BXS.equity):''}</div>`:`<div class="mut" style="font-size:11px">Konto jetzt ${money(AC.bal)} · Start ${money(AC.start)}</div>`;
+ $('#repOut').innerHTML=h;$('#repOut').querySelectorAll('[data-rw]').forEach(b=>b.onclick=()=>{RPW=+b.dataset.rw;renderRep()});$('#repOut').querySelectorAll('[data-rx]').forEach(b=>b.onclick=()=>{RPX=b.dataset.rx;renderRep()})}
 function repTick(){if(!FEAT.report)return;const d=new Date();if(d.getDay()!==0||d.getHours()<18)return;const k=weekStart(0);if(store('wdesk_repn')===k)return;store('wdesk_repn',k);const R=repCalc(0);
  notify('report','📈 Dein Wochen-Bericht ist fertig',R.n?`${R.n} Trades · ${pct(R.wr)} Treffer · ${money(R.pnl)}`:'Diese Woche keine Trades',{act:'rep',sym:null});toast('📈 Wochen-Bericht ist fertig – ☰ › Wochen-Bericht')}
 setInterval(repTick,10*6e4);setTimeout(repTick,15000);
@@ -1976,7 +1976,7 @@ function lvKeyCheck(){['demo','live'].forEach(e=>{const l=lvKeyLeft(e);if(l==nul
  const nm=e==='live'?'Live':'Demo',msg=l<=0?`Bybit-${nm}-Schlüssel ist abgelaufen – neuen erstellen`:`Bybit-${nm}-Schlüssel läuft in ${l} Tag${l>1?'en':''} ab`;toast('🔑 '+msg);notify('trade','🔑 '+msg,'☰ › Börse & Live-Konto › Schlüssel erneuern',{act:'live',sym:null})})}
 setTimeout(lvKeyCheck,6000);setInterval(lvKeyCheck,6*36e5);
 // --- Einstellungs-Fenster ---
-let LVP=null;
+
 function lvOpen(){const el=$('#lvOut'),ok=lvTokOK(),mode=LIVE.mode;
  const seg=`<div class="seg" style="margin:0 0 8px"><button data-md="app" class="${mode==='app'?'on':''}">Demo (App)</button><button data-md="bdemo" class="${mode==='bdemo'?'on':''}">Bybit-Demo</button><button data-md="blive" class="${mode==='blive'?'on':''}" style="${mode==='blive'?'color:#ff5c7a':''}">Bybit Live</button></div>`;
  const kd=e=>{const l=lvKeyLeft(e),t=LIVE.kd[e];return `<label class="row" style="font-size:13px">${e==='live'?'Live':'Demo'}-Schlüssel erstellt am <input type="date" data-kd="${e}" class="inp" value="${t?new Date(t).toISOString().slice(0,10):''}" style="flex:none;width:150px;margin-left:auto"></label>${l!=null?`<div class="${l<=10?'warn':'mut'}" style="font-size:12px;margin:-2px 0 4px">${l>0?'noch '+l+' Tage gültig':'abgelaufen – neuen erstellen'}</div>`:''}`};
@@ -2253,7 +2253,7 @@ const OV=Object.assign({start:true},store('wdesk_ov')||{});
 function ovHTML(){const d0=new Date();d0.setHours(0,0,0,0);const T0=d0.getTime(),sec=(t,b)=>`<div class="card" style="font-size:13px"><h4><span>${t}</span></h4>${b}</div>`,row=(a,b,c)=>`<tr><td>${a}</td><td style="text-align:right"${c?` class="${c}"`:''}>${b}</td></tr>`;
  let h='';
  // heutiges Ergebnis
- {const L=AC.hist.filter(t=>!t.replay&&t.t1>=T0),pl=L.reduce((a,t)=>a+t.pnl,0),w=L.filter(t=>t.R>0).length;let b=`<table style="width:100%">${row('Abgeschlossen heute',L.length?`${L.length} Trade${L.length>1?'s':''} · ${w} im Plus`:'noch keine')}${L.length?row('Ergebnis heute',money(pl),pl>=0?'ok':'bad'):''}`;
+ {const L=AC.hist.filter(t=>!t.replay&&t.t1>=T0&&t.ex!=='bybit'),LB=AC.hist.filter(t=>t.t1>=T0&&t.ex==='bybit'),pl=L.reduce((a,t)=>a+t.pnl,0),w=L.filter(t=>t.R>0).length;let b=`<table style="width:100%">${row('Spielgeld: abgeschlossen heute',L.length?`${L.length} Trade${L.length>1?'s':''} · ${w} im Plus`:'noch keine')}${L.length?row('Spielgeld: Ergebnis heute',money(pl),pl>=0?'ok':'bad'):''}${LB.length?row('🟠 Bybit: abgeschlossen heute',`${LB.length} Trade${LB.length>1?'s':''} · ${LB.filter(t=>t.R>0).length} im Plus`):''}`;
   const dy=BXS&&BXS.day;if(dy&&dy.eq0&&BXS.equity!=null){const x=BXS.equity-dy.eq0;b+=row('🟠 Bybit Demo heute',`${money(x)} (${(x/dy.eq0*100).toFixed(2).replace('.',',')} %)`,x>=0?'ok':'bad')}
   if(dy&&dy.lock)b+=row('','🛑 Tagesgrenze erreicht – gesperrt','bad');
   b+=row('App-Demo-Konto',money(AC.bal))+(BXS&&BXS.equity!=null?row('🟠 Bybit-Guthaben',money(BXS.equity)):'')+'</table>';h+=sec('📅 Heute',b)}
@@ -2590,7 +2590,7 @@ function renderJr(){const t=JR;if(!t)return;const d=x=>new Date(x).toLocaleStrin
 let SG='strat';
 const SGN={strat:'Strategie',wave:'Welle',dir:'Richtung',tf:'Zeiteinheit',sym:'Coin'};
 function statKey(t,g){if(g==='strat')return t.bot?'Elliott-Bot':(t.strat||'Manuell');if(g==='wave')return t.wave?WNAME[t.wave]||t.wave:'ohne Welle';if(g==='dir')return t.mode==='spot'?'Spot (Kauf)':t.dir>0?'Long':'Short';if(g==='tf')return t.tf||'unbekannt';return (t.label||'').replace(/ 🤖.*/,'')}
-function statHTML(){const m={};AC.hist.forEach(t=>{const k=statKey(t,SG);(m[k]||(m[k]=[])).push(t)});
+function statHTML(){const m={};AC.hist.filter(t=>t.ex!=='bybit').forEach(t=>{const k=statKey(t,SG);(m[k]||(m[k]=[])).push(t)});
  const rows=Object.entries(m).map(([k,a])=>{const w=a.filter(t=>t.R>0).length,sR=a.reduce((s,t)=>s+t.R,0),sP=a.reduce((s,t)=>s+t.pnl,0);return{k,n:a.length,wr:w/a.length,sR,aR:sR/a.length,sP}}).sort((a,b)=>b.sR-a.sR);
  let h=`<div class="card"><h4><span>📊 Statistik nach ${SGN[SG]}</span></h4><div class="chips" id="sgC" style="margin:0 0 6px">${Object.keys(SGN).map(k=>`<button data-g="${k}" class="${k===SG?'on':''}">${SGN[k]}</button>`).join('')}</div>`;
  if(!rows.length)return h+'<div class="mut" style="font-size:13px">Noch keine abgeschlossenen Trades.</div></div>';
@@ -2880,11 +2880,11 @@ function renderPanel(){if(S.bg)return;
 /* account modal */
 function acOpen(){$('#mAcct').classList.add('open');renderAcct()}
 let resetArm=0;
-async function acBxPanic(){if(Date.now()-(BX.pT||0)>2500){BX.pT=Date.now();toast('Nochmal tippen: ALLE Bybit-Positionen schließen und offene Orders stornieren');return}BX.pT=0;
+async function acBxPanic(){if(Date.now()-(BX.pT||0)>2500){BX.pT=Date.now();toast('Nochmal tippen: ALLE Bybit-Positionen schließen, Orders stornieren und Bybit-Bots pausieren');return}BX.pT=0;
  const L=((BXS&&BXS.hand)||[]);toast('Schließe alles bei Bybit …');for(const x of L){try{await lvApi('/bx/hand',{op:x.filled?'close':'cancel',id:x.id},30000)}catch(e){toast('Bybit: '+e.message)}}
  if(((BXS&&BXS.pos)||[]).some(p=>!p.hand)){try{await lvApi('/bx/kill',{})}catch(e){toast('Bybit: '+e.message)}}
- await bxRefresh(true);renderAcct();toast('🚨 Bybit: alles geschlossen')}
-function renderAcct(){if(S.bg)return;if(!$('#mAcct').classList.contains('open'))return;const el=$('#acOut'),BY=LIVE.mode==='bdemo',H=BY?AC.hist.filter(t=>t.ex==='bybit'):AC.hist;{const sb=$('#acSub');if(sb)sb.textContent=BY?'(🟠 Bybit Demo)':LIVE.mode==='blive'?'(Bybit Live)':'(Spielgeld)'}
+ await bxRefresh(true);renderAcct();toast('🚨 Bybit: alles geschlossen · Bybit-Bots pausiert – wieder freigeben unter ☰ › Live-Konto › Bybit Demo')}
+function renderAcct(){if(S.bg)return;if(!$('#mAcct').classList.contains('open'))return;const el=$('#acOut'),BY=LIVE.mode==='bdemo',H=BY?AC.hist.filter(t=>t.ex==='bybit'):AC.hist.filter(t=>t.ex!=='bybit');{const sb=$('#acSub');if(sb)sb.textContent=BY?'(🟠 Bybit Demo)':LIVE.mode==='blive'?'(Bybit Live)':'(Spielgeld)'}
  if(LIVE.mode==='blive'){el.innerHTML='<div class="card" style="font-size:13px">🔴 <b>Bybit Live ist noch nicht angebunden.</b><br><span class="mut">Das kommt, wenn Bybit Demo eine Weile sauber läuft. Bis dahin oben auf App-Demo oder Bybit-Demo umschalten.</span></div>';return}
  if(BY&&(!BXS||Date.now()-BXS.t>20000))bxRefresh(true).then(()=>{if($('#mAcct').classList.contains('open'))renderAcct()});
  const cur=AC.pos.filter(mine),un=cur.reduce((s,p)=>s+upnl(p),0)+AC.bots.filter(b=>mine(b)&&b.state!=='stopped'&&b.state!=='done').reduce((s,b)=>s+botUnreal(b),0),gain=(AC.bal-AC.start)/AC.start;
@@ -2978,10 +2978,6 @@ function startLiqWS(only){if(!only)stopLiqWS();if(S.src!=='binance'||S.full||!BI
  if(!only||only==='Bybit')liqConn('Bybit','wss://stream.bybit.com/v5/public/linear',ws=>ws.send(JSON.stringify({op:'subscribe',args:['allLiquidation.'+sym]})),(m,sy)=>{(Array.isArray(m.data)?m.data:[]).forEach(d=>{const p=+d.p,q=+d.v;addLiq({ex:'Bybit',t:+d.T||Date.now(),p,v:p*q,s:d.S==='Buy'?-1:1},sy)})},JSON.stringify({op:'ping'}));
  if(!only||only==='OKX')okxCt(coin).then(()=>getJ(`https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&instFamily=${coin}-USDT&state=filled&limit=100`).then(j=>{const sy=S.sym;(j&&Array.isArray(j.data)?j.data:[]).forEach(d=>(d.details||[]).forEach(x=>{const p=+x.bkPx,q=+x.sz*(CTVAL[coin]||NaN);const lng=x.posSide==='long'||(x.posSide!=='short'&&x.side==='sell');if(Date.now()-(+x.ts)<864e5)addLiq({ex:'OKX',t:+x.ts,p,v:p*q,s:lng?-1:1},sy)}))})).catch(()=>{});
  if(!only||only==='OKX')liqConn('OKX','wss://ws.okx.com:8443/ws/v5/public',ws=>ws.send(JSON.stringify({op:'subscribe',args:[{channel:'liquidation-orders',instType:'SWAP'}]})),(m,sy)=>{(Array.isArray(m.data)?m.data:[]).forEach(d=>{if(d.instId!==coin+'-USDT-SWAP')return;(d.details||[]).forEach(x=>{const p=+x.bkPx,q=+x.sz*(CTVAL[coin]||NaN);const lng=x.posSide==='long'||(x.posSide!=='short'&&x.side==='sell');addLiq({ex:'OKX',t:+x.ts||Date.now(),p,v:p*q,s:lng?-1:1},sy)})})},'ping')}
-function drawLiqs(a,b){const B=S.bars;if(!S.liqs||!S.liqs.length||!B.length)return;const t0=B[Math.max(0,a)].t,sel=HM.ex==='all'?null:EXN[HM.ex||'binance'];
- S.liqs.forEach(x=>{if(x.t<t0||(sel&&S.tab==='heat'&&(x.ex||'Binance')!==sel))return;let lo=0,hi=B.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(B[m].t<=x.t)lo=m;else hi=m-1}if(lo>b+1)return;
-  const xx=xOf(lo)+((x.t-B[lo].t)/S.tfms-.5)*S.bw,y=yOf(x.p),r=Math.min(16,2.5+Math.sqrt(x.v)/45);
-  ctx.fillStyle=x.s<0?'rgba(255,70,90,.5)':'rgba(40,220,140,.5)';ctx.strokeStyle=x.s<0?'#ff4d6a':'#2ee59d';ctx.lineWidth=1;ctx.beginPath();ctx.arc(xx,y,r,0,7);ctx.fill();ctx.stroke()})}
 function renderLiqStats(){const el=$('#hLiq');if(!el)return;if(S.src!=='binance'||S.full||!BIN[S.sym]||S.custom){el.innerHTML='<span class="mut">Echte Liquidationen gibt es nur mit Live-Kursen (installierte App, Krypto-Symbole).</span>';return}
  const now=Date.now(),exs=['Binance','Bybit','OKX'],sum=(ms,s,ex)=>S.liqs.filter(x=>now-x.t<ms&&x.s===s&&(!ex||(x.ex||'Binance')===ex)).reduce((a,x)=>a+x.v,0);
  const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};

@@ -1154,8 +1154,9 @@ async function repRun(env, opt = {}) {
   const snap = await KV.get('snap', 'json'); const acct = snap && snap.data ? jp(snap.data.wdesk_acct) : null;
   const L = (acct && Array.isArray(acct.hist) ? acct.hist : []).filter(t => !t.replay && t.t1 >= now - 7 * 864e5);
   if (!L.length) return { n: 0 };
-  const w = L.filter(t => t.R > 0).length, pnl = L.reduce((a, t) => a + (t.pnl || 0), 0), sR = L.reduce((a, t) => a + (t.R || 0), 0);
-  const body = `${L.length} Trades · Trefferquote ${Math.round(w / L.length * 100)} % · ${bxMoney(pnl)} · ${sR >= 0 ? '+' : ''}${sR.toFixed(1).replace('.', ',')} R – antippen für Details`;
+  const part = (A, nm) => { if (!A.length) return null; const w = A.filter(t => t.R > 0).length, pnl = A.reduce((a, t) => a + (t.pnl || 0), 0), sR = A.reduce((a, t) => a + (t.R || 0), 0);
+    return `${nm}: ${A.length} Trade${A.length > 1 ? 's' : ''} · ${Math.round(w / A.length * 100)} % Treffer · ${bxMoney(pnl)} (${sR >= 0 ? '+' : ''}${sR.toFixed(1).replace('.', ',')} R)`; };
+  const body = [part(L.filter(t => t.ex !== 'bybit'), 'Spielgeld'), part(L.filter(t => t.ex === 'bybit'), '🟠 Bybit')].filter(Boolean).join(' · ') + ' – antippen für Details';
   await pushAll(env, { title: '📈 Dein Wochenbericht', body, tag: 'rep-' + wk, nav: { act: 'rep' } }, false);
   return { n: L.length };
 }
