@@ -829,6 +829,7 @@ async function bxHand(env, b, opt = {}) {
   const { bx } = await bxLoad(KV), now = opt.now || Date.now(), ev = [], res = { ok: true };
   const find = () => bx.pos.find(q => q.id === +b.id || (b.code && q.code === b.code && q.mode === (b.mode || 'fut')));
   const op = b.op;
+  if (op === 'open') { const cfg0 = await KV.get('bxcfg', 'json') || {}; if (bxLocked(cfg0, now)) throw new Error(`Tagesverlust-Grenze erreicht (−${String(cfg0.lock.loss).replace('.', ',')} %) – neue Orders erst ab Mitternacht wieder möglich`); }
   if (op === 'open') {
     const code = String(b.code || ''), mode = b.mode === 'spot' ? 'spot' : 'fut', dir = mode === 'spot' ? 1 : (+b.dir < 0 ? -1 : 1);
     if (!/^[A-Z0-9]{3,24}$/.test(code)) throw new Error('Symbol fehlt');
@@ -891,6 +892,9 @@ async function bxHand(env, b, opt = {}) {
   return res;
 }
 
+const bxDay = t => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(t));
+const bxLim = cfg => cfg.dayLim == null ? 3 : cfg.dayLim;
+const bxLocked = (cfg, now) => !!(cfg.lock && cfg.lock.d === bxDay(now));
 async function bxRun(env, opt = {}) {
   const KV = env.WDESK; if (!KV) return { skip: 'nokv' };
   if (!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET)) return { skip: 'nokey' };
@@ -918,6 +922,18 @@ async function bxRun(env, opt = {}) {
   if (bx.failPushed) { bx.failPushed = false; await bxPush(env, '✅ Server erreicht Bybit wieder', 'Die Bybit-Bots laufen weiter.', null); }
   if (!bx.okT || now - bx.okT > 30 * 60e3) bx.okT = now;
   const acc = (wal.list || [])[0] || {}, equity = bxNum(acc.totalEquity, 0); res.equity = equity;
+  // Tagesverlust-Grenze: Startguthaben je Tag (Berliner Zeit) merken, bei Überschreiten alles sperren bis Mitternacht
+  { const dk = bxDay(now); let cdirty = false;
+    if (!bx.day || bx.day.d !== dk) {
+      if (cfg.lock && cfg.lock.d !== dk) { cfg.lock = null; Object.values(cfg.bots).forEach(o => { o.resumeT = now; }); cdirty = true; ev.push({ title: '✅ Neuer Handelstag', body: 'Tagesverlust-Grenze zurückgesetzt · Bybit-Bots laufen wieder', sym: null }); }
+      bx.day = { d: dk, eq0: equity };
+    }
+    const lim = bxLim(cfg), loss = bx.day.eq0 > 0 ? (bx.day.eq0 - equity) / bx.day.eq0 * 100 : 0; res.dayLoss = loss;
+    if (lim > 0 && !cfg.lock && cfg.lockSkip !== dk && loss >= lim) {
+      cfg.lock = { t: now, d: dk, loss: +loss.toFixed(2), eq0: bx.day.eq0, eq: equity }; cfg.kill = now; cdirty = true;
+      ev.push({ title: `🛑 Tagesverlust-Grenze erreicht (−${loss.toFixed(1).replace('.', ',')} %)`, body: `${bxMoney(equity - bx.day.eq0)} heute · Bybit-Bots gestoppt und Bot-Positionen geschlossen · keine neuen Handorders bis Mitternacht`, sym: null });
+    }
+    if (cdirty) await KV.put('bxcfg', JSON.stringify(cfg)); }
   const bpos = {}; (pl.list || []).forEach(x => { if (bxNum(x.size, 0) > 0) bpos[x.symbol] = x; });
   const pref = 'bybit';
   // 1) laufende Positionen: ausgeführt? geschlossen? Stop nachziehen? Bot gestoppt / Not-Aus?
@@ -1209,11 +1225,13 @@ export default {
         } else if (op === 'stop') { const o = cfg.bots[b.id]; if (o) { o.state = 'stopped'; await saveCfg(); } }
         else if (op === 'resume') { const o = cfg.bots[b.id]; if (o) { o.resumeT = Date.now(); await saveCfg(); } }
         else if (op === 'kill') { cfg.kill = Date.now(); await saveCfg(); }
-        else if (op === 'unkill') { const t = Date.now(); Object.values(cfg.bots).forEach(o => { o.resumeT = t; }); await saveCfg(); }
+        else if (op === 'unkill') { const t = Date.now(); Object.values(cfg.bots).forEach(o => { o.resumeT = t; }); if (cfg.lock) { cfg.lockSkip = cfg.lock.d; cfg.lock = null; } await saveCfg(); }
+        else if (op === 'daylim') { const v = +b.pct; cfg.dayLim = isFinite(v) ? Math.max(0, Math.min(50, v)) : 3; await saveCfg(); }
         else if (op === 'hand') { try { const r = await bxHand(env, b); const { bx } = await bxLoad(KV); return json(h, { ...r, hist: bx.hist.slice(0, 100) }); } catch (e) { return json(h, { error: 'bybit', msg: e.message }, 400); } }
         else if (op !== 'state') return json(h, { error: 'notfound' }, 404);
         let ran = null; if (op !== 'state' && op !== 'resume' && op !== 'hand') ran = await bxRun(env).catch(e => ({ err: String(e.message || e) }));
-        const { bx } = await bxLoad(KV); const out = { ok: true, key: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), ran, kill: cfg.kill || 0, bots: {}, pos: [], hist: bx.hist.slice(0, 100), err: bx.err.filter(e => !/HTTP 403/.test(e.m)).slice(0, 10), w: bx.w || null, via: BXVIA.eu,
+        const cfgN = ran ? ((await KV.get('bxcfg', 'json')) || cfg) : cfg;
+        const { bx } = await bxLoad(KV); const out = { ok: true, key: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), ran, kill: cfgN.kill || 0, bots: {}, pos: [], hist: bx.hist.slice(0, 100), err: bx.err.filter(e => !/HTTP 403/.test(e.m)).slice(0, 10), w: bx.w || null, via: BXVIA.eu, day: { eq0: bx.day && bx.day.d === bxDay(Date.now()) ? bx.day.eq0 : null, lim: bxLim(cfgN), lock: bxLocked(cfgN, Date.now()) ? cfgN.lock : null },
           conn: { okT: bx.okT || null, failT: bx.failT || null, failMsg: bx.failMsg || null, down: !!bx.failPushed },
           hand: bx.pos.filter(p => p.kind === 'hand').map(p => ({ id: p.id, mode: p.mode, sym: p.sym, code: p.code, label: p.label, base: p.base, dir: p.dir, type: p.type, filled: !!p.filled, entry: p.entry, sl: p.sl, tps: p.tps.map(t => ({ p: t.pb || t.p, pct: t.pct, hit: !!t.hit })), hits: p.hits || 0, qty: p.qtyNet || p.qty0b || p.qtyAsk, be: p.be, trail: p.trail, lastPx: p.lastPx || null, t0: p.t0 })) };
         Object.keys(bx.bots).forEach(id => { out.bots[id] = { ...bx.bots[id], paused: bxPaused(bx, cfg, id) ? bx.bots[id].paused : null }; });
