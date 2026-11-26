@@ -1,5 +1,5 @@
 // Wellen-Desk Service Worker: App offline verfügbar, Kursdaten immer live
-const CACHE = 'wellen-desk-v67';
+const CACHE = 'wellen-desk-v68';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== 'wd-diag').map(k => caches.delete(k))))); self.clients.claim(); });
@@ -13,9 +13,13 @@ self.addEventListener('fetch', e => {
 // Tippen auf eine Meldung öffnet die App
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
-    for (const c of cs) if ('focus' in c) return c.focus();
-    return self.clients.openWindow('./');
+  const nav = (e.notification.data && e.notification.data.nav) || null;
+  const msg = nav ? { type: 'wd-nav', nav, title: e.notification.title || '', t: Date.now() } : null;
+  // Ziel merken, falls die App erst startet oder neu lädt
+  const keep = msg ? caches.open('wd-diag').then(c => c.put('./__nav', new Response(JSON.stringify(msg)))).catch(() => {}) : Promise.resolve();
+  e.waitUntil(keep.then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true })).then(cs => {
+    for (const c of cs) if ('focus' in c) { if (msg) { try { c.postMessage(msg); } catch (_) {} } return c.focus(); }
+    return self.clients.openWindow('./' + (msg ? '#nav=' + encodeURIComponent(JSON.stringify(nav)) : ''));
   }));
 });
 // Push vom eigenen Server (auch wenn die App geschlossen ist)

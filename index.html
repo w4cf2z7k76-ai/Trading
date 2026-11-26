@@ -1587,6 +1587,19 @@ function inbGo(x){const n=x.nav||{};$('#mInbox').classList.remove('open');
  if(n.act==='live'){lvOpen();return}if(n.act==='cal'){calOpen();return}if(n.act==='rep'){repOpen();return}
  try{if(n.sym&&(n.sym!==S.sym||S.custom||(n.tf&&n.tf!==S.tf)))openSymTf(n.sym,n.tf||S.tf)}catch(_){}
  setTab(n.tab||'chart')}
+// Mitteilung angetippt: direkt den Chart dieses Symbols öffnen
+function pnTake(m){if(!m||!m.nav||!m.nav.sym)return;const n={sym:m.nav.sym,tf:m.nav.tf||null,tab:'chart'};
+ try{sessionStorage.setItem('wdesk_pnav',JSON.stringify({nav:n,title:m.title||'',t:m.t||Date.now()}))}catch(_){}}
+function pnApply(){let p=null;try{p=JSON.parse(sessionStorage.getItem('wdesk_pnav')||'null')}catch(_){}
+ if(!p)return;if(Date.now()-p.t>30000){try{sessionStorage.removeItem('wdesk_pnav')}catch(_){}return}
+ if(p.title&&!p.read){const x=INB.find(y=>!y.read&&y.title===p.title&&Math.abs(y.t-p.t)<36e5);if(x){x.read=true;store('wdesk_inbox',INB);inbBadge();p.read=1;try{sessionStorage.setItem('wdesk_pnav',JSON.stringify(p))}catch(_){}}}
+ document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));
+ try{inbGo({nav:p.nav})}catch(_){}}
+async function pnCheck(){try{const h=location.hash.match(/^#nav=(.+)$/);if(h){history.replaceState(null,'',location.pathname+location.search);pnTake({nav:JSON.parse(decodeURIComponent(h[1])),t:Date.now()})}}catch(_){}
+ try{if(window.caches){const c=await caches.open('wd-diag'),r=await c.match('./__nav');if(r){const m=await r.json();await c.delete('./__nav');if(Date.now()-m.t<60000)pnTake(m)}}}catch(_){}
+ pnApply()}
+try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{const m=e.data;if(m&&m.type==='wd-nav'){try{caches.open('wd-diag').then(c=>c.delete('./__nav')).catch(()=>{})}catch(_){}pnTake(m);pnApply()}})}catch(_){}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(pnCheck,300)});
 function inbOpen(){INBF=inbN()?'new':'all';inbRender();$('#mInbox').classList.add('open')}
 $('#inbRead').onclick=()=>{INB.forEach(x=>x.read=true);store('wdesk_inbox',INB);inbBadge();inbRender()};
 $('#inbClr').onclick=()=>{if(!confirm('Alle Mitteilungen löschen?'))return;INB.length=0;store('wdesk_inbox',INB);inbBadge();inbRender()};
@@ -1596,7 +1609,7 @@ setTimeout(inbBadge,300);
 const NT=Object.assign({on:false,live:true,trade:true,bot:true,setup:false,usdtd:true,cal:true,alarm:true,div:true,report:true,stf:'4h'},store('wdesk_notif')||{});
 const ntHas=()=>'Notification' in window;
 const ntOK=()=>ntHas()&&Notification.permission==='granted';
-function notify(kind,title,body,nav){if(SY.ro)return;try{inbAdd(kind,title,body,nav)}catch(_){}if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now()};
+function notify(kind,title,body,nav){if(SY.ro)return;try{inbAdd(kind,title,body,nav)}catch(_){}if(!NT.on||!NT[kind]||!ntOK())return;const o={body:body||'',icon:'icon-192.png',badge:'icon-192.png',tag:kind+'-'+Date.now(),data:{nav:Object.assign({sym:S.custom?null:S.sym,tf:S.custom?null:S.tf},nav||{})}};
  try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.ready.then(r=>r.showNotification(title,o)).catch(()=>{try{new Notification(title,o)}catch(_){}});else new Notification(title,o)}catch(_){}}
 const NTSEEN=new Set(store('wdesk_ntseen')||[]);
 async function ntSetupScan(){if(!NT.setup)return;let rows;try{rows=await wlScan(NT.stf)}catch(e){return}
@@ -3127,7 +3140,7 @@ function resize(){const r=cv.getBoundingClientRect();const d=window.devicePixelR
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe($('#wrap'));
 
-buildTools();buildSym();resize();m2Layout();loadData();setTimeout(shotPrune,8000);
+buildTools();buildSym();resize();m2Layout();loadData();setTimeout(shotPrune,8000);setTimeout(pnCheck,500);
 if(!store('wdesk_seen')){store('wdesk_seen',1);$('#mHelp').classList.add('open')}
 })();
 </script>
