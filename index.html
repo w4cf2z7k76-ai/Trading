@@ -139,6 +139,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
   <header>
     <button id="modeBtn" class="mode-app" title="Konto-Modus">DEMO</button><select id="sym" style="display:none"></select><button id="symBtn" style="min-width:104px;text-align:left">BTC/USDT ▾</button>
     <select id="tf"><option>15m</option><option>1h</option><option selected>4h</option><option>1D</option></select>
+    <button id="bOV" title="Übersicht">🏠</button>
     <button id="bWL" title="Watchlist">📋 Liste</button>
     <button id="bM2" title="Zweite Zeiteinheit">⧉ 2. ZE</button>
     <button id="bAuto" title="Automatische Analyse">⚡ Auto</button>
@@ -324,6 +325,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 <div class="modal" id="mAl"><div class="box" style="width:min(96%,460px)"><h3>🔔 Preis-Alarme</h3><div id="alOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mGuard"><div class="box" style="width:min(96%,460px)"><h3>🛡️ Schutz-Regeln</h3><div id="gdOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mCk"><div class="box" style="width:min(96%,440px)"><h3>✅ Kurz prüfen</h3><div id="ckOut"></div><div class="row"><button id="ckGo" class="on">Trade senden</button><button data-close>Abbrechen</button></div></div></div>
+<div class="modal" id="mOV"><div class="box" style="width:min(96%,520px)"><h3>🏠 Übersicht</h3><div id="ovOut" style="max-height:68vh;overflow:auto"></div><label class="row" style="font-size:12px;margin:6px 0 0"><input type="checkbox" id="ovStart"> Beim Öffnen der App zeigen</label><div class="row"><button data-close class="on">Zum Chart</button></div></div></div>
 <div class="modal" id="mRep"><div class="box" style="width:min(96%,520px)"><h3>📈 Wochen-Bericht</h3><div id="repOut"></div><div class="row"><button data-close class="on">Fertig</button></div></div></div>
 <div class="modal" id="mNB"><div class="box" style="width:min(96%,520px)"><h3>📊 Backtest der Noten</h3><div id="nbOut" style="max-height:62vh;overflow:auto"></div><div class="row"><button id="nbGo" class="on">Test starten</button><button data-close>Schließen</button></div></div></div>
 <div class="modal" id="mBxc"><div class="box" style="width:min(94%,440px)"><h3>🟠 An Bybit Demo senden?</h3><div id="bxcOut"></div><div class="row"><button id="bxcGo" class="on">🟠 An Bybit senden</button><button data-close>Abbrechen</button></div></div></div>
@@ -2246,6 +2248,34 @@ function bxOutHTML(){if(!BXS)return '<span class="mut">Noch nicht geladen</span>
 function bxLimR(){const el=$('#bxLim');if(!el)return;const cur=BXS&&BXS.day?BXS.day.lim:3;
  el.innerHTML=[0,2,3,5,10].map(v=>`<button data-c="${v}" class="${+cur===v?'on':''}">${v?'−'+v+' %':'Aus'}</button>`).join('');
  el.querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{BXS=await lvApi('/bx/daylim',{pct:+b.dataset.c});BXS.t=Date.now();$('#bxOut').innerHTML=bxOutHTML();bxLimR();toast(+b.dataset.c?'Tagesgrenze −'+b.dataset.c+' %':'Tagesgrenze aus')}catch(e){toast(e.message)}})}
+/* ---------- 🏠 Übersicht: Positionen, Bots, heutiges Ergebnis, nächste Termine ---------- */
+const OV=Object.assign({start:true},store('wdesk_ov')||{});
+function ovHTML(){const d0=new Date();d0.setHours(0,0,0,0);const T0=d0.getTime(),sec=(t,b)=>`<div class="card" style="font-size:13px"><h4><span>${t}</span></h4>${b}</div>`,row=(a,b,c)=>`<tr><td>${a}</td><td style="text-align:right"${c?` class="${c}"`:''}>${b}</td></tr>`;
+ let h='';
+ // heutiges Ergebnis
+ {const L=AC.hist.filter(t=>!t.replay&&t.t1>=T0),pl=L.reduce((a,t)=>a+t.pnl,0),w=L.filter(t=>t.R>0).length;let b=`<table style="width:100%">${row('Abgeschlossen heute',L.length?`${L.length} Trade${L.length>1?'s':''} · ${w} im Plus`:'noch keine')}${L.length?row('Ergebnis heute',money(pl),pl>=0?'ok':'bad'):''}`;
+  const dy=BXS&&BXS.day;if(dy&&dy.eq0&&BXS.equity!=null){const x=BXS.equity-dy.eq0;b+=row('🟠 Bybit Demo heute',`${money(x)} (${(x/dy.eq0*100).toFixed(2).replace('.',',')} %)`,x>=0?'ok':'bad')}
+  if(dy&&dy.lock)b+=row('','🛑 Tagesgrenze erreicht – gesperrt','bad');
+  b+=row('App-Demo-Konto',money(AC.bal))+(BXS&&BXS.equity!=null?row('🟠 Bybit-Guthaben',money(BXS.equity)):'')+'</table>';h+=sec('📅 Heute',b)}
+ // offene Positionen
+ {const P=AC.pos.filter(p=>!p.replay),B=(BXS&&BXS.pos)||[],k=pkey();let b='';
+  P.forEach(p=>{const cur=p.key===k&&!isRp(),u=cur?upnl(p):null;b+=`<div class="pos" data-ovs="${p.key.replace(/^binance:/,'')}" style="padding:6px;margin:4px 0">${p.dir>0?'<b class="ok">Long</b>':'<b class="bad">Short</b>'} ${p.label} @ ${fmt(p.entry)}${p.sl!=null?' · Stop '+fmt(p.sl):''}${u!=null?` · <span class="${u>=0?'ok':'bad'}">${money(u)}</span>`:''}${p.bot?' · 🤖':''}</div>`});
+  B.forEach(p=>{b+=`<div class="pos" data-ovs="${p.sym||''}" style="padding:6px;margin:4px 0">🟠 ${p.dir>0?'<b class="ok">Long</b>':'<b class="bad">Short</b>'} ${p.label} @ ${fmt(p.entry)} · Stop ${p.sl?fmt(p.sl):'–'} · <span class="${p.upnl>=0?'ok':'bad'}">${money(p.upnl)}</span></div>`});
+  h+=sec(`💼 Offene Positionen (${P.length+B.length})`,b||'<span class="mut">Keine offene Position</span>')}
+ // Bots
+ {const R=AC.bots.filter(b=>b.state==='run'),bb=R.filter(b=>b.ex==='bybit').length;let b=R.length?R.map(x=>`<div>🤖 ${x.label||x.type}${x.ex==='bybit'?' · 🟠 Bybit':''}</div>`).join(''):'<span class="mut">Kein Bot aktiv</span>';
+  let srv='';try{srv=bb===R.length?'☁️ Bybit-Bots laufen immer auf dem Server':svAct()?'☁️ Server übernimmt bei geschlossener App':'<span class="warn">Server-Betrieb aus – App-Demo-Bots laufen nur bei offener App</span>'}catch(_){}
+  if(R.length)b+=`<div class="mut" style="font-size:12px;margin-top:4px">${srv}${bb&&BXS&&BXS.kill?' · ⛔ Not-Aus war aktiv':''}</div>`;h+=sec(`🤖 Bots (${R.length} aktiv)`,b)}
+ // Termine
+ {const now=Date.now(),E=(CAL.ev||[]).filter(e=>e.t>now&&e.s>=2&&(!CAL.cc||!CAL.cc.length||CAL.cc.includes(e.cc))).slice(0,4);
+  h+=sec('🗓️ Nächste Termine',E.length?E.map(e=>`<div>${'★'.repeat(e.s)} <b>${new Date(e.t).toLocaleString('de-DE',{weekday:'short',hour:'2-digit',minute:'2-digit'})}</b> · ${e.cc} ${e.title} <span class="mut">(in ${calIn(e.t-now)})</span></div>`).join(''):`<span class="mut">${CAL.ev?'Keine wichtigen Termine in Sicht':'Kalender lädt …'}</span>`)}
+ const n=inbN();if(n)h+=`<div class="pos" id="ovInb" style="padding:8px;margin:4px 0">🔔 ${n} ungelesene Mitteilung${n>1?'en':''} ›</div>`;
+ return h}
+function ovRender(){const el=$('#ovOut');if(!el)return;el.innerHTML=ovHTML();
+ el.querySelectorAll('[data-ovs]').forEach(d=>d.onclick=()=>{const y=d.dataset.ovs;$('#mOV').classList.remove('open');if(y&&BIN[y]&&(y!==S.sym||S.custom))openSymTf(y,S.tf);setTab('chart')});
+ const ib=$('#ovInb');if(ib)ib.onclick=()=>{$('#mOV').classList.remove('open');inbOpen()}}
+function ovOpen(){$('#mOV').classList.add('open');const c=$('#ovStart');c.checked=!!OV.start;c.onchange=()=>{OV.start=c.checked;store('wdesk_ov',OV)};ovRender();
+ Promise.all([calLoad().catch(()=>{}),(lvTokOK()&&(AC.bots.some(b=>b.ex==='bybit')||LIVE.mode==='bdemo'))?bxRefresh(true).catch(()=>{}):null]).then(()=>{if($('#mOV').classList.contains('open'))ovRender()})}
 function bxCard(){return `<div class="card"><h4><span>🟠 Bybit Demo · Bots</span></h4>
  <div class="mut" style="font-size:12px">Bots mit Ausführung „Bybit Demo“ handeln über deinen Server im Bybit-Demo-Konto – auch bei geschlossener App. Stop und Ziele liegen direkt bei Bybit.</div>
  <div id="bxOut" style="font-size:13px;margin-top:6px">${bxOutHTML()}</div>
@@ -3154,7 +3184,7 @@ $('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new File
   const name=f.name.replace(/\.(csv|txt)$/i,'');S.custom=name;S.csvMem={name,bars};store('wdesk_csvdata',{name,bars});S.bars=bars;buildSym();$('#sym').value='__csv';loadData();toast(bars.length+' Kerzen geladen: '+name)}
  catch(err){toast('Import fehlgeschlagen: '+err)}e.target.value=''};rd.readAsText(f)};
 $('#bHelp').onclick=()=>$('#mHelp').classList.add('open');$('#bDesign').onclick=()=>{renderDesign();$('#mDesign').classList.add('open')};
-$('#bAI').onclick=aiOpen;$('#aiBtn').onclick=aiOpen;
+$('#bOV').onclick=ovOpen;$('#bAI').onclick=aiOpen;$('#aiBtn').onclick=aiOpen;
 $('#bAuto').onclick=()=>{const c=$('#devChips');const inf=()=>{$('#devInfo').textContent=S.devAuto?'Auto = '+ewaLevels(S.bars).map(v=>ff((v*100).toFixed(1))).join(' / ')+' %':'nur '+ff(S.dev*100)+' %'};
  c.innerHTML=`<button data-dev="auto" class="${S.devAuto?'on':''}">✨ Auto</button>`+DEVS.map(v=>`<button data-dev="${v}" class="${!S.devAuto&&v===S.dev?'on':''}">${ff(v*100)} %</button>`).join('');inf();
  c.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{if(b.dataset.dev==='auto')S.devAuto=true;else{S.devAuto=false;S.dev=+b.dataset.dev}store('wdesk_devauto',S.devAuto);c.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));inf()});
@@ -3170,7 +3200,7 @@ function resize(){const r=cv.getBoundingClientRect();const d=window.devicePixelR
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe($('#wrap'));
 
-buildTools();buildSym();resize();m2Layout();loadData();setTimeout(shotPrune,8000);setTimeout(pnCheck,500);setTimeout(()=>{try{if(lvTokOK())aiState()}catch(_){}},6000);
+buildTools();buildSym();resize();m2Layout();loadData();setTimeout(shotPrune,8000);setTimeout(pnCheck,500);setTimeout(()=>{let pend=/^#nav=/.test(location.hash);try{pend=pend||!!sessionStorage.getItem('wdesk_pnav')}catch(_){}if(OV.start&&!pend&&!document.querySelector('.modal.open'))ovOpen()},1500);setTimeout(()=>{try{if(lvTokOK())aiState()}catch(_){}},6000);
 if(!store('wdesk_seen')){store('wdesk_seen',1);$('#mHelp').classList.add('open')}
 })();
 </script>
