@@ -294,7 +294,7 @@ button.danger{border-color:var(--dn);color:var(--dn)}
 </div></div>
 
 <div class="modal" id="mAcct"><div class="box" style="width:min(96%,540px)">
-  <h3>📒 Konto & Journal <small class="mut">(Spielgeld)</small></h3>
+  <h3>📒 Konto & Journal <small class="mut" id="acSub">(Spielgeld)</small></h3>
   <div id="acOut"></div>
   <div class="row"><button data-close>Schließen</button></div>
 </div></div>
@@ -1948,7 +1948,7 @@ async function setMode(m){if(m===LIVE.mode)return;
   if(m==='bdemo'&&!LVT.demo){toast('Auf dem Server ist kein Bybit-Demo-Schlüssel eingetragen');return}
   if(m==='blive'){if(!LVT.live){toast('Auf dem Server ist kein Live-Schlüssel eingetragen');return}
    if(LIVE.pk){if(!(await faceCheck()))return}else if(faceAvail()){toast('Für Live bitte zuerst Face ID einrichten');return}LVU=true}}
- LIVE.mode=m;liveSave();LVD.w=null;LVD.pos=null;LVD.err=null;updMode();renderPanel();lvRefresh(true);if($('#mLive').classList.contains('open'))lvOpen();
+ LIVE.mode=m;liveSave();LVD.w=null;LVD.pos=null;LVD.err=null;updMode();renderPanel();try{tkChips();if($('#mAcct').classList.contains('open'))renderAcct()}catch(_){}lvRefresh(true);if($('#mLive').classList.contains('open'))lvOpen();
  toast(m==='app'?'Demo (App-Übungskonto)':m==='bdemo'?'Bybit-Demo aktiv':'⚠️ BYBIT LIVE – echtes Geld')}
 function updMode(){const b=$('#modeBtn');if(!b)return;const m=LIVE.mode;b.className='mode-'+m;b.textContent=m==='app'?'DEMO':m==='bdemo'?'BYBIT-DEMO':(LVU?'LIVE':'LIVE 🔒');
  document.documentElement.classList.toggle('is-live',m==='blive');document.documentElement.classList.toggle('is-bdemo',m==='bdemo')}
@@ -2221,7 +2221,7 @@ function bxCfg(){if(!lvTokOK())return Promise.resolve();const L=AC.bots.filter(b
  return lvApi('/bx/cfg',{bots:L.map(b=>{const{st,...r}=b;return r}),map}).then(r=>{BXS=r;BXS.t=Date.now();if(S.tab==='bots')renderBots()}).catch(e=>toast('Bybit: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v1.7) einspielen':e.message)))}
 let bxBusy=false;
 async function bxRefresh(force){if(bxBusy||!lvTokOK()||!(AC.bots.some(b=>b.ex==='bybit')||LIVE.mode==='bdemo'))return;if(!force&&BXS&&Date.now()-BXS.t<20000)return;bxBusy=true;
- try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();bxMerge();if(S.tab==='bots'&&!document.hidden)renderBots();if(S.tab==='spot'||S.tab==='fut')renderPanel();if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false}}
+ try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();bxMerge();if(S.tab==='bots'&&!document.hidden)renderBots();if(S.tab==='spot'||S.tab==='fut')renderPanel();try{if($('#mAcct').classList.contains('open'))renderAcct();tkChips()}catch(_){}if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false}}
 function bxAuto(){if(!BXS||Date.now()-BXS.t>20000)setTimeout(()=>bxRefresh(),50)}
 setInterval(()=>{if(!document.hidden&&S.tab==='bots')bxRefresh()},20000);
 function bxBotCard(bt,act,st){const bs=(BXS&&BXS.bots&&BXS.bots[bt.id])||{},ps=((BXS&&BXS.pos)||[]).filter(p=>p.bot==bt.id),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(','),bst=bs.st||{};
@@ -2669,12 +2669,15 @@ const TK={dir:1,type:'market',risk:1,mode:'fut',lev:10,amt:25};
 function segSet(id,v){$(id).querySelectorAll('button').forEach(b=>{const on=b.dataset.v==String(v);b.classList.toggle('on',on);b.classList.toggle('lg',on&&id==='#tkDir'&&v==1);b.classList.toggle('sh',on&&id==='#tkDir'&&v==-1)})}
 function tkPlace(){const inP=S.tab==='spot'||S.tab==='fut',box=$('#tkBox');if(inP){if(box.parentNode!==$('#tkHost'))$('#tkHost').appendChild(box)}else if(box.parentNode!==$('#mTrade'))$('#mTrade').appendChild(box);return inP}
 function chipRow(id,vals,cur,fmtf,set){$(id).innerHTML=vals.map(v=>`<button data-c="${v}" class="${v===cur?'on':''}">${fmtf(v)}</button>`).join('');$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{const v=b.dataset.c;set(isNaN(+v)?v:+v);tkOpen(true)})}
+// Risiko-/Einsatz-Knöpfe: Beträge vom Konto, das oben eingestellt ist (App-Demo oder Bybit Demo)
+function TKB(){return LIVE.mode==='bdemo'&&BXS&&BXS.equity!=null?{bal:BXS.equity,av:BXS.avail!=null?BXS.avail:BXS.equity}:{bal:AC.bal,av:avail()}}
+function tkChips(){if(!$('#tkRisk'))return;chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(TKB().bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>`${v} %<br><small>${money(Math.min(TKB().bal*v/100,TKB().av)).replace(',00','')}</small>`,v=>{TK.amt=v;$('#tkStake').value=''});chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);chipRow('#tkStrat',['–',...STRATS],TK.strat||'–',v=>v,v=>{TK.strat=v==='–'?null:v;stratApply(v)});}
 function tkOpen(keep){const inP=tkPlace();
  if(!keep){TKV=null;['tkPrice','tkSL','tkTP1','tkTP2','tkTP3'].forEach(i=>$('#'+i).value='');$('#tkPrice').value=nstr(lastP())}
  if(!$('#tkPrice').value&&TK.type!=='trail')$('#tkPrice').value=nstr(lastP());if(TK.mode==='spot')TK.dir=1;
  $('#tkSym').textContent=(S.custom||S.sym)+(isRp()?' · Replay':S.src==='binance'?' · Live':' · Demo');
  $('#tkTitle').firstChild.textContent=inP?(TK.mode==='spot'?'🪙 Spot ':'📈 Futures '):'💼 Neue Order ';
- chipRow('#tkRisk',[.5,1,2,3],TK.risk,v=>`${ff(v)} %<br><small>${money(AC.bal*v/100).replace(',00','')}</small>`,v=>{TK.risk=v;$('#tkStake').value=''});chipRow('#tkAmt',[10,25,50,100],TK.amt,v=>`${v} %<br><small>${money(Math.min(AC.bal*v/100,avail())).replace(',00','')}</small>`,v=>{TK.amt=v;$('#tkStake').value=''});chipRow('#tkLev',[1,3,5,10,20,50,100],TK.lev,v=>v+'×',v=>TK.lev=v);chipRow('#tkStrat',['–',...STRATS],TK.strat||'–',v=>v,v=>{TK.strat=v==='–'?null:v;stratApply(v)});
+ tkChips();if(LIVE.mode==='bdemo'&&(!BXS||Date.now()-BXS.t>20000))bxRefresh(true);
  segSet('#tkMode',TK.mode);segSet('#tkDir',TK.dir);segSet('#tkType',TK.type);tkUpd();if(!inP)$('#mTrade').classList.add('open')}
 function tkRead(){const tps=[1,2,3].map(k=>({p:num($('#tkTP'+k).value),pct:num($('#tkTP'+k+'p').value)||0})).filter(t=>fin(t.p));
  return{mode:TK.mode,dir:TK.mode==='spot'?1:TK.dir,type:TK.type,price:TK.type==='market'?lastP():num($('#tkPrice').value),sl:num($('#tkSL').value),tps,be:$('#tkBE').checked,trail:+$('#tkTrail').value,ttp:+$('#tkTTP').value,csl:$('#tkCSL').checked,tpct:num($('#tkTpct').value),stake:num($('#tkStake').value),riskPct:TK.risk,lev:TK.lev,amtPct:TK.amt,strat:TK.strat||null}}
@@ -2877,26 +2880,36 @@ function renderPanel(){if(S.bg)return;
 /* account modal */
 function acOpen(){$('#mAcct').classList.add('open');renderAcct()}
 let resetArm=0;
-function renderAcct(){if(S.bg)return;if(!$('#mAcct').classList.contains('open'))return;const el=$('#acOut');
+async function acBxPanic(){if(Date.now()-(BX.pT||0)>2500){BX.pT=Date.now();toast('Nochmal tippen: ALLE Bybit-Positionen schließen und offene Orders stornieren');return}BX.pT=0;
+ const L=((BXS&&BXS.hand)||[]);toast('Schließe alles bei Bybit …');for(const x of L){try{await lvApi('/bx/hand',{op:x.filled?'close':'cancel',id:x.id},30000)}catch(e){toast('Bybit: '+e.message)}}
+ if(((BXS&&BXS.pos)||[]).some(p=>!p.hand)){try{await lvApi('/bx/kill',{})}catch(e){toast('Bybit: '+e.message)}}
+ await bxRefresh(true);renderAcct();toast('🚨 Bybit: alles geschlossen')}
+function renderAcct(){if(S.bg)return;if(!$('#mAcct').classList.contains('open'))return;const el=$('#acOut'),BY=LIVE.mode==='bdemo',H=BY?AC.hist.filter(t=>t.ex==='bybit'):AC.hist;{const sb=$('#acSub');if(sb)sb.textContent=BY?'(🟠 Bybit Demo)':LIVE.mode==='blive'?'(Bybit Live)':'(Spielgeld)'}
+ if(LIVE.mode==='blive'){el.innerHTML='<div class="card" style="font-size:13px">🔴 <b>Bybit Live ist noch nicht angebunden.</b><br><span class="mut">Das kommt, wenn Bybit Demo eine Weile sauber läuft. Bis dahin oben auf App-Demo oder Bybit-Demo umschalten.</span></div>';return}
+ if(BY&&(!BXS||Date.now()-BXS.t>20000))bxRefresh(true).then(()=>{if($('#mAcct').classList.contains('open'))renderAcct()});
  const cur=AC.pos.filter(mine),un=cur.reduce((s,p)=>s+upnl(p),0)+AC.bots.filter(b=>mine(b)&&b.state!=='stopped'&&b.state!=='done').reduce((s,b)=>s+botUnreal(b),0),gain=(AC.bal-AC.start)/AC.start;
- let h=`<div class="card"><table><tr><td>Kontostand</td><td><b>${money(AC.bal)}</b></td></tr><tr><td>Frei verfügbar</td><td>${money(avail())}</td></tr><tr><td>Offener G/V (${S.custom||S.sym})</td><td class="${un>=0?'ok':'bad'}">${money(un)}</td></tr>
+ let h;if(BY){const e=BXS&&BXS.equity,dy=BXS&&BXS.day,up=((BXS&&BXS.pos)||[]).reduce((a,p)=>a+(+p.upnl||0),0),td=dy&&dy.eq0&&e!=null?e-dy.eq0:null;
+  h=`<div class="card">${e==null?'<div class="mut">Bybit-Konto lädt …</div>':`<table><tr><td>Kontostand</td><td><b>${money(e)}</b></td></tr><tr><td>Frei verfügbar</td><td>${money(BXS.avail!=null?BXS.avail:e)}</td></tr><tr><td>Offener G/V (alle)</td><td class="${up>=0?'ok':'bad'}">${money(up)}</td></tr>${td!=null?`<tr><td>Heute</td><td class="${td>=0?'ok':'bad'}">${money(td)} (${td>=0?'+':''}${(td/dy.eq0*100).toFixed(2).replace('.',',')} %)</td></tr>`:''}</table>${dy&&dy.lock?'<div class="bad" style="font-size:12px">🛑 Tagesverlust-Grenze erreicht – gesperrt bis Mitternacht</div>':''}`}
+  <div class="row"><button id="acNew" class="on">+ Neue Order</button><button id="acPanic" class="danger">🚨 Alles bei Bybit schließen</button></div></div>`}
+ else h=`<div class="card"><table><tr><td>Kontostand</td><td><b>${money(AC.bal)}</b></td></tr><tr><td>Frei verfügbar</td><td>${money(avail())}</td></tr><tr><td>Offener G/V (${S.custom||S.sym})</td><td class="${un>=0?'ok':'bad'}">${money(un)}</td></tr>
  <tr><td>Seit Start (${money(AC.start)})</td><td class="${gain>=0?'ok':'bad'}">${gain>=0?'+':''}${pct(gain)}</td></tr></table>
  <div class="row"><button id="acNew" class="on">+ Neue Order</button><button id="acPanic" class="danger">🚨 Alles schließen</button></div></div>`;
- h+=`<div class="card"><h4><span>Offene Positionen (${AC.pos.length})</span></h4>`;if(!AC.pos.length)h+='<div class="mut" style="font-size:13px">Keine</div>';AC.pos.forEach(p=>h+=posHTML(p));h+='</div>';
- if(AC.ord.length){h+=`<div class="card"><h4><span>Offene Orders (${AC.ord.length})</span></h4>`;AC.ord.forEach(o=>h+=ordHTML(o));h+='</div>'}
- const st=btStats(AC.hist.map(t=>({R:t.R,res:'x'}))),pnl=AC.hist.reduce((s,t)=>s+t.pnl,0),bp=AC.bots.filter(b=>b.type!=='elliott').reduce((s,b)=>s+b.pnl,0);
- h+=`<div class="card"><h4><span>Journal (${AC.hist.length} Trades)</span></h4><table><tr><td>Trefferquote</td><td>${pct(st.wr)}</td></tr><tr><td>Summe</td><td class="${st.sum>=0?'ok':'bad'}">${fR(st.sum)} · ${money(pnl)}</td></tr>
- <tr><td>Ø pro Trade</td><td>${fR(st.avg)}</td></tr><tr><td>Profit-Faktor</td><td>${isFinite(st.pf)?ff(st.pf.toFixed(2)):'∞'}</td></tr><tr><td>Max. Drawdown</td><td class="bad">${ff(st.dd.toFixed(2))} R</td></tr>${AC.bots.some(b=>b.type!=='elliott')?`<tr><td>Channel/Grid-Bots</td><td class="${bp>=0?'ok':'bad'}">${money(bp)}</td></tr>`:''}</table>
+ if(BY){const hd=bxHandHTML('fut')+bxHandHTML('spot'),bp=((BXS&&BXS.pos)||[]).filter(p=>!p.hand),n=((BXS&&BXS.hand)||[]).length+bp.length;h+=`<div class="card"><h4><span>Offene Positionen bei Bybit (${n})</span></h4>${hd}${bp.map(p=>`<div class="pos" style="border-color:#ffb347">🤖 ${p.dir>0?'<b class="ok">Long</b>':'<b class="bad">Short</b>'} ${p.label} ${ff(p.size)} @ ${fmt(p.entry)} · Stop ${p.sl?fmt(p.sl):'–'} · <span class="${p.upnl>=0?'ok':'bad'}">${money(p.upnl)}</span></div>`).join('')}${n?'':'<div class="mut" style="font-size:13px">Keine</div>'}</div>`}
+ else{h+=`<div class="card"><h4><span>Offene Positionen (${AC.pos.length})</span></h4>`;if(!AC.pos.length)h+='<div class="mut" style="font-size:13px">Keine</div>';AC.pos.forEach(p=>h+=posHTML(p));h+='</div>'}
+ if(!BY&&AC.ord.length){h+=`<div class="card"><h4><span>Offene Orders (${AC.ord.length})</span></h4>`;AC.ord.forEach(o=>h+=ordHTML(o));h+='</div>'}
+ const st=btStats(H.map(t=>({R:t.R,res:'x'}))),pnl=H.reduce((s,t)=>s+t.pnl,0),bp=AC.bots.filter(b=>b.type!=='elliott').reduce((s,b)=>s+b.pnl,0);
+ h+=`<div class="card"><h4><span>Journal${BY?' 🟠 Bybit':''} (${H.length} Trades)</span></h4><table><tr><td>Trefferquote</td><td>${pct(st.wr)}</td></tr><tr><td>Summe</td><td class="${st.sum>=0?'ok':'bad'}">${fR(st.sum)} · ${money(pnl)}</td></tr>
+ <tr><td>Ø pro Trade</td><td>${fR(st.avg)}</td></tr><tr><td>Profit-Faktor</td><td>${isFinite(st.pf)?ff(st.pf.toFixed(2)):'∞'}</td></tr><tr><td>Max. Drawdown</td><td class="bad">${ff(st.dd.toFixed(2))} R</td></tr>${!BY&&AC.bots.some(b=>b.type!=='elliott')?`<tr><td>Channel/Grid-Bots</td><td class="${bp>=0?'ok':'bad'}">${money(bp)}</td></tr>`:''}</table>
  <canvas id="acEq" style="position:static;width:100%;height:110px;margin-top:8px;touch-action:auto"></canvas><table style="margin-top:6px">`;
  const dt=t=>{const d=new Date(t);return `${d.getDate()}.${d.getMonth()+1}.${String(d.getFullYear()).slice(2)}`};
- AC.hist.forEach((t,i)=>{if(t.id==null)t.id='h'+i+'_'+t.t1});AC.hist.slice().reverse().slice(0,60).forEach(t=>h+=`<tr data-jr="${t.id}" style="cursor:pointer"><td>${dt(t.t1)} <b class="${t.dir>0?'ok':'bad'}">${t.mode==='spot'?'Spot':t.dir>0?'L':'S'}</b> ${t.label}${t.mode==='fut'&&t.lev>1?' '+t.lev+'×':''}${t.replay?' <span class="mut">R</span>':''}${t.note?' 📝':''}<br><span class="mut">${fmt(t.entry)} → ${fmt(t.exit)} · ${t.why}${t.tf?' · '+t.tf:''}${t.strat?' · '+t.strat:''}</span></td><td class="${t.R>=0?'ok':'bad'}">${fR(t.R)}<br><small>${money(t.pnl)}</small></td></tr>`);
- h+=`</table><div class="mut" style="font-size:11px;margin-top:4px">Trade antippen → Tagebuch mit Bildern und Notiz.</div></div>`+statHTML()+kellyHTML()+`<div class="card"><h4><span>Konto</span></h4><div class="row">Startkapital <select id="acStart">${[1000,5000,10000,50000,100000].map(v=>`<option value="${v}" ${v===AC.start?'selected':''}>${money(v)}</option>`).join('')}</select></div>
+ AC.hist.forEach((t,i)=>{if(t.id==null)t.id='h'+i+'_'+t.t1});H.slice().reverse().slice(0,60).forEach(t=>h+=`<tr data-jr="${t.id}" style="cursor:pointer"><td>${dt(t.t1)} <b class="${t.dir>0?'ok':'bad'}">${t.mode==='spot'?'Spot':t.dir>0?'L':'S'}</b> ${t.label}${t.mode==='fut'&&t.lev>1?' '+t.lev+'×':''}${t.replay?' <span class="mut">R</span>':''}${t.note?' 📝':''}<br><span class="mut">${fmt(t.entry)} → ${fmt(t.exit)} · ${t.why}${t.tf?' · '+t.tf:''}${t.strat?' · '+t.strat:''}</span></td><td class="${t.R>=0?'ok':'bad'}">${fR(t.R)}<br><small>${money(t.pnl)}</small></td></tr>`);
+ h+=`</table><div class="mut" style="font-size:11px;margin-top:4px">Trade antippen → Tagebuch mit Bildern und Notiz.</div></div>`+(BY?'':statHTML()+kellyHTML())+(BY?'':`<div class="card"><h4><span>Konto</span></h4><div class="row">Startkapital <select id="acStart">${[1000,5000,10000,50000,100000].map(v=>`<option value="${v}" ${v===AC.start?'selected':''}>${money(v)}</option>`).join('')}</select></div>
  <div class="row">Gebühr je Seite <select id="acFee">${[[0,'0 %'],[.0002,'0,02 % (Maker)'],[.0004,'0,04 % (Taker)'],[.001,'0,1 % (Spot)']].map(([v,l])=>`<option value="${v}" ${v===AC.fee?'selected':''}>${l}</option>`).join('')}</select></div>
- <button id="acReset" class="danger">Konto zurücksetzen</button></div>`;
- el.innerHTML=h;bindPos(el);el.querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});el.querySelectorAll('#sgC button').forEach(b=>b.onclick=()=>{SG=b.dataset.g;renderAcct()});
- $('#acNew').onclick=()=>{$('#mAcct').classList.remove('open');tkOpen(false)};$('#acPanic').onclick=()=>panic();
- $('#acFee').onchange=e=>{AC.fee=+e.target.value;saveAcct()};$('#acStart').onchange=e=>{toast('Wird beim Zurücksetzen übernommen');AC._ns=+e.target.value};
- $('#acReset').onclick=()=>{if(Date.now()-resetArm<2500){const ns=AC._ns||AC.start;Object.assign(AC,{bal:ns,start:ns,pos:[],ord:[],hist:[],bots:[]});delete AC._ns;shotClear().catch(()=>{});after();toast('Konto zurückgesetzt')}else{resetArm=Date.now();toast('Nochmal tippen: Positionen, Bots und Journal werden gelöscht')}};
+ <button id="acReset" class="danger">Konto zurücksetzen</button></div>`);
+ el.innerHTML=h;bindPos(el);if(BY)bxHandBind(el);el.querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});el.querySelectorAll('#sgC button').forEach(b=>b.onclick=()=>{SG=b.dataset.g;renderAcct()});
+ $('#acNew').onclick=()=>{$('#mAcct').classList.remove('open');tkOpen(false)};$('#acPanic').onclick=()=>{if(BY){acBxPanic();return}panic()};
+ if(!BY){$('#acFee').onchange=e=>{AC.fee=+e.target.value;saveAcct()};$('#acStart').onchange=e=>{toast('Wird beim Zurücksetzen übernommen');AC._ns=+e.target.value};
+ $('#acReset').onclick=()=>{if(Date.now()-resetArm<2500){const ns=AC._ns||AC.start;Object.assign(AC,{bal:ns,start:ns,pos:[],ord:[],hist:[],bots:[]});delete AC._ns;shotClear().catch(()=>{});after();toast('Konto zurückgesetzt')}else{resetArm=Date.now();toast('Nochmal tippen: Positionen, Bots und Journal werden gelöscht')}}}
  const c=$('#acEq');const r=c.getBoundingClientRect();if(!r.width)return;const dp=devicePixelRatio||1;c.width=r.width*dp;c.height=r.height*dp;const g=c.getContext('2d');g.setTransform(dp,0,0,dp,0,0);
  const cv2=st.curve,mn=Math.min(0,...cv2),mx=Math.max(0,...cv2),yy=v=>r.height-6-(v-mn)/((mx-mn)||1)*(r.height-12);
  g.strokeStyle='#30363d';g.beginPath();g.moveTo(0,yy(0));g.lineTo(r.width,yy(0));g.stroke();g.strokeStyle=st.sum>=0?'#26a69a':'#ef5350';g.lineWidth=2;g.beginPath();
