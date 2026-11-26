@@ -2137,6 +2137,15 @@ function aiOrder(k){const s=AIR&&aiNorm(AIR.res).szenarien[k];if(!s||s.einstieg=
 let BXE=null;
 function bxWith(fn){const b=AC.bal,p=AC.pos,o=AC.ord;AC.bal=BXS.equity;AC.pos=[];AC.ord=[];try{return fn()}finally{AC.bal=b;AC.pos=p;AC.ord=o}}
 function bxHandOf(code){return BXS&&(BXS.hand||[]).find(x=>x.mode==='fut'&&x.code===code)}
+// Order-Vorschau: Verlust beim Stop und Gewinn je Ziel groß in $
+function bxRR(o,ref,z,sp){if(!fin(ref)||!(z.qty>0))return'';const d=sp?1:o.dir,q=z.qty,fee=sp?0.001:0.00055,eq=BXS&&BXS.equity||0;
+ const pc=v=>eq>0?` · ${(v/eq*100).toFixed(2).replace('.',',')} %`:'';
+ const loss=fin(o.sl)?(o.sl-ref)*d*q-(ref+o.sl)*q*fee:null;
+ const tps=(o.tps||[]).filter(t=>fin(t.p)&&t.pct>0).map((t,i)=>{const g=(t.p-ref)*d*q*t.pct/100-(ref+t.p)*q*t.pct/100*fee,full=(t.p-ref)*d*q-(ref+t.p)*q*fee;return{i,p:t.p,pct:t.pct,g,crv:loss<0?full/-loss:null}});
+ const all=tps.reduce((a,t)=>a+t.g,0),box=(c,t,v,x)=>`<div style="flex:1;min-width:0;border-radius:10px;padding:8px 10px;background:${c==='bad'?'rgba(240,80,80,.12)':'rgba(60,200,140,.12)'}"><div class="mut" style="font-size:11px">${t}</div><div class="${c}" style="font-size:20px;font-weight:700">${v}</div>${x?`<div class="mut" style="font-size:11px">${x}</div>`:''}</div>`;
+ const rows=tps.map(t=>`<tr><td>Ziel ${t.i+1} · ${fmt(t.p)} (${t.pct} %)</td><td style="text-align:right" class="${t.g>=0?'ok':'bad'}"><b>${money(t.g)}</b>${t.crv!=null?` <span class="mut">· CRV 1:${t.crv.toFixed(1).replace('.',',')}</span>`:''}</td></tr>`).join('');
+ return `<div style="display:flex;gap:8px;margin-top:8px">${box('bad','Verlust beim Stop',loss!=null?money(loss):'kein Stop!',loss!=null?pc(-loss).replace(' · ','')+' vom Konto':'Risiko unbegrenzt')}${tps.length?box('ok','Alle Ziele erreicht',money(all),pc(all).replace(' · ','')+' vom Konto'):''}</div>
+  ${rows?`<table style="width:100%;font-size:13px;margin-top:4px">${rows}</table>`:''}<div class="mut" style="font-size:11px">inkl. geschätzter Gebühren</div>`}
 async function bxTicket(){if(!lvTokOK()){toast('Erst im Live-Konto am Server anmelden');return}if(!(LVT&&LVT.demo)){toast('Auf dem Server ist kein Bybit-Demo-Schlüssel – neu anmelden');return}
  if(S.custom||S.src!=='binance'||!BIN[S.sym]){toast('Dieses Paar gibt es nicht bei Bybit');return}if(isRp()){toast('Nicht im Replay');return}
  let o=tkRead();if(!['market','limit','stop'].includes(o.type)){toast('Bei Bybit gehen Market, Limit und Stop-Order – Trailing-Einstieg (noch) nicht');return}
@@ -2146,6 +2155,7 @@ async function bxTicket(){if(!lvTokOK()){toast('Erst im Live-Konto am Server anm
  const sp=o.mode==='spot',dirT=sp?'Spot-Kauf':(o.dir>0?'Long':'Short'),coin=S.sym.replace(/\/USDT?$/,''),typT=({market:'Market',limit:'Limit @ '+fmt(o.price),stop:'Stop-Order @ '+fmt(o.price)})[o.type];
  const miss=[o.ttp>0?'Trailing-Take-Profit':null,o.csl?'Kerzen-Stop':null].filter(Boolean);
  $('#bxcOut').innerHTML=`<div style="font-size:15px"><b>${dirT} ${S.sym}</b> · ${typT}</div>
+  ${bxRR(o,ref,z,sp)}
   <table style="width:100%;font-size:13px;margin-top:6px"><tr><td>Menge</td><td style="text-align:right"><b>${ff(+z.qty.toPrecision(6))} ${sp?coin:'Stk.'}</b> (≈ ${money(z.notional)})</td></tr>
   ${sp?'':`<tr><td>Hebel · Margin</td><td style="text-align:right">${Math.min(o.lev,BX.levMax)}× · ${money(z.margin)}</td></tr>`}
   <tr><td>Stop</td><td style="text-align:right">${fin(o.sl)?fmt(o.sl)+(sp?' (überwacht dein Server)':' (bei Bybit)'):'–'}</td></tr>
