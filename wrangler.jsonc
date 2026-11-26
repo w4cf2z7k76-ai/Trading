@@ -1,0 +1,15 @@
+// Cloudflare-Einstellungen für den Wellen-Desk-Server.
+// Schlüssel (Bybit, Claude, Passwort, VAPID) stehen NICHT hier,
+// sondern nur als "Secret" im Cloudflare-Dashboard.
+{
+  "name": "wellen-desk",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  // Variablen aus dem Dashboard beim Deploy behalten
+  "keep_vars": true,
+  "kv_namespaces": [
+    { "binding": "WDESK", "id": "fd3ef2302e024fe0802ef315a3b4680e" }
+  ],
+  "triggers": { "crons": ["* * * * *"] }
+}
