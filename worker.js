@@ -615,6 +615,7 @@ async function engRun(env, opt = {}) {
     await KV.put('eng', JSON.stringify({ v, t: nprog, b: nseen, w: now, r, la: laProg }));
     res.saved = v;
     for (const e of events.slice(0, 6)) await pushAll(env, { title: e.title, body: e.body, tag: (e.kind === 'live' ? 'la-' : 'bot-') + now + '-' + Math.random().toString(36).slice(2, 6), nav: { sym: e.nav.sym, tf: e.nav.tf || null, tab: e.nav.tab } }, false);
+    { const lv = events.find(e => e.kind === 'live' && e.nav && map[e.nav.sym]); if (lv) { try { await aiAuto(env, { sym: lv.nav.sym, code: map[lv.nav.sym], tf: lv.nav.tf, title: lv.title, body: lv.body }); } catch (_) {} } }
   } else {
     const per = !changed && (!eng.w || now - eng.w >= ENG_WRITE || eng.v !== head.v);
     if (per || laRan) {
@@ -1040,6 +1041,26 @@ function aiParseText(t) {
 }
 const aiDay = () => new Date().toISOString().slice(0, 10);
 async function aiLoad(KV) { const a = (await KV.get('ai', 'json')) || {}; if (a.day !== aiDay()) { a.day = aiDay(); a.n = 0; } a.limit = a.limit || 20; a.hist = a.hist || []; return a; }
+// 🧠 Claude automatisch: kurze Einschätzung nach einem Signal (Schalter + eigenes Tageslimit, je Paar/Zeiteinheit höchstens 1× pro Stunde)
+async function aiAuto(env, ev) {
+  const KV = env.WDESK; if (!KV || !env.ANTHROPIC_API_KEY || !ev || !ev.sym || !ev.code) return null;
+  const a = await aiLoad(KV), au = a.auto || {}; if (!au.on) return null;
+  if (au.day !== aiDay()) { au.day = aiDay(); au.n = 0; au.last = {}; }
+  au.last = au.last || {}; const k = ev.sym + '|' + (ev.tf || ''), now = Date.now();
+  if ((au.n || 0) >= (au.max || 5) || (au.last[k] && now - au.last[k] < 60 * 60e3) || a.n >= a.limit) return null;
+  au.n = (au.n || 0) + 1; au.last[k] = now; a.auto = au; await KV.put('ai', JSON.stringify(a));
+  let kl = null; try { kl = await klines(ev.code, ev.tf || '1h', 150, 'bybit'); } catch (_) {}
+  const bars = kl && kl.bars ? kl.bars : [];
+  const ctx = { ereignis: ev.title + (ev.body ? ' · ' + ev.body : ''), kurs: bars.length ? bars[bars.length - 1].c : null, kerzen: bars.map(b => [b.t, b.o, b.h, b.l, b.c]) };
+  const r = await aiRun(env, { sym: ev.sym, tf: ev.tf || '1h', model: au.model || 'fast', ctx, auto: ev.title,
+    q: `Automatische Kurz-Einschätzung nach diesem Signal der App: „${ev.title}${ev.body ? ' · ' + ev.body : ''}“. Schreib in „kurz“ höchstens 2 Sätze: Ist das Signal tragfähig, und worauf sollte man jetzt achten? Szenarien knapp halten.` });
+  if (r && r.ok) {
+    const sz = (r.res.szenarien || [])[0], dir = sz && sz.richtung ? ' · ' + sz.richtung + (sz.wahrscheinlichkeit != null ? ' ' + sz.wahrscheinlichkeit + ' %' : '') : '';
+    const body = String(r.res.kurz || r.res.welle || '').replace(/\s+/g, ' ').slice(0, 220) + dir;
+    await pushAll(env, { title: `🧠 Claude: ${ev.sym.replace(/\/USDT?$/, '')} ${ev.tf || ''}`.trim(), body, tag: 'ai-' + now, nav: { sym: ev.sym, tf: ev.tf || null, tab: 'chart' } }, false);
+  }
+  return r;
+}
 async function aiRun(env, b) {
   if (!env.ANTHROPIC_API_KEY) return { error: 'nokey', msg: 'Auf dem Server ist noch kein ANTHROPIC_API_KEY eingetragen' };
   const KV = env.WDESK, a = KV ? await aiLoad(KV) : { n: 0, limit: 20, hist: [] };
@@ -1063,7 +1084,7 @@ async function aiRun(env, b) {
   if (j.stop_reason === 'max_tokens') res.cut = true;
   if (!res.kurz && !res.welle && !res.szenarien.length) return { error: 'leer', msg: 'Claude hat keine lesbare Antwort geliefert – bitte nochmal versuchen' };
   const usage = j.usage || {};
-  a.n++; const h = { t: Date.now(), sym: b.sym, tf: b.tf, model: b.model || 'std', q: b.q || null, res, px: b.ctx && b.ctx.kurs, usage: { in: usage.input_tokens || 0, out: usage.output_tokens || 0 } };
+  a.n++; const h = { t: Date.now(), sym: b.sym, tf: b.tf, model: b.model || 'std', q: b.auto ? '⚡ Auto: ' + String(b.auto).slice(0, 120) : (b.q || null), auto: !!b.auto, res, px: b.ctx && b.ctx.kurs, usage: { in: usage.input_tokens || 0, out: usage.output_tokens || 0 } };
   a.hist.unshift(h); if (a.hist.length > 20) a.hist.length = 20;
   if (KV) await KV.put('ai', JSON.stringify(a));
   return { ok: true, res, usage: h.usage, model, n: a.n, limit: a.limit, t: h.t };
@@ -1206,10 +1227,12 @@ export default {
 
       // ---- 🧠 Claude-Analyse ----
       if (url.pathname === '/ai/run' && req.method === 'POST') { const b = await req.json().catch(() => ({})); const r = await aiRun(env, b); return json(h, r, r.error ? 400 : 200); }
+      if (url.pathname === '/ai/auto' && req.method === 'POST') { const b = await req.json().catch(() => ({})); const r = await aiAuto(env, b); return json(h, r || { ok: false, skip: true }); }
       if (url.pathname === '/ai/state' && req.method === 'POST') {
         const b = await req.json().catch(() => ({})); const KV = env.WDESK; const a = KV ? await aiLoad(KV) : { n: 0, limit: 20, hist: [] };
         if (b.limit != null && KV) { a.limit = Math.max(1, Math.min(200, Math.round(+b.limit) || 20)); await KV.put('ai', JSON.stringify(a)); }
-        return json(h, { ok: true, key: !!env.ANTHROPIC_API_KEY, n: a.n, limit: a.limit, hist: a.hist });
+        if (b.auto && KV) { const au = a.auto || {}; if (b.auto.on != null) au.on = !!b.auto.on; if (b.auto.max != null) au.max = Math.max(1, Math.min(30, Math.round(+b.auto.max) || 5)); if (b.auto.model && AI_MODELS[b.auto.model]) au.model = b.auto.model; a.auto = au; await KV.put('ai', JSON.stringify(a)); }
+        const au = a.auto || {}; return json(h, { ok: true, key: !!env.ANTHROPIC_API_KEY, n: a.n, limit: a.limit, hist: a.hist, auto: { on: !!au.on, max: au.max || 5, model: au.model || 'fast', n: au.day === aiDay() ? au.n || 0 : 0 } });
       }
 
       // ---- 🟠 Bybit-Demo-Bots ----
