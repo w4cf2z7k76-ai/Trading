@@ -2863,18 +2863,19 @@ function bindPos(el){
  el.querySelectorAll('[data-be]').forEach(b=>b.onclick=()=>{const p=AC.pos.find(x=>x.id==b.dataset.be);if(!p)return;posRun(p,()=>{if(p.dir*(lastP()-p.entry)<=0){toast('Kurs ist nicht im Gewinn – Einstand-Stop wäre sofort ausgelöst');return}p.sl=p.entry;after();toast('Stop auf Einstand gesetzt')})});
  el.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{if(syRO())return;AC.ord=AC.ord.filter(o=>o.id!=b.dataset.cx);after()})}
 const LV={spot:'open',fut:'open',bots:'open'};
+const PNC=Object.assign({},store('wdesk_pnclr')||{});
 function renderPanel(){if(S.bg)return;
  if(S.tab==='spot'||S.tab==='fut'){const m=S.tab,ps=AC.pos.filter(p=>pmode(p)===m),os=AC.ord.filter(o=>(o.mode||'fut')===m);
   let h=lvCard(m)+`<div class="card"><h4><span>${LIVE.mode!=='app'?'App-Übungskonto · ':''}${m==='spot'?'Spot-Bestand':'Futures-Positionen'} (${ps.length})</span><button id="pnVis">👁</button><button id="pnPanic" class="danger">🚨 Alle schließen</button></h4><div class="mut" style="font-size:12px">Konto ${money(AC.bal)} · frei ${money(avail())}</div>`;
-  const hs=AC.hist.filter(t=>(t.mode||'fut')===m),v=LV[m]||'open';
+  const ax=LIVE.mode==='bdemo'?'bybit':'app',clr=((PNC[m]||{})[ax])||0,hs=AC.hist.filter(t=>(t.mode||'fut')===m&&(ax==='bybit'?t.ex==='bybit':t.ex!=='bybit')&&(t.t1||0)>clr),v=LV[m]||'open';
   h+=`<div class="seg" style="margin:8px 0"><button data-lv="open" class="${v==='open'?'on':''}">Offen (${ps.length+os.length})</button><button data-lv="old" class="${v==='old'?'on':''}">Verlauf (${hs.length})</button></div>`;
   if(v==='open'){if(!ps.length&&!os.length)h+='<div class="mut" style="font-size:13px;margin-top:6px">Nichts offen</div>';ps.forEach(p=>h+=posHTML(p));os.forEach(o=>h+=ordHTML(o))}
   else{if(!hs.length)h+='<div class="mut" style="font-size:13px">Noch keine geschlossenen '+(m==='spot'?'Käufe':'Positionen')+'</div>';else{const sum=hs.reduce((s,t)=>s+t.pnl,0),w=hs.filter(t=>t.R>0).length;
-   h+=`<div style="font-size:13px;margin-bottom:4px">${hs.length} Trades · Treffer ${pct(w/hs.length)} · <b class="${sum>=0?'ok':'bad'}">${money(sum)}</b></div><table style="width:100%">`;
+   h+=`<div class="row" style="font-size:13px;margin:0 0 4px"><span>${ax==='bybit'?'🟠 ':''}${hs.length} Trades · Treffer ${pct(w/hs.length)} · <b class="${sum>=0?'ok':'bad'}">${money(sum)}</b></span><button id="pnClr" class="danger" style="margin-left:auto">Liste leeren</button></div><table style="width:100%">`;
    hs.slice().reverse().slice(0,50).forEach(t=>{if(t.id==null)t.id='h'+AC.hist.indexOf(t)+'_'+t.t1;h+=`<tr data-jr="${t.id}" style="cursor:pointer"><td style="padding:6px 0">${new Date(t.t1).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} <b class="${t.dir>0?'ok':'bad'}">${m==='spot'?'Kauf':t.dir>0?'Long':'Short'}</b> ${t.label}${t.lev>1?' '+t.lev+'×':''}${t.note?' 📝':''}<br><span class="mut" style="font-size:12px">${fmt(t.entry)} → ${fmt(t.exit)} · ${t.why}</span></td><td style="text-align:right" class="${t.pnl>=0?'ok':'bad'}">${money(t.pnl)}<br><small>${fR(t.R)}</small></td></tr>`});
    h+='</table><div class="mut" style="font-size:11px;margin-top:4px">Antippen → Tagebuch mit Bildern und Notiz</div>'}}
   h+='</div>';
-  $('#pnList').innerHTML=h;bindPos($('#pnList'));lvBind($('#pnList'));if(LIVE.mode!=='app')lvRefresh();$('#pnList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV[m]=b.dataset.lv;renderPanel()});$('#pnList').querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});$('#pnVis').onclick=visOpen;$('#pnPanic').onclick=()=>panic(m)}
+  $('#pnList').innerHTML=h;bindPos($('#pnList'));{const c=$('#pnClr');if(c)c.onclick=()=>{if(Date.now()-(PNC.t||0)>2500){PNC.t=Date.now();toast('Nochmal tippen: Liste leeren – im Journal bleiben alle Trades erhalten');return}PNC.t=0;const ax=LIVE.mode==='bdemo'?'bybit':'app';PNC[m]=Object.assign({},PNC[m],{[ax]:Date.now()});store('wdesk_pnclr',{spot:PNC.spot,fut:PNC.fut});renderPanel();toast('Liste geleert · Journal unverändert')}}lvBind($('#pnList'));if(LIVE.mode!=='app')lvRefresh();$('#pnList').querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV[m]=b.dataset.lv;renderPanel()});$('#pnList').querySelectorAll('[data-jr]').forEach(tr=>tr.onclick=()=>{const t=AC.hist.find(x=>String(x.id)===tr.dataset.jr);if(t)jrOpen(t)});$('#pnVis').onclick=visOpen;$('#pnPanic').onclick=()=>panic(m)}
  else if(S.tab==='bots')renderBots()}
 
 /* account modal */
