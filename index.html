@@ -1588,7 +1588,7 @@ function inbGo(x){const n=x.nav||{};$('#mInbox').classList.remove('open');
  try{if(n.sym&&(n.sym!==S.sym||S.custom||(n.tf&&n.tf!==S.tf)))openSymTf(n.sym,n.tf||S.tf)}catch(_){}
  setTab(n.tab||'chart')}
 // Mitteilung angetippt: direkt den Chart dieses Symbols öffnen
-function pnTake(m){if(!m||!m.nav||!m.nav.sym)return;const n={sym:m.nav.sym,tf:m.nav.tf||null,tab:'chart'};
+function pnTake(m){if(!m||!m.nav||!(m.nav.sym||m.nav.act==='rep'))return;const n=m.nav.act==='rep'?{act:'rep'}:{sym:m.nav.sym,tf:m.nav.tf||null,tab:'chart'};
  try{sessionStorage.setItem('wdesk_pnav',JSON.stringify({nav:n,title:m.title||'',t:m.t||Date.now()}))}catch(_){}}
 function pnApply(){let p=null;try{p=JSON.parse(sessionStorage.getItem('wdesk_pnav')||'null')}catch(_){}
  if(!p)return;if(Date.now()-p.t>30000){try{sessionStorage.removeItem('wdesk_pnav')}catch(_){}return}
@@ -1879,6 +1879,10 @@ function renderRep(){const R=repCalc(RPW),P=repCalc(RPW+1),d=x=>new Date(x).toLo
   if(R.n>=15)tips.push(`${R.n} Trades in einer Woche ist viel – weniger, dafür bessere Setups?`);
   if(!tips.length)tips.push('Keine Auffälligkeiten – weiter so und Notizen im Tagebuch pflegen.');
   h+=`<div class="card" style="font-size:13px"><h4><span>💡 Hinweise</span></h4>${tips.map(t=>`<div style="margin:4px 0">• ${t}</div>`).join('')}</div>`}
+ {const L=AC.hist.filter(t=>!t.replay&&t.t1>=Date.now()-30*864e5);if(L.length>=3){const g=f=>{const m={};L.forEach(t=>{const k=f(t);(m[k]||(m[k]=[])).push(t)});return Object.entries(m).map(([k,a])=>({k,n:a.length,w:a.filter(t=>t.R>0).length,s:a.reduce((x,t)=>x+t.R,0),p:a.reduce((x,t)=>x+t.pnl,0)})).sort((x,y)=>y.s-x.s)};
+  const row=x=>`<tr><td>${x.s>0?'✅':x.s<0?'❌':'➖'} ${x.k}</td><td style="text-align:right">${x.n}</td><td style="text-align:right">${pct(x.w/x.n)}</td><td style="text-align:right" class="${x.s>=0?'ok':'bad'}">${fR(x.s)}</td></tr>`;
+  const tab=(t,a)=>`<div style="margin-top:6px"><b>${t}</b><table style="width:100%;font-size:12px"><tr class="mut"><td></td><td style="text-align:right">Trades</td><td style="text-align:right">Treffer</td><td style="text-align:right">Summe R</td></tr>${a.map(row).join('')}</table></div>`;
+  h+=`<div class="card" style="font-size:13px"><h4><span>🧪 Welche Setups funktionieren? (30 Tage)</span></h4>${tab('Strategie + Welle',g(t=>statKey(t,'strat')+(t.wave?' · '+statKey(t,'wave'):'')))}${tab('Zeiteinheit',g(t=>statKey(t,'tf')))}${tab('Richtung',g(t=>statKey(t,'dir')))}<div class="mut" style="font-size:11px">${L.length} Trades · R = Gewinn im Verhältnis zum Risiko</div></div>`}}
  h+=`<div class="mut" style="font-size:11px">Konto jetzt ${money(AC.bal)} · Start ${money(AC.start)}</div>`;
  $('#repOut').innerHTML=h;$('#repOut').querySelectorAll('[data-rw]').forEach(b=>b.onclick=()=>{RPW=+b.dataset.rw;renderRep()})}
 function repTick(){if(!FEAT.report)return;const d=new Date();if(d.getDay()!==0||d.getHours()<18)return;const k=weekStart(0);if(store('wdesk_repn')===k)return;store('wdesk_repn',k);const R=repCalc(0);
@@ -2200,8 +2204,12 @@ async function bxAct(b){toast('Sende an Bybit …');try{const r=await lvApi('/bx
  catch(e){toast('Bybit: '+e.message)}LVD.ts=0;lvRefresh(true);bxRefresh(true)}
 // Bybit-Trades (Bots + Hand) ins Trade-Tagebuch, mit 🟠 markiert
 function bxMerge(){if(!BXS||!Array.isArray(BXS.hist))return;let n=0;BXS.hist.forEach(h=>{const id='bx'+h.id;if(AC.hist.some(x=>x.id===id))return;
-  AC.hist.push({key:'binance:'+h.sym,label:(h.label||h.sym)+' 🟠',mode:h.mode||'fut',lev:h.lev||1,dir:h.dir,entry:h.entry,exit:h.exit,pnl:h.pnl,R:h.R!=null?h.R:0,t0:h.t0,t1:h.t1,why:h.why+' · Bybit Demo',replay:false,bot:h.bot||null,wave:h.wave||null,id,tf:h.tf||null,strat:h.bot?'Elliott-Bot':(h.strat||'Bybit Demo'),note:'',ex:'bybit'});n++});
- if(n){AC.hist.sort((a,b)=>(a.t1||0)-(b.t1||0));saveAcct()}}
+  AC.hist.push({key:'binance:'+h.sym,label:(h.label||h.sym)+' 🟠',mode:h.mode||'fut',lev:h.lev||1,dir:h.dir,entry:h.entry,exit:h.exit,pnl:h.pnl,R:h.R!=null?h.R:0,t0:h.t0,t1:h.t1,why:h.why+' · Bybit Demo',replay:false,bot:h.bot||null,wave:h.wave||null,id,tf:h.tf||null,strat:h.bot?'Elliott-Bot':(h.strat||'Bybit Demo'),note:'',ex:'bybit'});n++;if(Date.now()-(h.t1||0)<2*864e5)SHQ.push({id,key:'binance:'+h.sym,t:Date.now()})});
+ if(n){AC.hist.sort((a,b)=>(a.t1||0)-(b.t1||0));saveAcct();store('wdesk_shotq',SHQ);shqRun()}}
+// Bybit-Trades schließt der Server – das Chart-Bild fürs Tagebuch holt die App nach, sobald der Chart dieses Paars offen ist
+const SHQ=store('wdesk_shotq')||[];
+function shqRun(){if(!SHQ.length||document.hidden||S.bg)return;const k=pkey(),now=Date.now();let ch=false;for(let i=SHQ.length-1;i>=0;i--){const q=SHQ[i];if(now-q.t>3*864e5){SHQ.splice(i,1);ch=true;continue}if(q.key===k&&!isRp()&&S.bars&&S.bars.length){shotTake(q.id,'b');SHQ.splice(i,1);ch=true}}if(ch)store('wdesk_shotq',SHQ)}
+setInterval(shqRun,15000);
 
 /* ---------- 🟠 Bots über Bybit Demo (der Server handelt, Bybit ist maßgeblich) ---------- */
 const BX={levMax:20,posMax:3};let BXS=null;

@@ -1144,8 +1144,24 @@ async function bybit(env, which, method, path, params) {
   return { status: 200, body };
 }
 
+// 📈 Wochenbericht als Mitteilung: sonntags ab 18 Uhr (deutsche Zeit), auch wenn die App zu ist
+async function repRun(env, opt = {}) {
+  const KV = env.WDESK; if (!KV) return null; const now = opt.now || Date.now();
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(now)).map(x => [x.type, x.value]));
+  if (p.weekday !== 'Sun' || +p.hour < 18) return null;
+  const wk = bxDay(now); const last = await KV.get('repn'); if (last === wk) return null;
+  await KV.put('repn', wk);
+  const snap = await KV.get('snap', 'json'); const acct = snap && snap.data ? jp(snap.data.wdesk_acct) : null;
+  const L = (acct && Array.isArray(acct.hist) ? acct.hist : []).filter(t => !t.replay && t.t1 >= now - 7 * 864e5);
+  if (!L.length) return { n: 0 };
+  const w = L.filter(t => t.R > 0).length, pnl = L.reduce((a, t) => a + (t.pnl || 0), 0), sR = L.reduce((a, t) => a + (t.R || 0), 0);
+  const body = `${L.length} Trades · Trefferquote ${Math.round(w / L.length * 100)} % · ${bxMoney(pnl)} · ${sR >= 0 ? '+' : ''}${sR.toFixed(1).replace('.', ',')} R – antippen für Details`;
+  await pushAll(env, { title: '📈 Dein Wochenbericht', body, tag: 'rep-' + wk, nav: { act: 'rep' } }, false);
+  return { n: L.length };
+}
+
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([watchRun(env).catch(() => null), engRun(env).catch(() => null), bxRun(env).catch(() => null)])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([watchRun(env).catch(() => null), engRun(env).catch(() => null), bxRun(env).catch(() => null), repRun(env).catch(() => null)])); },
   async fetch(req, env) {
     const h = cors(env, req);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
