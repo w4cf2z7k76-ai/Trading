@@ -2200,7 +2200,9 @@ function bxOutHTML(){if(!BXS)return '<span class="mut">Noch nicht geladen</span>
  (BXS.pos||[]).forEach(p=>L.push(`${p.dir>0?'<b class="ok">Long</b>':'<b class="bad">Short</b>'} ${p.label} ${ff(p.size)} @ ${fmt(p.entry)} · Stop ${p.sl?fmt(p.sl):'–'} · <span class="${p.upnl>=0?'ok':'bad'}">${money(p.upnl)}</span>`));
  if(!(BXS.pos||[]).length)L.push('<span class="mut">Keine offene Position bei Bybit</span>');
  (BXS.hist||[]).slice(0,5).forEach(t=>L.push(`<span class="mut" style="font-size:12px">${new Date(t.t1).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${t.label} ${t.dir>0?'Long':'Short'} · ${t.why} · <span class="${t.pnl>=0?'ok':'bad'}">${money(t.pnl)}</span></span>`));
- (BXS.err||[]).slice(0,3).forEach(e=>L.push(`<span class="warn" style="font-size:12px">⚠️ ${laAgo(e.t)}: ${e.m}</span>`));
+ {const c=BXS.conn||{};if(c.down)L.push(`<span class="bad" style="font-size:12px">❌ Hintergrund-Läufe erreichen Bybit seit ${c.okT?laAgo(c.okT).replace(/^vor /,''):'längerem'} nicht (${/403/.test(c.failMsg||'')?'Rechenzentrum von Bybit gesperrt':c.failMsg||'Fehler'}) – Stop und Ziele liegen weiter bei Bybit.</span>`);
+  else if(c.okT)L.push(`<span class="mut" style="font-size:12px">☁️ Hintergrund-Verbindung zu Bybit ok${c.failT&&Date.now()-c.failT<36e5?` · einzelne Aussetzer (zuletzt ${laAgo(c.failT)}${/403/.test(c.failMsg||'')?', 403 – Cloudflare-Rechenzentrum von Bybit gesperrt':''}) – wird jede Minute neu versucht, kein Signal geht verloren`:''}</span>`)}
+ (BXS.err||[]).filter(e=>!/HTTP 403/.test(e.m)).slice(0,3).forEach(e=>L.push(`<span class="warn" style="font-size:12px">⚠️ ${laAgo(e.t)}: ${e.m}</span>`));
  if(BXS.kill&&AC.bots.some(b=>b.ex==='bybit'&&b.state==='run'))L.push(`<span class="warn" style="font-size:12px">⛔ Not-Aus war aktiv – Bybit-Bots sind pausiert. <a href="#" id="bxUnkill">Wieder freigeben</a></span>`);
  return L.join('<br>')}
 function bxCard(){return `<div class="card"><h4><span>🟠 Bybit Demo · Bots</span></h4>
