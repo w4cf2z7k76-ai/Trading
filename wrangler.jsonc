@@ -11,5 +11,8 @@
   "kv_namespaces": [
     { "binding": "WDESK", "id": "fd3ef2302e024fe0802ef315a3b4680e" }
   ],
-  "triggers": { "crons": ["* * * * *"] }
+  "triggers": { "crons": ["* * * * *"] },
+  // Baustein in Westeuropa für Bybit-Aufrufe (gegen die 403-Sperre)
+  "durable_objects": { "bindings": [ { "name": "BYEU", "class_name": "BybitEU" } ] },
+  "migrations": [ { "tag": "v1", "new_sqlite_classes": ["BybitEU"] } ]
 }

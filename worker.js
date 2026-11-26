@@ -12,7 +12,7 @@
 //   ANTHROPIC_API_KEY  (Secret)  für die Claude-Analyse in der App (console.anthropic.com)
 //   ALLOWED_ORIGIN     (Text)    https://w4cf2z7k76-ai.github.io
 
-const VERSION = '2.1';
+const VERSION = '2.2';
 const HOSTS = { demo: 'https://api-demo.bybit.com', live: 'https://api.bybit.com' };
 const RECV = '10000';
 
@@ -1053,6 +1053,34 @@ async function aiRun(env, b) {
   return { ok: true, res, usage: h.usage, model, n: a.n, limit: a.limit, t: h.t };
 }
 
+// Bybit sperrt manche Cloudflare-Standorte (HTTP 403). Darum laufen alle
+// Bybit-Aufrufe über einen kleinen Baustein, der fest in Westeuropa steht.
+async function bxFetch(env, url, init) {
+  if (env.BYEU) {
+    try {
+      const stub = env.BYEU.get(env.BYEU.idFromName('eu1'), { locationHint: 'weur' });
+      const r = await stub.fetch('https://eu/proxy', { method: 'POST', body: JSON.stringify({ url, init }) });
+      const j = await r.json();
+      if (j && j.ok) { BXVIA.eu = j.colo || 'eu'; return { status: j.status, txt: j.txt }; }
+    } catch (_) {}
+  }
+  BXVIA.eu = null;
+  const r = await fetch(url, init); return { status: r.status, txt: await r.text() };
+}
+const BXVIA = { eu: null };
+export class BybitEU {
+  constructor(state, env) { this.state = state; this.colo = null; }
+  async fetch(req) {
+    try {
+      const { url, init } = await req.json();
+      if (!/^https:\/\/api(-demo)?\.bybit\.com\//.test(url)) return Response.json({ ok: false, error: 'url' });
+      const r = await fetch(url, init); const txt = await r.text();
+      if (!this.colo) { try { const t = await (await fetch('https://www.cloudflare.com/cdn-cgi/trace')).text(); this.colo = (t.match(/colo=(\w+)/) || [])[1] || 'eu'; } catch (_) { this.colo = 'eu'; } }
+      return Response.json({ ok: true, status: r.status, txt, colo: this.colo });
+    } catch (e) { return Response.json({ ok: false, error: String(e && e.message || e) }); }
+  }
+}
+
 async function bybit(env, which, method, path, params) {
   const key = which === 'live' ? env.BYBIT_KEY : env.BYBIT_DEMO_KEY;
   const sec = which === 'live' ? env.BYBIT_SECRET : env.BYBIT_DEMO_SECRET;
@@ -1072,7 +1100,7 @@ async function bybit(env, which, method, path, params) {
   const sign = await hmac(sec, ts + key + RECV + payload);
   Object.assign(init.headers, { 'X-BAPI-API-KEY': key, 'X-BAPI-TIMESTAMP': ts, 'X-BAPI-RECV-WINDOW': RECV, 'X-BAPI-SIGN': sign });
   let r, txt;
-  try { r = await fetch(url, init); txt = await r.text(); }
+  try { const x = await bxFetch(env, url, init); r = { status: x.status }; txt = x.txt; }
   catch (e) { return { status: 502, body: { error: 'network', msg: 'Bybit nicht erreichbar: ' + e.message } }; }
   let body;
   try { body = JSON.parse(txt); } catch (_) { body = { error: 'http', msg: `Bybit antwortet mit HTTP ${r.status}` + (r.status === 403 ? ' (Zugriff aus diesem Land/Rechenzentrum gesperrt?)' : ''), raw: txt.slice(0, 200) }; }
@@ -1185,7 +1213,7 @@ export default {
         else if (op === 'hand') { try { const r = await bxHand(env, b); const { bx } = await bxLoad(KV); return json(h, { ...r, hist: bx.hist.slice(0, 100) }); } catch (e) { return json(h, { error: 'bybit', msg: e.message }, 400); } }
         else if (op !== 'state') return json(h, { error: 'notfound' }, 404);
         let ran = null; if (op !== 'state' && op !== 'resume' && op !== 'hand') ran = await bxRun(env).catch(e => ({ err: String(e.message || e) }));
-        const { bx } = await bxLoad(KV); const out = { ok: true, key: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), ran, kill: cfg.kill || 0, bots: {}, pos: [], hist: bx.hist.slice(0, 100), err: bx.err.filter(e => !/HTTP 403/.test(e.m)).slice(0, 10), w: bx.w || null,
+        const { bx } = await bxLoad(KV); const out = { ok: true, key: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), ran, kill: cfg.kill || 0, bots: {}, pos: [], hist: bx.hist.slice(0, 100), err: bx.err.filter(e => !/HTTP 403/.test(e.m)).slice(0, 10), w: bx.w || null, via: BXVIA.eu,
           conn: { okT: bx.okT || null, failT: bx.failT || null, failMsg: bx.failMsg || null, down: !!bx.failPushed },
           hand: bx.pos.filter(p => p.kind === 'hand').map(p => ({ id: p.id, mode: p.mode, sym: p.sym, code: p.code, label: p.label, base: p.base, dir: p.dir, type: p.type, filled: !!p.filled, entry: p.entry, sl: p.sl, tps: p.tps.map(t => ({ p: t.pb || t.p, pct: t.pct, hit: !!t.hit })), hits: p.hits || 0, qty: p.qtyNet || p.qty0b || p.qtyAsk, be: p.be, trail: p.trail, lastPx: p.lastPx || null, t0: p.t0 })) };
         Object.keys(bx.bots).forEach(id => { out.bots[id] = { ...bx.bots[id], paused: bxPaused(bx, cfg, id) ? bx.bots[id].paused : null }; });
@@ -1204,7 +1232,7 @@ export default {
       if (url.pathname === '/eng') return json(h, (env.WDESK && await env.WDESK.get('eng', 'json')) || {});
 
       if (url.pathname === '/status')
-        return json(h, { ok: true, version: VERSION, demo: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), live: !!(env.BYBIT_KEY && env.BYBIT_SECRET), colo: (req.cf && req.cf.colo) || null });
+        return json(h, { ok: true, version: VERSION, demo: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), live: !!(env.BYBIT_KEY && env.BYBIT_SECRET), colo: (req.cf && req.cf.colo) || null, eu: !!env.BYEU });
 
       if (url.pathname === '/bybit' && req.method === 'POST') {
         const b = await req.json().catch(() => ({}));
