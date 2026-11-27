@@ -12,7 +12,7 @@
 //   ANTHROPIC_API_KEY  (Secret)  für die Claude-Analyse in der App (console.anthropic.com)
 //   ALLOWED_ORIGIN     (Text)    https://w4cf2z7k76-ai.github.io
 
-const VERSION = '2.3';
+const VERSION = '2.4';
 const HOSTS = { demo: 'https://api-demo.bybit.com', live: 'https://api.bybit.com' };
 const RECV = '10000';
 
@@ -718,6 +718,7 @@ async function bxManage(env, p, x, now, pref) {
   const sz = bxNum(x.size, 0), d = p.dir, done = 1 - sz / p.qty0b;
   let cum = 0, hits = 0; for (const t of p.tps) { if (t.skip || !(t.q > 0)) continue; cum += t.q; if (p.qty0b - sz - (p.partQ || 0) >= cum - p.step / 2) hits++; }
   if (hits > (p.hits || 0)) p.hits = hits;
+  if (p.manual) return null; // von Hand übernommen: Stop/Ziele nicht mehr automatisch verschieben
   const cur = bxNum(x.stopLoss, 0); let want = cur > 0 ? cur : p.sl, why = null;
   if (p.hits >= 1 && p.be && d * (p.entry - want) > 0) { want = p.entry; why = 'be'; }
   let last = null;
@@ -841,7 +842,7 @@ async function bxHand(env, b, opt = {}) {
   const KV = env.WDESK; if (!KV) throw new Error('Speicher (KV) fehlt');
   if (!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET)) throw new Error('Kein Bybit-Demo-Schlüssel auf dem Server');
   const { bx } = await bxLoad(KV), now = opt.now || Date.now(), ev = [], res = { ok: true };
-  const find = () => bx.pos.find(q => q.id === +b.id || (b.code && q.code === b.code && q.mode === (b.mode || 'fut')));
+  const find = () => bx.pos.find(q => q.id === +b.id || (b.code && q.code === b.code && (q.mode || 'fut') === (b.mode || 'fut')));
   const op = b.op;
   if (op === 'open') { const cfg0 = await KV.get('bxcfg', 'json') || {}; if (bxLocked(cfg0, now)) throw new Error(`Tagesverlust-Grenze erreicht (−${String(cfg0.lock.loss).replace('.', ',')} %) – neue Orders erst ab Mitternacht wieder möglich`); }
   if (op === 'open') {
@@ -892,11 +893,12 @@ async function bxHand(env, b, opt = {}) {
       else throw new Error('Unbekannte Aktion');
     } else {
       const pl = await bxCall(env, 'GET', '/v5/position/list', { category: 'linear', symbol: p.code }); const x = (pl.list || []).find(y => bxNum(y.size, 0) > 0);
+      const takeover = () => { if (p.kind !== 'hand' && !p.manual) { p.manual = true; ev.push({ title: `✋ Bybit Demo: ${p.label} von dir übernommen`, body: 'Stop und Ziele dieser Bot-Position steuerst ab jetzt du – der Bot handelt neue Signale normal weiter', sym: p.sym }); } };
       if (op === 'cancel' && !p.filled) { await bxCancelSafe(env, 'linear', p); bx.pos = bx.pos.filter(q => q !== p); ev.push({ title: `🟠 Bybit Demo: Order ${p.label} storniert`, body: 'von dir', sym: p.sym }); }
       else if (op === 'close') { if (!x) throw new Error('Keine offene Position bei Bybit'); await bxClose(env, p, x, 'Von Hand geschlossen'); try { if (await bxBook(env, bx, p, now, ev)) { try { await bxCall(env, 'POST', '/v5/order/cancel-all', { category: 'linear', symbol: p.code }); } catch (_) {} } } catch (_) {} }
       else if (op === 'part') { if (!x) throw new Error('Keine offene Position bei Bybit'); const q = bxFloor(bxNum(x.size, 0) * Math.min(1, Math.max(.05, +b.pct || .5)), p.step); if (!(q >= p.min)) throw new Error('Teil zu klein'); await bxCall(env, 'POST', '/v5/order/create', { category: 'linear', symbol: p.code, side: p.dir > 0 ? 'Sell' : 'Buy', orderType: 'Market', qty: bxS(q, p.step), reduceOnly: true, positionIdx: 0 }); ev.push({ title: `🟠 Bybit Demo: ${p.label} teilweise geschlossen`, body: `${q} Stk. verkauft`, sym: p.sym }); p.partQ = (p.partQ || 0) + q; }
-      else if (op === 'sl' || op === 'be') { if (!x) throw new Error('Keine offene Position bei Bybit'); const want = bxRnd(op === 'be' ? bxNum(x.avgPrice, p.entry) : +b.price, p.tick, -p.dir); await bxCall(env, 'POST', '/v5/position/trading-stop', { category: 'linear', symbol: p.code, stopLoss: bxS(want, p.tick), slTriggerBy: 'LastPrice', tpslMode: 'Full', positionIdx: 0 }); p.sl = want; }
-      else if (op === 'tp') { if (!x) throw new Error('Keine offene Position bei Bybit'); await bxCancelTPs(env, p); p.tps = (b.tps || []).filter(t => isFinite(+t.p) && +t.pct > 0).slice(0, 3).map(t => ({ p: +t.p, pct: +t.pct })); p.qty0b = bxNum(x.size, 0); p.hits = 0; p.hitsSeen = 0; p.partQ = 0; res.warn = await bxPlaceTPs(env, p, bxNum(x.size, 0)); }
+      else if (op === 'sl' || op === 'be') { if (!x) throw new Error('Keine offene Position bei Bybit'); takeover(); const want = bxRnd(op === 'be' ? bxNum(x.avgPrice, p.entry) : +b.price, p.tick, -p.dir); await bxCall(env, 'POST', '/v5/position/trading-stop', { category: 'linear', symbol: p.code, stopLoss: bxS(want, p.tick), slTriggerBy: 'LastPrice', tpslMode: 'Full', positionIdx: 0 }); p.sl = want; }
+      else if (op === 'tp') { if (!x) throw new Error('Keine offene Position bei Bybit'); takeover(); await bxCancelTPs(env, p); p.tps = (b.tps || []).filter(t => isFinite(+t.p) && +t.pct > 0).slice(0, 3).map(t => ({ p: +t.p, pct: +t.pct })); p.qty0b = bxNum(x.size, 0); p.hits = 0; p.hitsSeen = 0; p.partQ = 0; res.warn = await bxPlaceTPs(env, p, bxNum(x.size, 0)); }
       else throw new Error('Unbekannte Aktion');
     }
   }
@@ -1293,7 +1295,7 @@ export default {
           try {
             const wal = await bxCall(env, 'GET', '/v5/account/wallet-balance', { accountType: 'UNIFIED' }); const a = (wal.list || [])[0] || {}; out.equity = bxNum(a.totalEquity, null); out.avail = bxNum(a.totalAvailableBalance, null);
             const pl = await bxCall(env, 'GET', '/v5/position/list', { category: 'linear', settleCoin: 'USDT', limit: '200' }); const L = (pl.list || []).filter(x => bxNum(x.size, 0) > 0);
-            out.pos = L.map(x => { const p = bx.pos.find(q => q.code === x.symbol && q.mode !== 'spot'); return { code: x.symbol, sym: p ? p.sym : x.symbol, bot: p ? p.bot : null, label: p ? p.label : x.symbol + ' (nicht aus der App)', hand: !!(p && p.kind === 'hand'), id: p ? p.id : null, dir: x.side === 'Buy' ? 1 : -1, size: bxNum(x.size, 0), entry: bxNum(x.avgPrice, 0), mark: bxNum(x.markPrice, 0), sl: bxNum(x.stopLoss, 0) || null, upnl: bxNum(x.unrealisedPnl, 0), lev: bxNum(x.leverage, 0), tps: p ? p.tps.filter(t => !t.skip).map(t => t.pb || t.p) : [], hits: p ? p.hits || 0 : 0, wave: p ? p.wave : null, tf: p ? p.btf : null }; });
+            out.pos = L.map(x => { const p = bx.pos.find(q => q.code === x.symbol && q.mode !== 'spot'); return { code: x.symbol, sym: p ? p.sym : x.symbol, bot: p ? p.bot : null, label: p ? p.label : x.symbol + ' (nicht aus der App)', hand: !!(p && p.kind === 'hand'), manual: !!(p && p.manual), id: p ? p.id : null, dir: x.side === 'Buy' ? 1 : -1, size: bxNum(x.size, 0), entry: bxNum(x.avgPrice, 0), mark: bxNum(x.markPrice, 0), sl: bxNum(x.stopLoss, 0) || null, upnl: bxNum(x.unrealisedPnl, 0), lev: bxNum(x.leverage, 0), tps: p ? p.tps.filter(t => !t.skip).map(t => t.pb || t.p) : [], hits: p ? p.hits || 0 : 0, wave: p ? p.wave : null, tf: p ? p.btf : null }; });
           } catch (e) { out.bybitErr = e.message; }
         }
         return json(h, out);
