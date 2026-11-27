@@ -1,5 +1,5 @@
 // Wellen-Desk Service Worker: App offline verfügbar, Kursdaten immer live
-const CACHE = 'wellen-desk-v80';
+const CACHE = 'wellen-desk-v81';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== 'wd-diag').map(k => caches.delete(k))))); self.clients.claim(); });
