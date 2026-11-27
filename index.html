@@ -2223,7 +2223,7 @@ function bxHandBind(el){el.querySelectorAll('[data-bxa]').forEach(b=>b.onclick=(
   if(e.op==='sl'){const p=num(v);if(!fin(p)){toast('Preis eingeben');return}bxAct({op:'sl',id:e.id,code:e.code,mode:e.code?'fut':undefined,price:p})}
   else{const Z=v.split(/[;\s]+/).map(num).filter(fin).slice(0,3);if(!Z.length){toast('Mind. ein Ziel eingeben');return}const pc=Z.length===1?[100]:Z.length===2?[50,50]:[50,30,20];bxAct({op:'tp',id:e.id,code:e.code,mode:e.code?'fut':undefined,tps:Z.map((p,i)=>({p,pct:pc[i]}))})}};
  const no=el.querySelector('#bxeNo');if(no)no.onclick=()=>{BXE=null;renderPanel()}}
-async function bxAct(b){toast('Sende an Bybit …');try{const r=await lvApi('/bx/hand',b,30000);toast((r.events&&r.events[0])||({be:'Stop auf Einstand gesetzt',sl:'Stop geändert',tp:'Ziele neu gelegt',part:'Teil geschlossen'})[b.op]||'Erledigt');
+async function bxAct(b){toast('Sende an Bybit …');try{const r=await lvApi('/bx/hand',b,30000);if(b.op==='cancel'&&BXS&&BXS.hand){BXS.hand=BXS.hand.filter(x=>x.id!==b.id);if(S.tab==='spot'||S.tab==='fut')renderPanel()}toast((r.events&&r.events[0])||({be:'Stop auf Einstand gesetzt',sl:'Stop geändert',tp:'Ziele neu gelegt',part:'Teil geschlossen'})[b.op]||'Erledigt');
   (r.events||[]).forEach(e=>{const[t,...x]=e.split(' · ');notify('trade',t,x.join(' · '),{tab:S.tab})});if(r.warn&&r.warn.length)setTimeout(()=>toast('⚠️ '+r.warn.join(' · ')),2500);if(r.hist){BXS=Object.assign(BXS||{},{hist:r.hist});bxMerge()}}
  catch(e){toast('Bybit: '+e.message)}LVD.ts=0;lvRefresh(true);bxRefresh(true)}
 // Bybit-Trades (Bots + Hand) ins Trade-Tagebuch, mit 🟠 markiert
@@ -2242,8 +2242,8 @@ function bxWhy(){return !lvTokOK()?'erst im Live-Konto am Server anmelden':!(LVT
 function bxCfg(){if(!lvTokOK())return Promise.resolve();const L=AC.bots.filter(b=>b.ex==='bybit'),map={};L.forEach(b=>{const y=bgSym(b.key);if(y&&BIN[y])map[y]=BIN[y]});
  return lvApi('/bx/cfg',{bots:L.map(b=>{const{st,...r}=b;return r}),map}).then(r=>{BXS=r;BXS.t=Date.now();if(S.tab==='bots')renderBots()}).catch(e=>toast('Bybit: '+(e.code==='notfound'?'Server ist noch alt – worker.js (v1.7) einspielen':e.message)))}
 let bxBusy=false;
-async function bxRefresh(force){if(bxBusy||!lvTokOK()||!(AC.bots.some(b=>b.ex==='bybit')||LIVE.mode==='bdemo'))return;if(!force&&BXS&&Date.now()-BXS.t<20000)return;bxBusy=true;
- try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();bxMerge();if(S.tab==='bots'&&!document.hidden)renderBots();if(S.tab==='spot'||S.tab==='fut')renderPanel();try{if($('#mAcct').classList.contains('open'))renderAcct();tkChips()}catch(_){}if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false}}
+async function bxRefresh(force){if(bxBusy&&force){BX.again=true;return}if(bxBusy||!lvTokOK()||!(AC.bots.some(b=>b.ex==='bybit')||LIVE.mode==='bdemo'))return;if(!force&&BXS&&Date.now()-BXS.t<20000)return;bxBusy=true;
+ try{BXS=await lvApi('/bx/state',{});BXS.t=Date.now();bxMerge();if(S.tab==='bots'&&!document.hidden)renderBots();if(S.tab==='spot'||S.tab==='fut')renderPanel();try{if($('#mAcct').classList.contains('open'))renderAcct();tkChips()}catch(_){}if($('#mLive').classList.contains('open')){const o=$('#bxOut');if(o)o.innerHTML=bxOutHTML()}}catch(_){}finally{bxBusy=false;if(BX.again){BX.again=false;setTimeout(()=>bxRefresh(true),50)}}}
 function bxAuto(){if(!BXS||Date.now()-BXS.t>20000)setTimeout(()=>bxRefresh(),50)}
 setInterval(()=>{if(!document.hidden&&S.tab==='bots')bxRefresh()},20000);
 function bxBotCard(bt,act,st){const bs=(BXS&&BXS.bots&&BXS.bots[bt.id])||{},ps=((BXS&&BXS.pos)||[]).filter(p=>p.bot==bt.id),w=Object.keys(bt.waves).filter(k=>bt.waves[k]).join(','),bst=bs.st||{};

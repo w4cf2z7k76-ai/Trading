@@ -12,7 +12,7 @@
 //   ANTHROPIC_API_KEY  (Secret)  für die Claude-Analyse in der App (console.anthropic.com)
 //   ALLOWED_ORIGIN     (Text)    https://w4cf2z7k76-ai.github.io
 
-const VERSION = '2.4';
+const VERSION = '2.5';
 const HOSTS = { demo: 'https://api-demo.bybit.com', live: 'https://api.bybit.com' };
 const RECV = '10000';
 
@@ -656,6 +656,15 @@ async function bxInstr(env, code) {
   if (!x) throw new Error('Symbol bei Bybit unbekannt: ' + code);
   return (BXI[code] = { step: bxNum(x.lotSizeFilter.qtyStep, .001), min: bxNum(x.lotSizeFilter.minOrderQty, .001), tick: bxNum(x.priceFilter.tickSize, .1), maxLev: bxNum(x.leverageFilter && x.leverageFilter.maxLeverage, 25) });
 }
+// Gegen Überschneidungen: Was per Hand storniert/entfernt wurde, merkt sich der Server 15 Min.
+// Ein gleichzeitig laufender Abgleich darf es beim Speichern nicht wieder zurückschreiben.
+async function bxDead(KV, add) {
+  const now = Date.now(); let d = (await KV.get('bxdel', 'json')) || {};
+  for (const k in d) if (now - d[k] > 15 * 60e3) delete d[k];
+  if (add && add.length) { add.forEach(id => { d[id] = now; }); await KV.put('bxdel', JSON.stringify(d)); }
+  return d;
+}
+async function bxSave(KV, bx) { const d = await bxDead(KV); if (Object.keys(d).length) bx.pos = bx.pos.filter(q => !(q.id != null && d[q.id])); await KV.put('bx', JSON.stringify(bx)); }
 async function bxLoad(KV) {
   const bx = (await KV.get('bx', 'json')) || {}; bx.bots = bx.bots || {}; bx.pos = bx.pos || []; bx.hist = bx.hist || []; bx.err = bx.err || [];
   const c = (await KV.get('bxcfg', 'json')) || {}; c.bots = c.bots || {}; c.map = c.map || {};
@@ -885,7 +894,7 @@ async function bxHand(env, b, opt = {}) {
   } else {
     const p = find(); if (!p) throw new Error('Position/Order nicht gefunden – evtl. schon geschlossen');
     if (p.mode === 'spot') {
-      if (op === 'cancel' && !p.filled) { await bxCancelSafe(env, 'spot', p); bx.pos = bx.pos.filter(q => q !== p); ev.push({ title: `🟠 Bybit Demo: Spot-Kauf ${p.base} storniert`, body: 'von dir', sym: p.sym }); }
+      if (op === 'cancel' && !p.filled) { await bxCancelSafe(env, 'spot', p); bx.pos = bx.pos.filter(q => q !== p); await bxDead(KV, [p.id]); ev.push({ title: `🟠 Bybit Demo: Spot-Kauf ${p.base} storniert`, body: 'von dir', sym: p.sym }); }
       else if (op === 'close' || op === 'part') { if (!p.filled) throw new Error('Kauf ist noch nicht ausgeführt – stornieren'); const f = await bxSpotFills(env, p), rem = Math.max(0, p.qtyNet - f.sq); p.closing = op === 'close' ? 'Von Hand verkauft' : null; await bxSpotSell(env, p, op === 'close' ? rem : rem * Math.min(1, Math.max(.05, +b.pct || .5))); await bxSpotRun(env, bx, p, now, ev, () => {}); }
       else if (op === 'sl') { p.sl = isFinite(+b.price) ? +b.price : null; }
       else if (op === 'be') { if (!p.filled) throw new Error('Noch nicht gekauft'); p.sl = p.entry; }
@@ -894,7 +903,7 @@ async function bxHand(env, b, opt = {}) {
     } else {
       const pl = await bxCall(env, 'GET', '/v5/position/list', { category: 'linear', symbol: p.code }); const x = (pl.list || []).find(y => bxNum(y.size, 0) > 0);
       const takeover = () => { if (p.kind !== 'hand' && !p.manual) { p.manual = true; ev.push({ title: `✋ Bybit Demo: ${p.label} von dir übernommen`, body: 'Stop und Ziele dieser Bot-Position steuerst ab jetzt du – der Bot handelt neue Signale normal weiter', sym: p.sym }); } };
-      if (op === 'cancel' && !p.filled) { await bxCancelSafe(env, 'linear', p); bx.pos = bx.pos.filter(q => q !== p); ev.push({ title: `🟠 Bybit Demo: Order ${p.label} storniert`, body: 'von dir', sym: p.sym }); }
+      if (op === 'cancel' && !p.filled) { await bxCancelSafe(env, 'linear', p); bx.pos = bx.pos.filter(q => q !== p); await bxDead(KV, [p.id]); ev.push({ title: `🟠 Bybit Demo: Order ${p.label} storniert`, body: 'von dir', sym: p.sym }); }
       else if (op === 'close') { if (!x) throw new Error('Keine offene Position bei Bybit'); await bxClose(env, p, x, 'Von Hand geschlossen'); try { if (await bxBook(env, bx, p, now, ev)) { try { await bxCall(env, 'POST', '/v5/order/cancel-all', { category: 'linear', symbol: p.code }); } catch (_) {} } } catch (_) {} }
       else if (op === 'part') { if (!x) throw new Error('Keine offene Position bei Bybit'); const q = bxFloor(bxNum(x.size, 0) * Math.min(1, Math.max(.05, +b.pct || .5)), p.step); if (!(q >= p.min)) throw new Error('Teil zu klein'); await bxCall(env, 'POST', '/v5/order/create', { category: 'linear', symbol: p.code, side: p.dir > 0 ? 'Sell' : 'Buy', orderType: 'Market', qty: bxS(q, p.step), reduceOnly: true, positionIdx: 0 }); ev.push({ title: `🟠 Bybit Demo: ${p.label} teilweise geschlossen`, body: `${q} Stk. verkauft`, sym: p.sym }); p.partQ = (p.partQ || 0) + q; }
       else if (op === 'sl' || op === 'be') { if (!x) throw new Error('Keine offene Position bei Bybit'); takeover(); const want = bxRnd(op === 'be' ? bxNum(x.avgPrice, p.entry) : +b.price, p.tick, -p.dir); await bxCall(env, 'POST', '/v5/position/trading-stop', { category: 'linear', symbol: p.code, stopLoss: bxS(want, p.tick), slTriggerBy: 'LastPrice', tpslMode: 'Full', positionIdx: 0 }); p.sl = want; }
@@ -902,7 +911,7 @@ async function bxHand(env, b, opt = {}) {
       else throw new Error('Unbekannte Aktion');
     }
   }
-  bx.w = now; await KV.put('bx', JSON.stringify(bx));
+  bx.w = now; await bxSave(KV, bx);
   for (const e of ev.slice(0, 3)) await bxPush(env, e.title, e.body, e.sym);
   res.events = ev.map(e => e.title + ' · ' + e.body);
   return res;
@@ -931,7 +940,7 @@ async function bxRun(env, opt = {}) {
     if (!bx.failT || now - bx.failT > 30 * 60e3) { bx.failT = now; bx.failMsg = e.message; dirty = true; }
     if (!is403 && bx.lastErr !== e.message) { bx.lastErr = e.message; log('Bybit: ' + e.message); dirty = true; }
     if (bx.okT && now - bx.okT > 45 * 60e3 && !bx.failPushed) { bx.failPushed = true; dirty = true; await bxPush(env, '⚠️ Server erreicht Bybit nicht', `Seit ${Math.round((now - bx.okT) / 60e3)} Min. keine Verbindung (${is403 ? 'Rechenzentrum von Bybit gesperrt' : e.message}). Stop und Ziele liegen weiter bei Bybit.`, null); }
-    if (dirty) await KV.put('bx', JSON.stringify(bx));
+    if (dirty) await bxSave(KV, bx);
     return res;
   }
   if (bx.lastErr) bx.lastErr = null;
@@ -1022,7 +1031,7 @@ async function bxRun(env, opt = {}) {
   // Positionen, die gerade geschlossen werden sollen (Signalwechsel), sofort schließen
   for (const p of bx.pos.filter(p => p.close && !p.closing)) { try { await bxClose(env, p, bpos[p.code], p.close); } catch (e) { log(`${p.label}: Schließen fehlgeschlagen – ${e.message}`); } }
   res.ms = Date.now() - t0run; res.events = ev.map(e => e.title + ' · ' + e.body);
-  if (sig() !== before) { bx.w = now; await KV.put('bx', JSON.stringify(bx)); }
+  if (sig() !== before) { bx.w = now; await bxSave(KV, bx); }
   for (const e of ev.slice(0, 6)) await bxPush(env, e.title, e.body, e.sym);
   return res;
 }
@@ -1287,7 +1296,7 @@ export default {
         else if (op !== 'state') return json(h, { error: 'notfound' }, 404);
         let ran = null; if (op !== 'state' && op !== 'resume' && op !== 'hand') ran = await bxRun(env).catch(e => ({ err: String(e.message || e) }));
         const cfgN = ran ? ((await KV.get('bxcfg', 'json')) || cfg) : cfg;
-        const { bx } = await bxLoad(KV); const out = { ok: true, key: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), ran, kill: cfgN.kill || 0, bots: {}, pos: [], hist: bx.hist.slice(0, 100), err: bx.err.filter(e => !/HTTP 403/.test(e.m)).slice(0, 10), w: bx.w || null, via: BXVIA.eu, day: { eq0: bx.day && bx.day.d === bxDay(Date.now()) ? bx.day.eq0 : null, lim: bxLim(cfgN), lock: bxLocked(cfgN, Date.now()) ? cfgN.lock : null },
+        const { bx } = await bxLoad(KV); { const d = await bxDead(KV); bx.pos = bx.pos.filter(q => !(q.id != null && d[q.id])); } const out = { ok: true, key: !!(env.BYBIT_DEMO_KEY && env.BYBIT_DEMO_SECRET), ran, kill: cfgN.kill || 0, bots: {}, pos: [], hist: bx.hist.slice(0, 100), err: bx.err.filter(e => !/HTTP 403/.test(e.m)).slice(0, 10), w: bx.w || null, via: BXVIA.eu, day: { eq0: bx.day && bx.day.d === bxDay(Date.now()) ? bx.day.eq0 : null, lim: bxLim(cfgN), lock: bxLocked(cfgN, Date.now()) ? cfgN.lock : null },
           conn: { okT: bx.okT || null, failT: bx.failT || null, failMsg: bx.failMsg || null, down: !!bx.failPushed },
           hand: bx.pos.filter(p => p.kind === 'hand').map(p => ({ id: p.id, mode: p.mode, sym: p.sym, code: p.code, label: p.label, base: p.base, dir: p.dir, type: p.type, filled: !!p.filled, entry: p.entry, sl: p.sl, tps: p.tps.map(t => ({ p: t.pb || t.p, pct: t.pct, hit: !!t.hit })), hits: p.hits || 0, qty: p.qtyNet || p.qty0b || p.qtyAsk, lev: p.levB || null, be: p.be, trail: p.trail, lastPx: p.lastPx || null, t0: p.t0 })) };
         Object.keys(bx.bots).forEach(id => { out.bots[id] = { ...bx.bots[id], paused: bxPaused(bx, cfg, id) ? bx.bots[id].paused : null }; });
