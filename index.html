@@ -950,11 +950,12 @@ function draw(){LB=[];
  ctx.restore();
  {const ci=S.cross?Math.max(0,Math.min(B.length-1,Math.round(iOf(S.cross.x)))):B.length-1;indDrawPanes(a,b,ci);S._ci=ci}
  tag(PW+1,clamp(ly,8,PH-8),fmt(last.c),lc,'#fff');
- if(S.cross)tag(PW+1,S.cross.y,fmt(pOf(S.cross.y)),'#6e7681','#fff');
+ {const tfm=S.tfms||(B.length>1?B[B.length-1].t-B[B.length-2].t:0),rem=last.t+tfm-Date.now();if(tfm&&S.src==='binance'&&!S.full&&rem>0&&rem<=tfm){const s0=Math.floor(rem/1000),hh=Math.floor(s0/3600),mm=Math.floor(s0%3600/60),ss=s0%60,z=n=>String(n).padStart(2,'0');tag(PW+1,clamp(ly,8,PH-8)+15,(hh?z(hh)+':':'')+z(mm)+':'+z(ss),'rgba(22,27,34,.92)',lc)}}
+ if(S.cross){tag(PW+1,S.cross.y,fmt(pOf(S.cross.y)),'#6e7681','#fff');const ii=Math.round(iOf(S.cross.x));if(B[ii]){const d=new Date(B[ii].t),tl=d.toLocaleString('de-DE',(S.tfms||0)>=864e5?{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'}:{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});tag(clamp(S.cross.x,30,PW-30),H-AXB/2,tl,'#6e7681','#fff','center')}}
  // legend
  ctx.font='11px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';
  const src=(S.full?'⏪ REPLAY':S.src==='binance'?'● LIVE'+(FEED[S.sym]?' · '+(FEED[S.sym]==='bybit'?'Bybit':'Binance'):''):S.src==='demo'?'Demo':'CSV')+(laFind()?' · 🔴 Live-Analyse':'');// Legende: passt sie nicht in eine Zeile, kommen die Kurse in eine zweite; bei kleinem Chart (Liste aufgezogen) nur eine kurze Zeile
- const lgSmall=PH<120,l1=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}`,l2=`O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}`,mw=PW-8;
+ const lgSmall=PH<120,l1=`${S.custom||S.sym} · ${S.custom?'':S.tf+' · '}${src}`,l2=(()=>{const b0=`O ${fmt(info.o)}  H ${fmt(info.h)}  L ${fmt(info.l)}  C ${fmt(info.c)}${info.o?`  ${info.c>=info.o?'+':''}${((info.c-info.o)/info.o*100).toFixed(2).replace('.',',')} %`:''}`,v0=`${S.cross&&info.v?'  V '+(info.v>=1e6?(info.v/1e6).toFixed(2).replace('.',',')+' M':info.v>=1e3?(info.v/1e3).toFixed(1).replace('.',',')+' K':ff(+info.v.toFixed(2))):''}`;return ctx.measureText(b0+v0).width<=PW-12?b0+v0:b0})(),mw=PW-8;
  const lines=lgSmall?[`${S.custom||S.sym}${S.custom?'':' · '+S.tf} · ${fmt(info.c)}${S.src==='binance'&&!S.full?' ●':''}${laFind()?' 🔴':''}`]:ctx.measureText(l1+'   '+l2).width+8<=mw?[l1+'   '+l2]:[l1,l2];
  {const ly0=lgSmall?2:(S.tool!=='cursor'?44:4),lw=Math.min(mw,Math.max(...lines.map(t=>ctx.measureText(t).width))+8),lh=lines.length*15+2;ctx.save();ctx.fillStyle=hm?'rgba(0,0,0,.7)':TH.lbl;ctx.fillRect(4,ly0,lw,lh);ctx.fillRect(4,ly0,lw,lh);
   ctx.beginPath();ctx.rect(4,ly0,lw,lh);ctx.clip();ctx.fillStyle=info.c>=info.o?TH.up:TH.dn;lines.forEach((t,k)=>ctx.fillText(t,8,ly0+3+k*15));ctx.restore();
@@ -1038,7 +1039,7 @@ function undo(){if(S.cur&&S.cur.pts.length){S.cur.pts.pop();updHint()}else if(S.
 function snap(x,y){let i=Math.round(iOf(x));i=Math.max(0,i);let p=pOf(y);
  if(S.magnet&&i<S.bars.length){const b=S.bars[i];let best=b.h;[b.h,b.l,b.o,b.c].forEach(c=>{if(Math.abs(yOf(c)-y)<Math.abs(yOf(best)-y))best=c});if(Math.abs(yOf(best)-y)<70)p=best}
  return{i,p}}
-function onTap(x,y){if(y>PH){if(S.cur||S.pick)return;}
+function onTap(x,y){if(S.cross&&x>=PW&&Math.abs(y-S.cross.y)<14&&FEAT.alarm&&!isRp()){lpOpen({kind:'none',p:pOf(S.cross.y)});return}if(y>PH){if(S.cur||S.pick)return;}
  if(x>PW||y>PH)return;
  if(S.pick){const f=S.pick.field;S.pick=null;updHint();
   if(f==='replay'){rpStart(Math.round(iOf(x)));return}
@@ -1054,7 +1055,8 @@ function onTap(x,y){if(y>PH){if(S.cur||S.pick)return;}
 /* ---------- gestures ---------- */
 const ptrs=new Map();let gest=null;
 function pos(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
-cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}const p=pos(e);ptrs.set(e.pointerId,p);clearTimeout(LP.t);if(ptrs.size===1&&p.x<PW&&!S.cur?.pts?.length)LP.t=setTimeout(()=>{if(gest&&!gest.moved&&ptrs.size===1){const h=lpHit(p.x,p.y);if(h){gest.lp=true;lpOpen(h)}}},550);
+cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}const p=pos(e);ptrs.set(e.pointerId,p);clearTimeout(LP.t);INR.on=false;if(ptrs.size===1&&p.x<PW&&p.y<PH&&!S.cur?.pts?.length)LP.t=setTimeout(()=>{if(gest&&!gest.moved&&ptrs.size===1){const h=lpHit(p.x,p.y);gest.lp=true;if(h&&h.kind!=='none'){lpOpen(h)}else{gest.type='cross';S.cross={x:p.x,y:p.y};try{navigator.vibrate&&navigator.vibrate(8)}catch(_){}req()}}},450);
+ if(ptrs.size===1&&p.x<PW&&p.y>=H-AXB){clearTimeout(LP.t);gest={type:'xaxis',x0:p.x,bw0:S.bw,moved:true,t0:Date.now()};return}
  if(ptrs.size===1&&p.x>=PW&&p.y>PH&&p.y<H-AXB){clearTimeout(LP.t);const hs=indPaneHs();let yy=PH,k=null;for(const [kk,h] of hs){if(p.y>=yy&&p.y<yy+h){k=kk;break}yy+=h}
   if(k){IND.pz=IND.pz||{};const now=Date.now();if(LP.zt&&now-LP.zt<320&&LP.zk===k){IND.pz[k]=1;indSave();LP.zt=0;req();gest={type:'paneZ',k,y0:p.y,z0:1,moved:true};return}LP.zt=now;LP.zk=k;gest={type:'paneZ',k,y0:p.y,z0:IND.pz[k]||1,moved:true};return}}
  if(ptrs.size===1&&p.x<PW&&!(S.cur&&S.cur.pts&&S.cur.pts.length)){const n=paneEdge(p.y);if(n>=0){clearTimeout(LP.t);const hs=indPaneHs();gest={type:'pane',n,y0:p.y,h0:hs.map(x=>x[1]),ks:hs.map(x=>x[0]),moved:true,t0:Date.now()};S.paneDrag=n;req();return}
@@ -1063,16 +1065,21 @@ cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catc
  else if(ptrs.size===2){const[a,b]=[...ptrs.values()];gest={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,bw0:S.bw,cx:(a.x+b.x)/2,end0:S.end,moved:true}}});
 cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId)||!gest)return;const p=pos(e);ptrs.set(e.pointerId,p);
  if(gest.type==='pinch'&&ptrs.size>=2){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);const nb=clamp(gest.bw0*d/gest.d0,.4,50);const ic=gest.end0-(PW-gest.cx)/gest.bw0;S.bw=nb;S.end=ic+(PW-gest.cx)/nb;req()}
+ else if(gest.type==='cross'&&ptrs.size===1){S.cross={x:clamp(p.x,0,PW-1),y:clamp(p.y,0,PH-1)};req()}
+ else if(gest.type==='xaxis'&&ptrs.size===1){S.bw=clamp(gest.bw0*Math.exp((p.x-gest.x0)/150),.4,50);clampEnd&&clampEnd();req()}
  else if(gest.type==='pane'&&ptrs.size===1){paneResize(gest,p.y-gest.y0)}
  else if(gest.type==='paneZ'&&ptrs.size===1){IND.pz[gest.k]=clamp(gest.z0*Math.exp(-(p.y-gest.y0)/120),.3,12);ICACHE.k='';req()}
  else if(gest.type==='paneIn'&&ptrs.size===1){const dx=p.x-gest.x0,dy=p.y-gest.y0;if(!gest.dir){if(Math.hypot(dx,dy)<8)return;gest.moved=true;gest.dir=Math.abs(dy)>Math.abs(dx)?'v':'h';if(gest.dir==='v'){S.paneDrag=gest.n}}
   if(gest.dir==='v')paneResize(gest,dy);else{S.end=gest.end0-dx/S.bw;if(S.cross)S.cross=null;req()}}
  else if(ptrs.size===1&&(gest.type==='pan'||gest.type==='yaxis')){const dx=p.x-gest.x0,dy=p.y-gest.y0;if(!gest.moved&&Math.hypot(dx,dy)>8){gest.moved=true;clearTimeout(LP.t)}if(!gest.moved)return;
-  if(gest.type==='yaxis')S.yZoom=clamp(gest.yz0*Math.exp(-dy/160),.05,20);else{S.end=gest.end0-dx/S.bw;S.yShift=gest.ys0+dy*gest.ppp}
+  if(gest.type==='yaxis')S.yZoom=clamp(gest.yz0*Math.exp(-dy/160),.05,20);else{S.end=gest.end0-dx/S.bw;S.yShift=gest.ys0+dy*gest.ppp;const t=performance.now();if(gest.lt){const dt=t-gest.lt;if(dt>0){const v=(p.x-gest.lx)/dt;gest.vx=gest.vx==null?v:gest.vx*.6+v*.4}}gest.lt=t;gest.lx=p.x}
   if(S.cross)S.cross=null;req()}});
 function up(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);clearTimeout(LP.t);if(gest&&gest.type==='paneZ')indSave();if(gest&&(gest.type==='pane'||gest.type==='paneIn')){if(gest.dir==='v'||gest.type==='pane')indSave();S.paneDrag=null;req()}
- if(gest&&!gest.moved&&!gest.lp&&gest.type!=='pinch'&&Date.now()-gest.t0<600&&e.type==='pointerup')onTap(gest.x0,gest.y0);
+ if(gest&&!gest.moved&&!gest.lp&&gest.type!=='pinch'&&Date.now()-gest.t0<600&&e.type==='pointerup'){const now=Date.now();if(gest.x0<PW&&gest.y0<PH&&LP.dt&&now-LP.dt<320&&Math.hypot(gest.x0-LP.dx,gest.y0-LP.dy)<40&&!S.cur&&!S.pick){LP.dt=0;S.cross=null;S.bw=8;resetView();clampEnd&&clampEnd();req();toast('Ansicht zurückgesetzt')}else{LP.dt=now;LP.dx=gest.x0;LP.dy=gest.y0;onTap(gest.x0,gest.y0)}}
+ if(gest&&gest.type==='pan'&&gest.moved&&ptrs.size===0&&gest.vx!=null&&gest.lt&&performance.now()-gest.lt<80&&Math.abs(gest.vx)>.25)inrStart(gest.vx);
  if(ptrs.size===0||gest?.type==='pinch'){if(ptrs.size===1){const q=[...ptrs.values()][0];gest={type:'pan',x0:q.x,y0:q.y,end0:S.end,ys0:S.yShift,yz0:S.yZoom,ppp:(yMax-yMin)/PH,t0:0,moved:true}}else gest=null}}
+// Schwung: nach dem Loslassen weiter gleiten und sanft abbremsen
+const INR={on:false};function inrStart(v){INR.on=true;INR.v=clamp(v,-4,4);INR.t=performance.now();const step=t=>{if(!INR.on)return;const dt=Math.min(40,t-INR.t);INR.t=t;S.end-=INR.v*dt/S.bw;INR.v*=Math.pow(.94,dt/16);if(typeof clampEnd==='function')clampEnd();req();if(Math.abs(INR.v)>.02)requestAnimationFrame(step);else INR.on=false};requestAnimationFrame(step)}
 cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',e=>{e.preventDefault();const p=pos(e);const ic=iOf(p.x);S.bw=clamp(S.bw*Math.exp(-e.deltaY/400),.4,50);S.end=ic+(PW-p.x)/S.bw;req()},{passive:false});
 
@@ -2234,6 +2241,7 @@ function bxMerge(){if(!BXS||!Array.isArray(BXS.hist))return;let n=0;BXS.hist.for
 const SHQ=store('wdesk_shotq')||[];
 function shqRun(){if(!SHQ.length||document.hidden||S.bg)return;const k=pkey(),now=Date.now();let ch=false;for(let i=SHQ.length-1;i>=0;i--){const q=SHQ[i];if(now-q.t>3*864e5){SHQ.splice(i,1);ch=true;continue}if(q.key===k&&!isRp()&&S.bars&&S.bars.length){shotTake(q.id,'b');SHQ.splice(i,1);ch=true}}if(ch)store('wdesk_shotq',SHQ)}
 setInterval(shqRun,15000);
+setInterval(()=>{if(!document.hidden&&S.src==='binance'&&!S.full&&!INR.on&&!(gest&&gest.moved))req()},1000);
 
 /* ---------- 🟠 Bots über Bybit Demo (der Server handelt, Bybit ist maßgeblich) ---------- */
 const BX={levMax:20,posMax:3};let BXS=null;
