@@ -12,7 +12,7 @@
 //   ANTHROPIC_API_KEY  (Secret)  für die Claude-Analyse in der App (console.anthropic.com)
 //   ALLOWED_ORIGIN     (Text)    https://w4cf2z7k76-ai.github.io
 
-const VERSION = '2.5';
+const VERSION = '2.6';
 const HOSTS = { demo: 'https://api-demo.bybit.com', live: 'https://api.bybit.com' };
 const RECV = '10000';
 
@@ -137,10 +137,10 @@ async function hiLo(sym) {
   const fromK = (k, src) => (Array.isArray(k) && k.length ? { h: Math.max(...k.map(x => +x[2])), l: Math.min(...k.map(x => +x[3])), c: +k[0][4] > 0 ? +k[0][4] : +k[k.length - 1][4], src } : null);
   const alt = { XAUUSDT: 'PAXGUSDT', EURUSDUSDT: 'EURUSDT' }[sym] || sym; // Ersatz-Codes für Börsen ohne TradFi
   const tries = [
-    ['bybit', async () => { const r = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${sym}&interval=1&limit=2`); if (!r.ok) return null; const j = await r.json(); return fromK(j && j.result && j.result.list, 'bybit'); }],
-    ['binance-vision', async () => { const r = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${alt}&interval=1m&limit=2`); if (!r.ok) return null; const k = await r.json(); return fromK(k.slice().reverse(), 'binance-vision'); }],
-    ['binance', async () => { const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${alt}&interval=1m&limit=2`); if (!r.ok) return null; const k = await r.json(); return fromK(k.slice().reverse(), 'binance'); }],
-    ['okx', async () => { const r = await fetch(`https://www.okx.com/api/v5/market/candles?instId=${okxId(alt)}&bar=1m&limit=2`); if (!r.ok) return null; const j = await r.json(); return fromK(j && j.data, 'okx'); }],
+    ['bybit', async () => { const r = await kFetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${sym}&interval=1&limit=2`); if (!r.ok) return null; const j = await r.json(); return fromK(j && j.result && j.result.list, 'bybit'); }],
+    ['binance-vision', async () => { const r = await kFetch(`https://data-api.binance.vision/api/v3/klines?symbol=${alt}&interval=1m&limit=2`); if (!r.ok) return null; const k = await r.json(); return fromK(k.slice().reverse(), 'binance-vision'); }],
+    ['binance', async () => { const r = await kFetch(`https://api.binance.com/api/v3/klines?symbol=${alt}&interval=1m&limit=2`); if (!r.ok) return null; const k = await r.json(); return fromK(k.slice().reverse(), 'binance'); }],
+    ['okx', async () => { const r = await kFetch(`https://www.okx.com/api/v5/market/candles?instId=${okxId(alt)}&bar=1m&limit=2`); if (!r.ok) return null; const j = await r.json(); return fromK(j && j.data, 'okx'); }],
   ];
   const errs = [];
   for (const [n, f] of tries) { try { const v = await f(); if (v && isFinite(v.h) && isFinite(v.l)) return v; errs.push(n); } catch (_) { errs.push(n); } }
@@ -151,9 +151,11 @@ async function watchRun(env) {
   const w = await KV.get('watch', 'json'); if (!w || !w.items || !w.items.length) return { skip: 'empty' };
   const sent = (await KV.get('sent', 'json')) || {}; const syms = [...new Set(w.items.filter(x => !sent[x.id]).map(x => x.sym))].slice(0, 12); if (!syms.length) return { skip: 'done' };
   const px = {}; await Promise.all(syms.map(async s => { px[s] = await hiLo(s); }));
-  const hits = w.items.filter(x => !sent[x.id] && px[x.sym] && !px[x.sym].err && (x.cond === 'above' ? px[x.sym].h >= x.p : px[x.sym].l <= x.p));
+  // Trendlinien-Alarm: Linienpreis jetzt aus zwei Punkten (Zeit, Preis) berechnen
+  const lp = x => { const L = x.tl; if (!L || !isFinite(+L.t1) || !isFinite(+L.t2) || +L.t2 === +L.t1) return x.p; return +L.p1 + (+L.p2 - +L.p1) * (Date.now() - +L.t1) / (+L.t2 - +L.t1); };
+  const hits = w.items.filter(x => { if (sent[x.id] || !px[x.sym] || px[x.sym].err) return false; const p = lp(x); if (!isFinite(p)) return false; x.pNow = p; return x.cond === 'above' ? px[x.sym].h >= p : px[x.sym].l <= p; });
   if (!hits.length) return { hits: 0 };
-  for (const x of hits.slice(0, 5)) { sent[x.id] = Date.now(); const c = px[x.sym].c; await pushAll(env, { title: x.title, body: (x.body ? x.body + ' · ' : '') + 'Kurs ' + deNum(c), tag: x.id, nav: x.nav || null }, true); }
+  for (const x of hits.slice(0, 5)) { sent[x.id] = Date.now(); const c = px[x.sym].c; await pushAll(env, { title: x.tl ? x.title + ' (' + (x.cond === 'above' ? 'nach oben' : 'nach unten') + ' bei ' + deNum(x.pNow) + ')' : x.title, body: (x.body ? x.body + ' · ' : '') + 'Kurs ' + deNum(c), tag: x.id, nav: x.nav || null }, true); }
   const cut = Date.now() - 14 * 864e5; for (const k in sent) if (sent[k] < cut) delete sent[k];
   await KV.put('sent', JSON.stringify(sent));
   return { hits: hits.length };
